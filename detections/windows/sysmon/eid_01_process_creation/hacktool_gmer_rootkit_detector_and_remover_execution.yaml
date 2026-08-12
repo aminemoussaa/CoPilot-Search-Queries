@@ -1,0 +1,148 @@
+name: HackTool - GMER Rootkit Detector and Remover Execution
+id: 9082ff1f-88ab-4678-a3cc-5bcff99fc74d
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9082ff1f-88ab-4678-a3cc-5bcff99fc74d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution GMER tool based on image and hash fields.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\gmer.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*MD5=E9DC058440D321AA17D0600B3CA0AB04*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=539C228B6B332F5AA523E5CE358C16647D8BBE57*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=E8A3E804A96C716A3E9B69195DB6FFB0D33E2433AF871E4D4E1EAB3097237173*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\gmer.exe'; data_win_eventdata_hashes matches
+  '*MD5=E9DC058440D321AA17D0600B3CA0AB04*'; data_win_eventdata_hashes matches
+  '*SHA1=539C228B6B332F5AA523E5CE358C16647D8BBE57*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - http://www.gmer.net/
+
+response:
+  message: >
+    HackTool - GMER Rootkit Detector and Remover Execution detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_hashes: $data_win_eventdata_hashes$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - hacktool
+    - rootkit
+    - detector
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Gg][Mm][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_hashes:/.*[Mm][Dd]5=[Ee]9[Dd][Cc]058440[Dd]321[Aa][Aa]17[Dd]0600[Bb]3[Cc][Aa]0[Aa][Bb]04.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=539[Cc]228[Bb]6[Bb]332[Ff]5[Aa][Aa]523[Ee]5[Cc][Ee]358[Cc]16647[Dd]8[Bb][Bb][Ee]57.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Ee]8[Aa]3[Ee]804[Aa]96[Cc]716[Aa]3[Ee]9[Bb]69195[Dd][Bb]6[Ff][Ff][Bb]0[Dd]33[Ee]2433[Aa][Ff]871[Ee]4[Dd]4[Ee]1[Ee][Aa][Bb]3097237173.*/)

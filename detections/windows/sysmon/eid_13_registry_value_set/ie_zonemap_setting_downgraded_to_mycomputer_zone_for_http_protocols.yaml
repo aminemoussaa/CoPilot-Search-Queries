@@ -1,0 +1,154 @@
+name: IE ZoneMap Setting Downgraded To MyComputer Zone For HTTP Protocols
+id: 3fd4c8d7-8362-4557-a8e6-83b29cc0d724
+version: 1
+schema_version: "1.0"
+date: "2023-09-05"
+author: Nasreddine Bencherchali (Nextron Systems), Michael Haag (idea)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3fd4c8d7-8362-4557-a8e6-83b29cc0d724
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to Internet Explorer's (IE / Windows Internet properties)
+  ZoneMap configuration of the "HTTP" and "HTTPS" protocols to point to the "My
+  Computer" zone. This allows downloaded files from the Internet to be granted
+  the same level of trust as files stored locally.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Internet Settings\\\\ZoneMap\\\\ProtocolDefaults*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\http"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\https"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_details:
+              value: "*DWORD (0x00000000)*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Microsoft\Windows\CurrentVersion\Internet
+  Settings\ZoneMap\ProtocolDefaults*'; data_win_eventdata_targetObject matches
+  '*\http'; data_win_eventdata_targetObject matches '*\https', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/M_haggis/status/1699056847154725107
+  - https://twitter.com/JAMESWT_MHT/status/1699042827261391247
+  - https://learn.microsoft.com/en-us/troubleshoot/developer/browsers/security-privacy/ie-security-zones-registry-entries
+  - https://www.virustotal.com/gui/file/339ff720c74dc44265b917b6d3e3ba0411d61f3cd3c328e9a2bae81592c8a6e5/content
+
+response:
+  message: >
+    IE ZoneMap Setting Downgraded To MyComputer Zone For HTTP Protocols detected
+    on host $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - zonemap
+    - setting
+    - downgraded
+    - registry
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt] [Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]\\[Zz][Oo][Nn][Ee][Mm][Aa][Pp]\\[Pp][Rr][Oo][Tt][Oo][Cc][Oo][Ll][Dd][Ee][Ff][Aa][Uu][Ll][Tt][Ss].*/ AND (data_win_eventdata_targetObject:/.*\\[Hh][Tt][Tt][Pp]/ OR data_win_eventdata_targetObject:/.*\\[Hh][Tt][Tt][Pp][Ss]/) AND data_win_eventdata_details:/.*[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000000\).*/

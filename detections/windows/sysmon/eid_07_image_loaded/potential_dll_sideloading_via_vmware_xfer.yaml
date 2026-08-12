@@ -1,0 +1,151 @@
+name: Potential DLL Sideloading Via VMware Xfer
+id: 9313dc13-d04c-46d8-af4a-a930cc55d93b
+version: 1
+schema_version: "1.0"
+date: "2023-02-17"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9313dc13-d04c-46d8-af4a-a930cc55d93b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects loading of a DLL by the VMware Xfer utility from the non-default
+  directory which may be an attempt to sideload arbitrary DLL. MITRE ATT&CK:
+  T1574.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\VMwareXferlogs.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_imageLoaded:
+              value: "*\\\\glib-2.0.dll"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "C:\\\\Program Files\\\\VMware\\\\*"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\VMwareXferlogs.exe'; data_win_eventdata_imageLoaded matches
+  '*\glib-2.0.dll'; data_win_eventdata_imageLoaded matches 'C:\Program
+  Files\VMware\*'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.sentinelone.com/labs/lockbit-ransomware-side-loads-cobalt-strike-beacon-with-legitimate-vmware-utility/
+  - https://attack.mitre.org/techniques/T1574/001/
+
+response:
+  message: >
+    Potential DLL Sideloading Via VMware Xfer detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. MITRE
+    ATT&CK: T1574.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_imageLoaded
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.001
+  custom_tags:
+    - sideloading
+    - vmware
+    - image_load
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_image:/.*\\[Vv][Mm][Ww][Aa][Rr][Ee][Xx][Ff][Ee][Rr][Ll][Oo][Gg][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_imageLoaded:/.*\\[Gg][Ll][Ii][Bb]-2\.0\.[Dd][Ll][Ll]/ AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Vv][Mm][Ww][Aa][Rr][Ee]\\.*/)

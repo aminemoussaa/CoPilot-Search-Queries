@@ -1,0 +1,209 @@
+name: Uncommon Microsoft Office Trusted Location Added
+id: f742bde7-9528-42e5-bd82-84f51a8387d2
+version: 1
+schema_version: "1.0"
+date: "2023-09-29"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f742bde7-9528-42e5-bd82-84f51a8387d2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to registry keys related to "Trusted Location" of Microsoft
+  Office where the path is set to something uncommon. Attackers might add
+  additional trusted locations to avoid macro security restrictions. MITRE
+  ATT&CK: T1112.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*Security\\\\Trusted Locations\\\\Location*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Path"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Program Files\\\\Common Files\\\\Microsoft Shared\\\\ClickToRun\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\OfficeClickToRun.exe"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\Microsoft Office\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files (x86)\\\\Microsoft Office\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*%APPDATA%\\\\Microsoft\\\\Templates*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*%%APPDATA%%\\\\Microsoft\\\\Templates*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*%APPDATA%\\\\Microsoft\\\\Word\\\\Startup*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*%%APPDATA%%\\\\Microsoft\\\\Word\\\\Startup*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Program Files (x86)\\\\Microsoft Office\\\\root\\\\Templates\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Program Files\\\\Microsoft Office (x86)\\\\Templates*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Program Files\\\\Microsoft Office\\\\root\\\\Templates\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Program Files\\\\Microsoft Office\\\\Templates\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*Security\Trusted Locations\Location*'; data_win_eventdata_targetObject
+  matches '*\Path'; data_win_eventdata_image matches '*:\Program Files\Common
+  Files\Microsoft Shared\ClickToRun\*', among other conditions.
+
+known_false_positives: >
+  Other unknown legitimate or custom paths need to be filtered to avoid false
+  positives. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - Internal Research
+  - https://admx.help/?Category=Office2016&Policy=excel16.Office.Microsoft.Policies.Windows::L_TrustedLoc01
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    Uncommon Microsoft Office Trusted Location Added detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1112
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+  custom_tags:
+    - uncommon
+    - microsoft
+    - office
+    - registry
+    - sysmon
+    - persistence
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy]\\[Tt][Rr][Uu][Ss][Tt][Ee][Dd] [Ll][Oo][Cc][Aa][Tt][Ii][Oo][Nn][Ss]\\[Ll][Oo][Cc][Aa][Tt][Ii][Oo][Nn].*/ AND data_win_eventdata_targetObject:/.*\\[Pp][Aa][Tt][Hh]/ AND _exists_:data_win_eventdata_image AND NOT ((data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\.*/ AND data_win_eventdata_image:/.*\\[Oo][Ff][Ff][Ii][Cc][Ee][Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\.[Ee][Xx][Ee]/) OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\.*/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\.*/) AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_details:/.*%[Aa][Pp][Pp][Dd][Aa][Tt][Aa]%\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee][Ss].*/ OR data_win_eventdata_details:/.*%%[Aa][Pp][Pp][Dd][Aa][Tt][Aa]%%\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee][Ss].*/ OR data_win_eventdata_details:/.*%[Aa][Pp][Pp][Dd][Aa][Tt][Aa]%\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Oo][Rr][Dd]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_details:/.*%%[Aa][Pp][Pp][Dd][Aa][Tt][Aa]%%\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Oo][Rr][Dd]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_details:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee][Ss]\\.*/ OR data_win_eventdata_details:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee] \([Xx]86\)\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee][Ss].*/ OR data_win_eventdata_details:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee][Ss]\\.*/ OR data_win_eventdata_details:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee][Ss]\\.*/)

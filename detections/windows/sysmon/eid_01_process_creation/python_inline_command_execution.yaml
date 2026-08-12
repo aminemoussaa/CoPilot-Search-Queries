@@ -1,0 +1,248 @@
+name: Python Inline Command Execution
+id: 899133d5-4d7c-4a7f-94ee-27355c879d90
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 899133d5-4d7c-4a7f-94ee-27355c879d90
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of python using the "-c" flag. This is could be used as a
+  way to launch a reverse shell or execute live python code. MITRE ATT&CK:
+  T1059.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "python.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*python.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*python3.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*python2.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* -c*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "C:\\\\Program Files\\\\Python*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "C:\\\\Program Files (x86)\\\\Python*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\python.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*-E -s -m ensurepip -U --default-pip*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "C:\\\\Program Files\\\\Python*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "C:\\\\Program Files (x86)\\\\Python*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-W ignore::DeprecationWarning*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*['install', '--no-cache-dir', '--no-index', '--find-links',*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*'--upgrade', 'pip'*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\AppData\\\\Local\\\\Programs\\\\Microsoft VS Code\\\\Code.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_parentImage:
+                          value: "C:\\Program Files\\Microsoft VS Code\\Code.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_parentImage:
+                          value: "C:\\Program Files (x86)\\Microsoft VS Code\\Code.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*<pip-setuptools-caller>*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*exec(compile(*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'python.exe'; data_win_eventdata_image matches '*python.exe';
+  data_win_eventdata_image matches '*python3.exe', among other conditions.
+
+known_false_positives: >
+  Python libraries that use a flag starting with "-c". Filter according to your
+  environment. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://docs.python.org/3/using/cmdline.html#cmdoption-c
+  - https://www.revshells.com/
+  - https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    Python Inline Command Execution detected on host $agent_name$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1059
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+  custom_tags:
+    - python
+    - inline
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Pp][Yy][Tt][Hh][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Pp][Yy][Tt][Hh][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Pp][Yy][Tt][Hh][Oo][Nn]3\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Pp][Yy][Tt][Hh][Oo][Nn]2\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.* -[Cc].*/ AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_parentCommandLine AND _exists_:data_win_eventdata_commandLine AND NOT (((data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Yy][Tt][Hh][Oo][Nn].*/ OR data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Pp][Yy][Tt][Hh][Oo][Nn].*/) AND data_win_eventdata_parentImage:/.*\\[Pp][Yy][Tt][Hh][Oo][Nn]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*-[Ee] -[Ss] -[Mm] [Ee][Nn][Ss][Uu][Rr][Ee][Pp][Ii][Pp] -[Uu] --[Dd][Ee][Ff][Aa][Uu][Ll][Tt]-[Pp][Ii][Pp].*/) OR ((data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Yy][Tt][Hh][Oo][Nn].*/ OR data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Pp][Yy][Tt][Hh][Oo][Nn].*/) AND data_win_eventdata_commandLine:/.*-[Ww] [Ii][Gg][Nn][Oo][Rr][Ee]::[Dd][Ee][Pp][Rr][Ee][Cc][Aa][Tt][Ii][Oo][Nn][Ww][Aa][Rr][Nn][Ii][Nn][Gg].*/ AND data_win_eventdata_commandLine:/.*\['[Ii][Nn][Ss][Tt][Aa][Ll][Ll]', '--[Nn][Oo]-[Cc][Aa][Cc][Hh][Ee]-[Dd][Ii][Rr]', '--[Nn][Oo]-[Ii][Nn][Dd][Ee][Xx]', '--[Ff][Ii][Nn][Dd]-[Ll][Ii][Nn][Kk][Ss]',.*/ AND data_win_eventdata_commandLine:/.*'--[Uu][Pp][Gg][Rr][Aa][Dd][Ee]', '[Pp][Ii][Pp]'.*/)) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_parentImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ss] [Cc][Oo][Dd][Ee]\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ss] [Cc][Oo][Dd][Ee]\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ss] [Cc][Oo][Dd][Ee]\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_commandLine:/.*\<[Pp][Ii][Pp]-[Ss][Ee][Tt][Uu][Pp][Tt][Oo][Oo][Ll][Ss]-[Cc][Aa][Ll][Ll][Ee][Rr]\>.*/ AND data_win_eventdata_commandLine:/.*[Ee][Xx][Ee][Cc]\([Cc][Oo][Mm][Pp][Ii][Ll][Ee]\(.*/))

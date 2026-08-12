@@ -1,0 +1,164 @@
+name: Registry Persistence Mechanisms in Recycle Bin
+id: 277efb8f-60be-4f10-b4d3-037802f37167
+version: 1
+schema_version: "1.0"
+date: "2022-12-06"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 277efb8f-60be-4f10-b4d3-037802f37167
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects persistence registry keys for Recycle Bin. MITRE ATT&CK: T1547.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_eventType:
+                          value: "RenameKey"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_newName:
+                          value: "*\\\\CLSID\\\\{645FF040-5081-101B-9F08-00AA002F954E}\\\\shell\\\\open*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_eventType:
+                          value: "SetValue"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\CLSID\\\\{645FF040-5081-101B-9F08-00AA002F954E}\\\\shell\\\\open\\\\command\\\\(Default)*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_eventType
+    - data_win_eventdata_newName
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_eventType equals
+  'RenameKey'; data_win_eventdata_newName matches
+  '*\CLSID\{645FF040-5081-101B-9F08-00AA002F954E}\shell\open*';
+  data_win_eventdata_eventType equals 'SetValue', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/vxunderground/VXUG-Papers/blob/751edb8d50f95bd7baa730adf2c6c3bb1b034276/The%20Persistence%20Series/Persistence%20via%20Recycle%20Bin/Persistence_via_Recycle_Bin.pdf
+  - https://persistence-info.github.io/Data/recyclebin.html
+  - https://www.hexacorn.com/blog/2018/05/28/beyond-good-ol-run-key-part-78-2/
+  - https://attack.mitre.org/techniques/T1547/
+
+response:
+  message: >
+    Registry Persistence Mechanisms in Recycle Bin detected on host
+    $agent_name$. Matched data_win_eventdata_eventType:
+    $data_win_eventdata_eventType$. Matched data_win_eventdata_newName:
+    $data_win_eventdata_newName$. MITRE ATT&CK: T1547
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_eventType
+      type: other
+    - field: data_win_eventdata_newName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547
+  custom_tags:
+    - registry
+    - persistence
+    - mechanisms
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND ((data_win_eventdata_eventType:/[Rr][Ee][Nn][Aa][Mm][Ee][Kk][Ee][Yy]/ AND data_win_eventdata_newName:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{645[Ff][Ff]040-5081-101[Bb]-9[Ff]08-00[Aa][Aa]002[Ff]954[Ee]\}\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn].*/) OR (data_win_eventdata_eventType:/[Ss][Ee][Tt][Vv][Aa][Ll][Uu][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{645[Ff][Ff]040-5081-101[Bb]-9[Ff]08-00[Aa][Aa]002[Ff]954[Ee]\}\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\).*/))

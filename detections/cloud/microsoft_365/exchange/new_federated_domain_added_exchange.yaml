@@ -1,0 +1,73 @@
+name: New Federated Domain Added - Exchange
+id: 42127bdd-9133-474f-a6f1-97b6c08a4339
+version: 1
+schema_version: "1.0"
+date: "2022-02-08"
+author: Splunk Threat Research Team (original rule), '@ionsor (rule)'
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 42127bdd-9133-474f-a6f1-97b6c08a4339
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: match
+description: >
+  Detects the addition of a new Federated Domain. MITRE ATT&CK: T1136.003.
+data_source:
+  - Office 365 Management Activity API
+  - "Workload: Exchange"
+workload: Exchange
+how_to_implement: >
+  Requires the Wazuh office365 module configured with an Azure AD application
+  subscribed to the Office 365 Management Activity API for the relevant
+  workload, ingested into the wazuh-* indices. The detection looks for events
+  where data_office365_eventSource equals 'Exchange'; data_office365_eventName
+  equals 'Add-FederatedDomain'; data_office365_status equals 'success'.
+known_false_positives: >
+  The creation of a new Federated domain is not necessarily malicious, however
+  these events need to be followed closely, as it may indicate federated
+  credential abuse or backdoor via federated identities at a similar or
+  different cloud provider. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+references:
+  - https://www.fireeye.com/content/dam/fireeye-www/blog/pdfs/wp-m-unc2452-2021-000343-01.pdf
+  - https://us-cert.cisa.gov/ncas/alerts/aa21-008a
+  - https://www.splunk.com/en_us/blog/security/a-golden-saml-journey-solarwinds-continued.html
+  - https://www.sygnia.co/golden-saml-advisory
+  - https://o365blog.com/post/aadbackdoor/
+  - https://attack.mitre.org/techniques/T1136/003/
+response:
+  message: >
+    New Federated Domain Added - Exchange detected for user
+    $data_office365_UserId$. Matched data_office365_eventSource:
+    $data_office365_eventSource$. Matched data_office365_eventName:
+    $data_office365_eventName$. MITRE ATT&CK: T1136.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: data_office365_UserId
+      type: user
+      score: 50
+  threat_objects:
+    - field: data_office365_eventSource
+      type: other
+    - field: data_office365_eventName
+      type: other
+tags:
+  asset_type: Cloud Identity
+  mitre_attack_id:
+    - T1136.003
+  custom_tags:
+    - federated
+    - domain
+    - added
+    - o365
+    - exchange
+    - persistence
+  product:
+    - Office 365
+  security_domain: cloud
+graylog:
+  query: data_office365_eventSource:/[Ee][Xx][Cc][Hh][Aa][Nn][Gg][Ee]/ AND data_office365_eventName:/[Aa][Dd][Dd]-[Ff][Ee][Dd][Ee][Rr][Aa][Tt][Ee][Dd][Dd][Oo][Mm][Aa][Ii][Nn]/ AND data_office365_status:/[Ss][Uu][Cc][Cc][Ee][Ss][Ss]/

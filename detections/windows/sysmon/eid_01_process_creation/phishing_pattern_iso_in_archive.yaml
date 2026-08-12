@@ -1,0 +1,166 @@
+name: Phishing Pattern ISO in Archive
+id: fcdf69e5-a3d3-452a-9724-26f2308bf2b1
+version: 1
+schema_version: "1.0"
+date: "2022-06-07"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fcdf69e5-a3d3-452a-9724-26f2308bf2b1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects cases in which an ISO files is opend within an archiver like 7Zip or
+  Winrar, which is a sign of phishing as threat actors put small ISO files in
+  archives as email attachments to bypass certain filters and protective
+  measures (mark of web). MITRE ATT&CK: T1566.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\Winrar.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\7zFM.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\peazip.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\isoburn.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\PowerISO.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ImgBurn.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\Winrar.exe'; data_win_eventdata_parentImage matches '*\7zFM.exe';
+  data_win_eventdata_parentImage matches '*\peazip.exe', among other conditions.
+
+known_false_positives: >
+  Legitimate cases in which archives contain ISO or IMG files and the user opens
+  the archive and the image via clicking and not extraction. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://twitter.com/1ZRR4H/status/1534259727059787783
+  - https://app.any.run/tasks/e1fe6a62-bce8-4323-a49a-63795d9afd5d/
+  - https://attack.mitre.org/techniques/T1566/
+
+response:
+  message: >
+    Phishing Pattern ISO in Archive detected on host $agent_name$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1566
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1566
+  custom_tags:
+    - phishing
+    - pattern
+    - archive
+    - process_creation
+    - sysmon
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Ww][Ii][Nn][Rr][Aa][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\7[Zz][Ff][Mm]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Ee][Aa][Zz][Ii][Pp]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_image:/.*\\[Ii][Ss][Oo][Bb][Uu][Rr][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ii][Ss][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ii][Mm][Gg][Bb][Uu][Rr][Nn]\.[Ee][Xx][Ee]/)

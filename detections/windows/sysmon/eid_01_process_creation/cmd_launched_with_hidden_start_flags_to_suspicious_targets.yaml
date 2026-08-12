@@ -1,0 +1,378 @@
+name: Cmd Launched with Hidden Start Flags to Suspicious Targets
+id: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+version: 1
+schema_version: "1.0"
+date: "2026-01-24"
+author: Vladan Sekulic, Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects cmd.exe executing commands with the "start" utility using "/b" (no
+  window) or "/min" (minimized) flags. To reduce false positives from standard
+  background tasks, detection is restricted to scenarios where the target is a
+  known script extension or located in suspicious temporary/public directories.
+  This technique was observed in Chaos, DarkSide, and Emotet malware campaigns.
+  MITRE ATT&CK: T1564.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\cmd.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "Cmd.Exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*start *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*start/b*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*start/min*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-b *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/b *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–b *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—b *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―b *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-b\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/b\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–b\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—b\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―b\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-min *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/min *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–min *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—min *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―min *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-min\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/min\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–min\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—min\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―min\"*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*:\\\\Perflogs\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*:\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*:\\\\Users\\\\Default\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*:\\\\Windows\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\AppData\\\\Roaming\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Contacts\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Documents\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Downloads\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Favorites\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Favourites\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\inetpub\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Music\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Photos\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Temporary Internet\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Users\\\\Public\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Videos\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.bat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.cmd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.cpl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.hta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.scr*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.vbe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.vbs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -nop *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -sta *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.downloadfile(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.downloadstring(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-noni *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-w hidden *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\cmd.exe';
+  data_win_eventdata_originalFileName equals 'Cmd.Exe';
+  data_win_eventdata_commandLine matches '*start *', among other conditions.
+
+known_false_positives: >
+  Legitimate administrative scripts running from temporary folders.. Niche
+  software updaters utilizing hidden batch files in ProgramData. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://www.fortinet.com/blog/threat-research/evolution-of-chaos-ransomware-faster-smarter-and-more-dangerous
+  - https://www.fortinet.com/blog/threat-research/newly-discovered-function-in-darkside-ransomware-variant-targets-disk-partitions
+  - https://www.fortinet.com/blog/threat-research/ms-office-files-involved-in-emotet-trojan-campaign-pt-one
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/start
+  - https://attack.mitre.org/techniques/T1564/003/
+
+response:
+  message: >
+    Cmd Launched with Hidden Start Flags to Suspicious Targets detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1564.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1564.003
+  custom_tags:
+    - launched
+    - hidden
+    - start
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Cc][Mm][Dd]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Ss][Tt][Aa][Rr][Tt] .*/ OR data_win_eventdata_commandLine:/.*[Ss][Tt][Aa][Rr][Tt]\/[Bb].*/ OR data_win_eventdata_commandLine:/.*[Ss][Tt][Aa][Rr][Tt]\/[Mm][Ii][Nn].*/) AND (data_win_eventdata_commandLine:/.*-[Bb] .*/ OR data_win_eventdata_commandLine:/.*\/[Bb] .*/ OR data_win_eventdata_commandLine:/.*–[Bb] .*/ OR data_win_eventdata_commandLine:/.*—[Bb] .*/ OR data_win_eventdata_commandLine:/.*―[Bb] .*/ OR data_win_eventdata_commandLine:/.*-[Bb]\".*/ OR data_win_eventdata_commandLine:/.*\/[Bb]\".*/ OR data_win_eventdata_commandLine:/.*–[Bb]\".*/ OR data_win_eventdata_commandLine:/.*—[Bb]\".*/ OR data_win_eventdata_commandLine:/.*―[Bb]\".*/ OR data_win_eventdata_commandLine:/.*-[Mm][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.*\/[Mm][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.*–[Mm][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.*—[Mm][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.*―[Mm][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.*-[Mm][Ii][Nn]\".*/ OR data_win_eventdata_commandLine:/.*\/[Mm][Ii][Nn]\".*/ OR data_win_eventdata_commandLine:/.*–[Mm][Ii][Nn]\".*/ OR data_win_eventdata_commandLine:/.*—[Mm][Ii][Nn]\".*/ OR data_win_eventdata_commandLine:/.*―[Mm][Ii][Nn]\".*/) AND (data_win_eventdata_commandLine:/.*:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*:\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Dd][Ee][Ff][Aa][Uu][Ll][Tt]\\.*/ OR data_win_eventdata_commandLine:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Cc][Oo][Nn][Tt][Aa][Cc][Tt][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Dd][Oo][Cc][Uu][Mm][Ee][Nn][Tt][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ff][Aa][Vv][Oo][Rr][Ii][Tt][Ee][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ff][Aa][Vv][Oo][Uu][Rr][Ii][Tt][Ee][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ii][Nn][Ee][Tt][Pp][Uu][Bb]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Mm][Uu][Ss][Ii][Cc]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Pp][Hh][Oo][Tt][Oo][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp][Oo][Rr][Aa][Rr][Yy] [Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Vv][Ii][Dd][Ee][Oo][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\.[Bb][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Mm][Dd].*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Hh][Tt][Aa].*/ OR data_win_eventdata_commandLine:/.*\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\.[Ss][Cc][Rr].*/ OR data_win_eventdata_commandLine:/.*\.[Vv][Bb][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Vv][Bb][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Ss][Tt][Aa] .*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ff][Ii][Ll][Ee]\(.*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg]\(.*/ OR data_win_eventdata_commandLine:/.*-[Nn][Oo][Nn][Ii] .*/ OR data_win_eventdata_commandLine:/.*-[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] .*/)

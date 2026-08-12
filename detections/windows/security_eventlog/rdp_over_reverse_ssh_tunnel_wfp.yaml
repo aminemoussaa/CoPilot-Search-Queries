@@ -1,0 +1,188 @@
+name: RDP over Reverse SSH Tunnel WFP
+id: 5bed80b6-b3e8-428e-a3ae-d3c757589e41
+version: 1
+schema_version: "1.0"
+date: "2022-09-02"
+author: Samir Bousseaden
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5bed80b6-b3e8-428e-a3ae-d3c757589e41
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects svchost hosting RDP termsvcs communicating with the loopback address.
+  MITRE ATT&CK: T1090.001, T1090.002, T1021.001.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5156"
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_sourcePort: "3389"
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_destAddress: "127.*"
+                          - term:
+                              data_win_eventdata_destAddress: "::1"
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_destPort: "3389"
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_sourceAddress: "127.*"
+                          - term:
+                              data_win_eventdata_sourceAddress: "::1"
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_filterOrigin"
+        - exists:
+            field: "data_win_eventdata_application"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_filterOrigin:
+                          value: "AppContainer Loopback"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_application:
+                          value: "*\\\\thor.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_application:
+                          value: "*\\\\thor64.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_sourcePort
+    - data_win_eventdata_destAddress
+    - data_win_eventdata_destPort
+    - data_win_eventdata_sourceAddress
+    - data_win_eventdata_filterOrigin
+    - data_win_eventdata_application
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5156'; data_win_eventdata_sourcePort equals
+  '3389'; data_win_eventdata_destAddress matches '127.*', among other
+  conditions.
+
+known_false_positives: >
+  Programs that connect locally to the RDP port. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://twitter.com/SBousseaden/status/1096148422984384514
+  - https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES/blob/44fbe85f72ee91582876b49678f9a26292a155fb/Command%20and%20Control/DE_RDP_Tunnel_5156.evtx
+  - https://attack.mitre.org/techniques/T1090/001/
+  - https://attack.mitre.org/techniques/T1090/002/
+  - https://attack.mitre.org/techniques/T1021/001/
+
+response:
+  message: >
+    RDP over Reverse SSH Tunnel WFP detected on host $agent_name$. Matched
+    data_win_eventdata_sourcePort: $data_win_eventdata_sourcePort$. Matched
+    data_win_eventdata_destAddress: $data_win_eventdata_destAddress$. MITRE
+    ATT&CK: T1090.001, T1090.002, T1021.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_sourcePort
+      type: other
+    - field: data_win_eventdata_destAddress
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1090.001
+    - T1090.002
+    - T1021.001
+  custom_tags:
+    - reverse
+    - tunnel
+    - windows_security
+    - command_and_control
+    - lateral_movement
+    - car_2013_07_002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5156" AND ((data_win_eventdata_sourcePort:"3389" AND (data_win_eventdata_destAddress:/127\..*/ OR data_win_eventdata_destAddress:"::1")) OR (data_win_eventdata_destPort:"3389" AND (data_win_eventdata_sourceAddress:/127\..*/ OR data_win_eventdata_sourceAddress:"::1"))) AND _exists_:data_win_eventdata_filterOrigin AND _exists_:data_win_eventdata_application AND NOT (data_win_eventdata_filterOrigin:/[Aa][Pp][Pp][Cc][Oo][Nn][Tt][Aa][Ii][Nn][Ee][Rr] [Ll][Oo][Oo][Pp][Bb][Aa][Cc][Kk]/ OR data_win_eventdata_application:/.*\\[Tt][Hh][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Hh][Oo][Rr]64\.[Ee][Xx][Ee]/)

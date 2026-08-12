@@ -1,0 +1,404 @@
+name: PUA - PingCastle Execution From Potentially Suspicious Parent
+id: b37998de-a70b-4f33-b219-ec36bf433dc0
+version: 1
+schema_version: "1.0"
+date: "2024-01-11"
+author: Nasreddine Bencherchali (Nextron Systems), X__Junior (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b37998de-a70b-4f33-b219-ec36bf433dc0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of PingCastle, a tool designed to quickly assess the
+  Active Directory security level via a script located in a potentially
+  suspicious or uncommon location. MITRE ATT&CK: T1595.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.bat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.chm*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.cmd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.hta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.htm*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.html*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.lnk*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.vbe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.vbs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.wsf*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*:\\\\Perflogs\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*:\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*:\\\\Users\\\\Public\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*:\\\\Windows\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*\\\\AppData\\\\Local\\\\Temp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*\\\\AppData\\\\Roaming\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*\\\\Temporary Internet*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\Favorites\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\Favourites\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\Contacts\\\\*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.bat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.chm*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.cmd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.hta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.htm*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.html*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.lnk*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.vbe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.vbs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.wsf*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\PingCastle.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PingCastle.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_product:
+                    value: "Ping Castle"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner aclcheck*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner antivirus*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner computerversion*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner foreignusers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner laps_bitlocker*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner localadmin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner nullsession*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner nullsession-trust*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner oxidbindings*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner remote*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner share*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner smb*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner smb3querynetwork*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner spooler*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner startup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner zerologon*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--no-enum-limit*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--healthcheck*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--level Full*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--healthcheck*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--server *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_product
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentCommandLine matches
+  '*.bat*'; data_win_eventdata_parentCommandLine matches '*.chm*';
+  data_win_eventdata_parentCommandLine matches '*.cmd*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/vletoux/pingcastle
+  - https://thedfirreport.com/2023/10/30/netsupport-intrusion-results-in-domain-compromise/
+  - https://github.com/fengjixuchui/Start-ADEnum/blob/e237a739db98b6104427d833004836507da36a58/Functions/Start-ADEnum.ps1#L450
+  - https://github.com/lkys37en/Start-ADEnum/blob/5b42c54215fe5f57fc59abc52c20487d15764005/Functions/Start-ADEnum.ps1#L680
+  - https://github.com/projectHULK/AD_Recon/blob/dde2daba9b3393a9388cbebda87068972cc0bd3b/SecurityAssessment.ps1#L2699
+  - https://github.com/802-1x/Compliance/blob/2e53df8b6e89686a0b91116b3f42c8f717dca820/Ping%20Castle/Get-PingCastle-HTMLComplianceReport.ps1#L8
+  - https://github.com/EvotecIT/TheDashboard/blob/481a9ce8f82f2fd55fe65220ee6486bae6df0c9d/Examples/RunReports/PingCastle.ps1
+  - https://attack.mitre.org/techniques/T1595/
+
+response:
+  message: >
+    PUA - PingCastle Execution From Potentially Suspicious Parent detected on
+    host $agent_name$. Matched data_win_eventdata_parentCommandLine:
+    $data_win_eventdata_parentCommandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1595
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentCommandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1595
+  custom_tags:
+    - pingcastle
+    - parent
+    - process_creation
+    - sysmon
+    - reconnaissance
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentCommandLine:/.*\.[Bb][Aa][Tt].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Cc][Hh][Mm].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Cc][Mm][Dd].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Hh][Tt][Aa].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Hh][Tt][Mm].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Hh][Tt][Mm][Ll].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Jj][Ss].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Ll][Nn][Kk].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Pp][Ss]1.*/ OR data_win_eventdata_parentCommandLine:/.*\.[Vv][Bb][Ee].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Vv][Bb][Ss].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Ww][Ss][Ff].*/ OR data_win_eventdata_parentCommandLine:/.*:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/ OR data_win_eventdata_parentCommandLine:/.*:\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_parentCommandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_parentCommandLine:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_parentCommandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp].*/ OR data_win_eventdata_parentCommandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\.*/ OR data_win_eventdata_parentCommandLine:/.*\\[Tt][Ee][Mm][Pp][Oo][Rr][Aa][Rr][Yy] [Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt].*/ OR (data_win_eventdata_parentCommandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_parentCommandLine:/.*\\[Ff][Aa][Vv][Oo][Rr][Ii][Tt][Ee][Ss]\\.*/) OR (data_win_eventdata_parentCommandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_parentCommandLine:/.*\\[Ff][Aa][Vv][Oo][Uu][Rr][Ii][Tt][Ee][Ss]\\.*/) OR (data_win_eventdata_parentCommandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_parentCommandLine:/.*\\[Cc][Oo][Nn][Tt][Aa][Cc][Tt][Ss]\\.*/)) AND (data_win_eventdata_parentCommandLine:/.*\.[Bb][Aa][Tt].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Cc][Hh][Mm].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Cc][Mm][Dd].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Hh][Tt][Aa].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Hh][Tt][Mm].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Hh][Tt][Mm][Ll].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Jj][Ss].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Ll][Nn][Kk].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Pp][Ss]1.*/ OR data_win_eventdata_parentCommandLine:/.*\.[Vv][Bb][Ee].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Vv][Bb][Ss].*/ OR data_win_eventdata_parentCommandLine:/.*\.[Ww][Ss][Ff].*/) AND (data_win_eventdata_image:/.*\\[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_product:/[Pp][Ii][Nn][Gg] [Cc][Aa][Ss][Tt][Ll][Ee]/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Aa][Cc][Ll][Cc][Hh][Ee][Cc][Kk].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr][Vv][Ee][Rr][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ff][Oo][Rr][Ee][Ii][Gg][Nn][Uu][Ss][Ee][Rr][Ss].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ll][Aa][Pp][Ss]_[Bb][Ii][Tt][Ll][Oo][Cc][Kk][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ll][Oo][Cc][Aa][Ll][Aa][Dd][Mm][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Nn][Uu][Ll][Ll][Ss][Ee][Ss][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Nn][Uu][Ll][Ll][Ss][Ee][Ss][Ss][Ii][Oo][Nn]-[Tt][Rr][Uu][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Oo][Xx][Ii][Dd][Bb][Ii][Nn][Dd][Ii][Nn][Gg][Ss].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Rr][Ee][Mm][Oo][Tt][Ee].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Hh][Aa][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Mm][Bb].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Mm][Bb]3[Qq][Uu][Ee][Rr][Yy][Nn][Ee][Tt][Ww][Oo][Rr][Kk].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Pp][Oo][Oo][Ll][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Zz][Ee][Rr][Oo][Ll][Oo][Gg][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Nn][Oo]-[Ee][Nn][Uu][Mm]-[Ll][Ii][Mm][Ii][Tt].*/ OR (data_win_eventdata_commandLine:/.*--[Hh][Ee][Aa][Ll][Tt][Hh][Cc][Hh][Ee][Cc][Kk].*/ AND data_win_eventdata_commandLine:/.*--[Ll][Ee][Vv][Ee][Ll] [Ff][Uu][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*--[Hh][Ee][Aa][Ll][Tt][Hh][Cc][Hh][Ee][Cc][Kk].*/ AND data_win_eventdata_commandLine:/.*--[Ss][Ee][Rr][Vv][Ee][Rr] .*/))

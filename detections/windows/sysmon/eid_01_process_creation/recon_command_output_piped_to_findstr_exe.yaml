@@ -1,0 +1,191 @@
+name: Recon Command Output Piped To Findstr.EXE
+id: ccb5742c-c248-4982-8c5c-5571b9275ad3
+version: 1
+schema_version: "1.0"
+date: "2025-10-08"
+author: Nasreddine Bencherchali (Nextron Systems), frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ccb5742c-c248-4982-8c5c-5571b9275ad3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of a potential recon command where the results are piped
+  to "findstr". This is meant to trigger on inline calls of "cmd.exe" via the
+  "/c" or "/k" for example. Attackers often time use this technique to extract
+  specific information they require in their reconnaissance phase. MITRE ATT&CK:
+  T1057.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ipconfig*|*find*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*net*|*find*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*netstat*|*find*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ping*|*find*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*systeminfo*|*find*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*tasklist*|*find*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*whoami*|*find*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*cmd.exe /c TASKLIST /V |*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*FIND /I*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\xampp\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\catalina_start.bat*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*ipconfig*|*find*'; data_win_eventdata_commandLine matches '*net*|*find*';
+  data_win_eventdata_commandLine matches '*netstat*|*find*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/02cb591f75064ffe1e0df9ac3ed5972a2e491c97/atomics/T1057/T1057.md#atomic-test-6---discover-specific-process---tasklist
+  - https://www.hhs.gov/sites/default/files/manage-engine-vulnerability-sector-alert-tlpclear.pdf
+  - https://www.trendmicro.com/en_us/research/22/d/spring4shell-exploited-to-deploy-cryptocurrency-miners.html
+  - https://attack.mitre.org/techniques/T1057/
+
+response:
+  message: >
+    Recon Command Output Piped To Findstr.EXE detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1057
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1057
+  custom_tags:
+    - recon
+    - output
+    - piped
+    - process_creation
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Ii][Pp][Cc][Oo][Nn][Ff][Ii][Gg].*\|.*[Ff][Ii][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Nn][Ee][Tt].*\|.*[Ff][Ii][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Nn][Ee][Tt][Ss][Tt][Aa][Tt].*\|.*[Ff][Ii][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Pp][Ii][Nn][Gg].*\|.*[Ff][Ii][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Ss][Yy][Ss][Tt][Ee][Mm][Ii][Nn][Ff][Oo].*\|.*[Ff][Ii][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Tt][Aa][Ss][Kk][Ll][Ii][Ss][Tt].*\|.*[Ff][Ii][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Ww][Hh][Oo][Aa][Mm][Ii].*\|.*[Ff][Ii][Nn][Dd].*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Cc][Mm][Dd]\.[Ee][Xx][Ee] \/[Cc] [Tt][Aa][Ss][Kk][Ll][Ii][Ss][Tt] \/[Vv] \|.*/ AND data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd] \/[Ii].*/ AND data_win_eventdata_commandLine:/.*\\[Xx][Aa][Mm][Pp][Pp]\\.*/ AND data_win_eventdata_commandLine:/.*\\[Cc][Aa][Tt][Aa][Ll][Ii][Nn][Aa]_[Ss][Tt][Aa][Rr][Tt]\.[Bb][Aa][Tt].*/)

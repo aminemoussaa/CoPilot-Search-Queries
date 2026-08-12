@@ -1,0 +1,181 @@
+name: Meterpreter or Cobalt Strike Getsystem Service Installation - Security
+id: ecbc5e16-58e0-4521-9c60-eb9a7ea4ad34
+version: 1
+schema_version: "1.0"
+date: "2023-11-15"
+author: Teymur Kheirkhabarov, Ecco, Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ecbc5e16-58e0-4521-9c60-eb9a7ea4ad34
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of getsystem Meterpreter/Cobalt Strike command by detecting a
+  specific service installation. MITRE ATT&CK: T1134.001, T1134.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4697"
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_serviceFileName:
+                          value: "*/c*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_serviceFileName:
+                          value: "*echo*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_serviceFileName:
+                          value: "*\\\\pipe\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_serviceFileName:
+                                value: "*cmd*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_serviceFileName:
+                                value: "*%COMSPEC%*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_serviceFileName:
+                          value: "*rundll32*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_serviceFileName:
+                          value: "*.dll,a*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_serviceFileName:
+                          value: "*/p:*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceFileName:
+                    value: "\\\\\\\\127.0.0.1\\\\ADMIN$\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_serviceFileName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4697'; data_win_eventdata_serviceFileName
+  matches '*/c*'; data_win_eventdata_serviceFileName matches '*echo*', among
+  other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://speakerdeck.com/heirhabarov/hunting-for-privilege-escalation-in-windows-environment
+  - https://blog.cobaltstrike.com/2014/04/02/what-happens-when-i-type-getsystem/
+  - https://attack.mitre.org/techniques/T1134/001/
+  - https://attack.mitre.org/techniques/T1134/002/
+
+response:
+  message: >
+    Meterpreter or Cobalt Strike Getsystem Service Installation - Security
+    detected on host $agent_name$. Matched data_win_eventdata_serviceFileName:
+    $data_win_eventdata_serviceFileName$. Matched
+    data_win_eventdata_subjectUserName: $data_win_eventdata_subjectUserName$.
+    MITRE ATT&CK: T1134.001, T1134.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_serviceFileName
+      type: file_name
+    - field: data_win_eventdata_subjectUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1134.001
+    - T1134.002
+  custom_tags:
+    - meterpreter
+    - cobalt
+    - strike
+    - windows_security
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4697" AND ((data_win_eventdata_serviceFileName:/.*\/[Cc].*/ AND data_win_eventdata_serviceFileName:/.*[Ee][Cc][Hh][Oo].*/ AND data_win_eventdata_serviceFileName:/.*\\[Pp][Ii][Pp][Ee]\\.*/ AND (data_win_eventdata_serviceFileName:/.*[Cc][Mm][Dd].*/ OR data_win_eventdata_serviceFileName:/.*%[Cc][Oo][Mm][Ss][Pp][Ee][Cc]%.*/)) OR (data_win_eventdata_serviceFileName:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32.*/ AND data_win_eventdata_serviceFileName:/.*\.[Dd][Ll][Ll],[Aa].*/ AND data_win_eventdata_serviceFileName:/.*\/[Pp]:.*/) OR data_win_eventdata_serviceFileName:/\\\\127\.0\.0\.1\\[Aa][Dd][Mm][Ii][Nn]\$\\.*/)

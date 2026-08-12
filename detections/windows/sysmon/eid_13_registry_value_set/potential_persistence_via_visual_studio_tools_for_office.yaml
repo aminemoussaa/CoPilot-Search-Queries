@@ -1,0 +1,324 @@
+name: Potential Persistence Via Visual Studio Tools for Office
+id: 9d15044a-7cfe-4d23-8085-6ebc11df7685
+version: 1
+schema_version: "1.0"
+date: "2026-01-09"
+author: Bhabesh Raj
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9d15044a-7cfe-4d23-8085-6ebc11df7685
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects persistence via Visual Studio Tools for Office (VSTO) add-ins in
+  Office applications. MITRE ATT&CK: T1137.006.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\Office\\\\Outlook\\\\Addins\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\Office\\\\Word\\\\Addins\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\Office\\\\Excel\\\\Addins\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\Office\\\\Powerpoint\\\\Addins\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\VSTO\\\\Security\\\\Inclusion\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\msiexec.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\SysWOW64\\msiexec.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\regsvr32.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\SysWOW64\\regsvr32.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Common Files (x86)\\\\Microsoft Shared\\\\ClickToRun\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Common Files\\\\Microsoft Shared\\\\ClickToRun\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\OfficeClickToRun.exe"
+                                case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\Microsoft Office\\root\\integration\\integrator.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\Microsoft Office\\root\\integration\\integrator.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Microsoft Office\\\\OFFICE*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\Microsoft Office\\\\OFFICE*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Microsoft Office\\\\Root\\\\OFFICE*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\Microsoft Office\\\\Root\\\\OFFICE*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\PROGRA~2\\\\MICROS~2\\\\Office*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\excel.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\Integrator.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\OneNote.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\outlook.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\powerpnt.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\Teams.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\visio.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\winword.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Common Files\\\\Microsoft Shared\\\\VSTO\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\Microsoft Shared\\\\VSTO\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\VSTOInstaller.exe"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files\\AVG\\Antivirus\\RegSvr.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files (x86)\\AVG\\Antivirus\\RegSvr.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Microsoft\\\\Office\\\\Outlook\\\\Addins\\\\Antivirus.AsOutExt\\\\*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files\\Avast Software\\Avast\\RegSvr.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files (x86)\\Avast Software\\Avast\\RegSvr.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Microsoft\\\\Office\\\\Outlook\\\\Addins\\\\Avast.AsOutExt\\\\*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Software\Microsoft\Office\Outlook\Addins\*';
+  data_win_eventdata_targetObject matches
+  '*\Software\Microsoft\Office\Word\Addins\*'; data_win_eventdata_targetObject
+  matches '*\Software\Microsoft\Office\Excel\Addins\*', among other conditions.
+
+known_false_positives: >
+  Legitimate Addin Installation. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/_vivami/status/1347925307643355138
+  - https://vanmieghem.io/stealth-outlook-persistence/
+  - https://attack.mitre.org/techniques/T1137/006/
+
+response:
+  message: >
+    Potential Persistence Via Visual Studio Tools for Office detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1137.006
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1137.006
+  custom_tags:
+    - persistence
+    - visual
+    - studio
+    - registry
+    - sysmon
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee]\\[Oo][Uu][Tt][Ll][Oo][Oo][Kk]\\[Aa][Dd][Dd][Ii][Nn][Ss]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee]\\[Ww][Oo][Rr][Dd]\\[Aa][Dd][Dd][Ii][Nn][Ss]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee]\\[Ee][Xx][Cc][Ee][Ll]\\[Aa][Dd][Dd][Ii][Nn][Ss]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee]\\[Pp][Oo][Ww][Ee][Rr][Pp][Oo][Ii][Nn][Tt]\\[Aa][Dd][Dd][Ii][Nn][Ss]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Vv][Ss][Tt][Oo]\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy]\\[Ii][Nn][Cc][Ll][Uu][Ss][Ii][Oo][Nn]\\.*/) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Rr][Ee][Gg][Ss][Vv][Rr]32\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Rr][Ee][Gg][Ss][Vv][Rr]32\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\.*/) AND data_win_eventdata_image:/.*\\[Oo][Ff][Ff][Ii][Cc][Ee][Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\.[Ee][Xx][Ee]/) OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Ii][Oo][Nn]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Ii][Oo][Nn]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Oo][Ff][Ff][Ii][Cc][Ee].*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Oo][Ff][Ff][Ii][Cc][Ee].*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee].*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee].*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa]\~2\\[Mm][Ii][Cc][Rr][Oo][Ss]\~2\\[Oo][Ff][Ff][Ii][Cc][Ee].*/) AND (data_win_eventdata_image:/.*\\[Ee][Xx][Cc][Ee][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Oo][Nn][Ee][Nn][Oo][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Oo][Uu][Tt][Ll][Oo][Oo][Kk]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Pp][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Tt][Ee][Aa][Mm][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Vv][Ii][Ss][Ii][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Ii][Nn][Ww][Oo][Rr][Dd]\.[Ee][Xx][Ee]/)) OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Vv][Ss][Tt][Oo]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Vv][Ss][Tt][Oo]\\.*/) AND data_win_eventdata_image:/.*\\[Vv][Ss][Tt][Oo][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\.[Ee][Xx][Ee]/)) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND NOT (((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Gg]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Gg]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee]\\[Oo][Uu][Tt][Ll][Oo][Oo][Kk]\\[Aa][Dd][Dd][Ii][Nn][Ss]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\.[Aa][Ss][Oo][Uu][Tt][Ee][Xx][Tt]\\.*/) OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee]\\[Oo][Uu][Tt][Ll][Oo][Oo][Kk]\\[Aa][Dd][Dd][Ii][Nn][Ss]\\[Aa][Vv][Aa][Ss][Tt]\.[Aa][Ss][Oo][Uu][Tt][Ee][Xx][Tt]\\.*/))

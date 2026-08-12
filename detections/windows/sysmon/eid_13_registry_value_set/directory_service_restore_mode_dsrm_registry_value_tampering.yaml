@@ -1,0 +1,157 @@
+name: Directory Service Restore Mode(DSRM) Registry Value Tampering
+id: b61e87c0-50db-4b2e-8986-6a2be94b33b0
+version: 1
+schema_version: "1.0"
+date: "2024-07-11"
+author: Nischal Khadgi
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b61e87c0-50db-4b2e-8986-6a2be94b33b0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to "DsrmAdminLogonBehavior" registry value. During a Domain
+  Controller (DC) promotion, administrators create a Directory Services Restore
+  Mode (DSRM) local administrator account with a password that rarely changes.
+  The DSRM account is an “Administrator” account that logs in with the DSRM mode
+  when the server is booting up to restore AD backups or recover the server from
+  a failure. Attackers could abuse DSRM account to maintain their persistence
+  and access to the organization's Active Directory. If the
+  "DsrmAdminLogonBehavior" value is set to "0", the administrator account can
+  only be used if the DC starts in DSRM. If the "DsrmAdminLogonBehavior" value
+  is set to "1", the administrator account can only be used if the local AD DS
+  service is stopped. If the "DsrmAdminLogonBehavior" value is set to "2", the
+  administrator account can always be used. MITRE ATT&CK: T1556.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Control\\\\Lsa\\\\DsrmAdminLogonBehavior"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - term:
+                  data_win_eventdata_details:
+                    value: "DWORD (0x00000000)"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Control\Lsa\DsrmAdminLogonBehavior'; data_win_eventdata_details equals
+  'DWORD (0x00000000)'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://adsecurity.org/?p=1785
+  - https://www.sentinelone.com/blog/detecting-dsrm-account-misconfigurations/
+  - https://book.hacktricks.xyz/windows-hardening/active-directory-methodology/dsrm-credentials
+  - https://attack.mitre.org/techniques/T1556/
+
+response:
+  message: >
+    Directory Service Restore Mode(DSRM) Registry Value Tampering detected on
+    host $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1556
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1556
+  custom_tags:
+    - directory
+    - service
+    - restore
+    - registry
+    - sysmon
+    - credential_access
+    - persistence
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ll][Ss][Aa]\\[Dd][Ss][Rr][Mm][Aa][Dd][Mm][Ii][Nn][Ll][Oo][Gg][Oo][Nn][Bb][Ee][Hh][Aa][Vv][Ii][Oo][Rr]/ AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000000\)/)

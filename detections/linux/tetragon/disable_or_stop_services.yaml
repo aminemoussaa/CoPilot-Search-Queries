@@ -1,0 +1,238 @@
+name: Disable Or Stop Services
+id: de25eeb8-3655-4643-ac3a-b662d3f26b6b
+version: 1
+schema_version: "1.0"
+date: "2025-03-18"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: de25eeb8-3655-4643-ac3a-b662d3f26b6b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the usage of utilities such as 'systemctl', 'service'...etc to stop or
+  disable tools and services on Linux systems. Attackers may stop or disable
+  security tools and services to evade detection, maintain persistence, or
+  disrupt system operations. MITRE ATT&CK: T1685, T1489.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/service"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/systemctl"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/chkconfig"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* stop *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* disable *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_process_exec_process_binary"
+        - exists:
+            field: "data_process_exec_process_arguments"
+        - exists:
+            field: "data_process_exec_parent_arguments"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/systemctl"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_process_exec_process_arguments:
+                                      value: "*--no-reload disable snap-snapd-*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_process_exec_process_arguments:
+                                      value: "* stop snap-snapd-*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/systemctl"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_parent_arguments:
+                                value: "*tmp.ci/preinst upgrade*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* stop *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*ssh.*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_process_exec_parent_arguments:
+                                value: "*/dpkg/info/ubuntu-pro-client.prerm upgrade*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/systemctl"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_process_exec_process_binary"
+        - exists:
+            field: "data_process_exec_process_arguments"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/systemctl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*snap.amazon-ssm-agent.amazon-ssm-agent.service"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/service';
+  data_process_exec_process_binary matches '*/systemctl';
+  data_process_exec_process_binary matches '*/chkconfig', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate administration activities. Some false positives are to be expected.
+  Apply additional filters as needed before pushing to production. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://www.trendmicro.com/pl_pl/research/20/i/the-evolution-of-malicious-shell-scripts.html
+  - https://attack.mitre.org/techniques/T1685/
+  - https://attack.mitre.org/techniques/T1489/
+
+response:
+  message: >
+    Disable Or Stop Services detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1685, T1489
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+    - T1489
+  custom_tags:
+    - disable
+    - services
+    - linux
+    - tetragon
+    - process_creation
+    - defense_impairment
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_binary:/.*\/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ OR data_process_exec_process_binary:/.*\/[Cc][Hh][Kk][Cc][Oo][Nn][Ff][Ii][Gg]/) AND (data_process_exec_process_arguments:/.* [Ss][Tt][Oo][Pp] .*/ OR data_process_exec_process_arguments:/.* [Dd][Ii][Ss][Aa][Bb][Ll][Ee] .*/) AND _exists_:data_process_exec_process_binary AND _exists_:data_process_exec_process_arguments AND _exists_:data_process_exec_parent_arguments AND NOT ((data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND (data_process_exec_process_arguments:/.*--[Nn][Oo]-[Rr][Ee][Ll][Oo][Aa][Dd] [Dd][Ii][Ss][Aa][Bb][Ll][Ee] [Ss][Nn][Aa][Pp]-[Ss][Nn][Aa][Pp][Dd]-.*/ OR data_process_exec_process_arguments:/.* [Ss][Tt][Oo][Pp] [Ss][Nn][Aa][Pp]-[Ss][Nn][Aa][Pp][Dd]-.*/)) OR (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_parent_arguments:/.*[Tt][Mm][Pp]\.[Cc][Ii]\/[Pp][Rr][Ee][Ii][Nn][Ss][Tt] [Uu][Pp][Gg][Rr][Aa][Dd][Ee].*/ AND data_process_exec_process_arguments:/.* [Ss][Tt][Oo][Pp] .*/ AND data_process_exec_process_arguments:/.*[Ss][Ss][Hh]\..*/) OR (data_process_exec_parent_arguments:/.*\/[Dd][Pp][Kk][Gg]\/[Ii][Nn][Ff][Oo]\/[Uu][Bb][Uu][Nn][Tt][Uu]-[Pp][Rr][Oo]-[Cc][Ll][Ii][Ee][Nn][Tt]\.[Pp][Rr][Ee][Rr][Mm] [Uu][Pp][Gg][Rr][Aa][Dd][Ee].*/ AND data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/)) AND _exists_:data_process_exec_process_binary AND _exists_:data_process_exec_process_arguments AND NOT (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_process_arguments:/.*[Ss][Nn][Aa][Pp]\.[Aa][Mm][Aa][Zz][Oo][Nn]-[Ss][Ss][Mm]-[Aa][Gg][Ee][Nn][Tt]\.[Aa][Mm][Aa][Zz][Oo][Nn]-[Ss][Ss][Mm]-[Aa][Gg][Ee][Nn][Tt]\.[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/)

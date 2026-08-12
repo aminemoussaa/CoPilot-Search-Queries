@@ -1,0 +1,162 @@
+name: Kerberoasting Activity - Initial Query
+id: d04ae2b8-ad54-4de0-bd87-4bc1da66aa59
+version: 1
+schema_version: "1.0"
+date: "2025-10-19"
+author: "@kostastsale"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d04ae2b8-ad54-4de0-bd87-4bc1da66aa59
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  This rule will collect the data needed to start looking into possible
+  kerberoasting activity. Further analysis or computation within the query is
+  needed focusing on requests from one specific host/IP towards multiple service
+  names within a time period of 5 seconds. You can then set a threshold for the
+  number of requests and time between the requests to turn this into an alert.
+  MITRE ATT&CK: T1558.003.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4769"
+        - term:
+            data_win_eventdata_status:
+              value: "0x0"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_ticketEncryptionType:
+              value: "0x17"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_serviceName"
+        - exists:
+            field: "data_win_eventdata_targetUserName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_serviceName:
+                          value: "*krbtgt"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_serviceName: "*$"
+                    - wildcard:
+                        data_win_eventdata_targetUserName: "*$@*"
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_status
+    - data_win_eventdata_ticketEncryptionType
+    - data_win_eventdata_serviceName
+    - data_win_eventdata_targetUserName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4769'; data_win_eventdata_status equals '0x0';
+  data_win_eventdata_ticketEncryptionType equals '0x17', among other conditions.
+
+known_false_positives: >
+  Legacy applications. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://www.trustedsec.com/blog/art_of_kerberoast/
+  - https://adsecurity.org/?p=3513
+  - https://attack.mitre.org/techniques/T1558/003/
+
+response:
+  message: >
+    Kerberoasting Activity - Initial Query detected on host $agent_name$.
+    Matched data_win_eventdata_status: $data_win_eventdata_status$. Matched
+    data_win_eventdata_ticketEncryptionType:
+    $data_win_eventdata_ticketEncryptionType$. MITRE ATT&CK: T1558.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_status
+      type: other
+    - field: data_win_eventdata_ticketEncryptionType
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1558.003
+  custom_tags:
+    - kerberoasting
+    - initial
+    - query
+    - windows_security
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4769" AND data_win_eventdata_status:/0[Xx]0/ AND data_win_eventdata_ticketEncryptionType:/0[Xx]17/ AND _exists_:data_win_eventdata_serviceName AND _exists_:data_win_eventdata_targetUserName AND NOT (data_win_eventdata_serviceName:/.*[Kk][Rr][Bb][Tt][Gg][Tt]/ OR data_win_eventdata_serviceName:/.*\$/ OR data_win_eventdata_targetUserName:/.*\$\@.*/)

@@ -1,0 +1,150 @@
+name: RottenPotato Like Attack Pattern
+id: 16f5d8ca-44bd-47c8-acbe-6fc95a16c12f
+version: 1
+schema_version: "1.0"
+date: "2022-12-22"
+author: "@SBousseaden, Florian Roth"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 16f5d8ca-44bd-47c8-acbe-6fc95a16c12f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects logon events that have characteristics of events generated during an
+  attack with RottenPotato and the like. MITRE ATT&CK: T1557.001.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4624"
+        - term:
+            data_win_eventdata_logonType: "3"
+        - term:
+            data_win_eventdata_targetUserName:
+              value: "ANONYMOUS LOGON"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_workstationName: "-"
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_ipAddress: "127.0.0.1"
+              - term:
+                  data_win_eventdata_ipAddress: "::1"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_logonType
+    - data_win_eventdata_targetUserName
+    - data_win_eventdata_workstationName
+    - data_win_eventdata_ipAddress
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4624'; data_win_eventdata_logonType equals
+  '3'; data_win_eventdata_targetUserName equals 'ANONYMOUS LOGON', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/SBousseaden/status/1195284233729777665
+  - https://attack.mitre.org/techniques/T1557/001/
+
+response:
+  message: >
+    RottenPotato Like Attack Pattern detected on host $agent_name$. Matched
+    data_win_eventdata_logonType: $data_win_eventdata_logonType$. Matched
+    data_win_eventdata_targetUserName: $data_win_eventdata_targetUserName$.
+    MITRE ATT&CK: T1557.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_logonType
+      type: other
+    - field: data_win_eventdata_targetUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1557.001
+  custom_tags:
+    - rottenpotato
+    - attack
+    - pattern
+    - windows_security
+    - collection
+    - privilege_escalation
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4624" AND data_win_eventdata_logonType:"3" AND data_win_eventdata_targetUserName:/[Aa][Nn][Oo][Nn][Yy][Mm][Oo][Uu][Ss] [Ll][Oo][Gg][Oo][Nn]/ AND data_win_eventdata_workstationName:"-" AND (data_win_eventdata_ipAddress:"127.0.0.1" OR data_win_eventdata_ipAddress:"::1")

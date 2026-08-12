@@ -1,0 +1,238 @@
+name: Renamed Visual Studio Code Tunnel Execution
+id: 2cf29f11-e356-4f61-98c0-1bdb9393d6da
+version: 1
+schema_version: "1.0"
+date: "2025-10-29"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2cf29f11-e356-4f61-98c0-1bdb9393d6da
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects renamed Visual Studio Code tunnel execution. Attackers can abuse this
+  functionality to establish a C2 channel. MITRE ATT&CK: T1071.001, T1219.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - bool:
+                              must:
+                                - bool:
+                                    must_not:
+                                      - exists:
+                                          field: "data_win_eventdata_originalFileName"
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.exe tunnel"
+                                      case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.exe tunnel*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--accept-server-license-terms*"
+                                      case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*tunnel *"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*service*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*internal-run*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*tunnel-service.log*"
+                                      case_insensitive: true
+                        minimum_should_match: 1
+                    - exists:
+                        field: "data_win_eventdata_image"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\code-tunnel.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\code.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "* tunnel"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\cmd.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/d /c *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\servers\\\\Stable-*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*code-server.cmd*"
+                          case_insensitive: true
+                    - exists:
+                        field: "data_win_eventdata_parentImage"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "*\\\\code-tunnel.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "*\\\\code.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName is
+  absent; data_win_eventdata_commandLine matches '*.exe tunnel';
+  data_win_eventdata_commandLine matches '*.exe tunnel*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://ipfyx.fr/post/visual-studio-code-tunnel/
+  - https://badoption.eu/blog/2023/01/31/code_c2.html
+  - https://code.visualstudio.com/docs/remote/tunnels
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://attack.mitre.org/techniques/T1219/
+
+response:
+  message: >
+    Renamed Visual Studio Code Tunnel Execution detected on host $agent_name$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1071.001, T1219
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1071.001
+    - T1219
+  custom_tags:
+    - renamed
+    - visual
+    - studio
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((((NOT _exists_:data_win_eventdata_originalFileName AND data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Tt][Uu][Nn][Nn][Ee][Ll]/) OR (data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Tt][Uu][Nn][Nn][Ee][Ll].*/ AND data_win_eventdata_commandLine:/.*--[Aa][Cc][Cc][Ee][Pp][Tt]-[Ss][Ee][Rr][Vv][Ee][Rr]-[Ll][Ii][Cc][Ee][Nn][Ss][Ee]-[Tt][Ee][Rr][Mm][Ss].*/) OR (data_win_eventdata_commandLine:/.*[Tt][Uu][Nn][Nn][Ee][Ll] .*/ AND data_win_eventdata_commandLine:/.*[Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ AND data_win_eventdata_commandLine:/.*[Ii][Nn][Tt][Ee][Rr][Nn][Aa][Ll]-[Rr][Uu][Nn].*/ AND data_win_eventdata_commandLine:/.*[Tt][Uu][Nn][Nn][Ee][Ll]-[Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ll][Oo][Gg].*/)) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Cc][Oo][Dd][Ee]-[Tt][Uu][Nn][Nn][Ee][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/)) OR (data_win_eventdata_parentCommandLine:/.* [Tt][Uu][Nn][Nn][Ee][Ll]/ AND data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*\/[Dd] \/[Cc] .*/ AND data_win_eventdata_commandLine:/.*\\[Ss][Ee][Rr][Vv][Ee][Rr][Ss]\\[Ss][Tt][Aa][Bb][Ll][Ee]-.*/ AND data_win_eventdata_commandLine:/.*[Cc][Oo][Dd][Ee]-[Ss][Ee][Rr][Vv][Ee][Rr]\.[Cc][Mm][Dd].*/ AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_parentImage:/.*\\[Cc][Oo][Dd][Ee]-[Tt][Uu][Nn][Nn][Ee][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/)))

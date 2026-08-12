@@ -1,0 +1,177 @@
+name: HackTool - SharpImpersonation Execution
+id: f89b08d0-77ad-4728-817b-9b16c5a69c7a
+version: 1
+schema_version: "1.0"
+date: "2023-02-13"
+author: Sai Prashanth Pulisetti @pulisettis, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f89b08d0-77ad-4728-817b-9b16c5a69c7a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of the SharpImpersonation tool. Which can be used to
+  manipulate tokens on a Windows computers remotely (PsExec/WmiExec) or
+  interactively. MITRE ATT&CK: T1134.001, T1134.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SharpImpersonation.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "SharpImpersonation.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* user:*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* binary:*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* user:*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* shellcode:*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* technique:CreateProcessAsUserW*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* technique:ImpersonateLoggedOnuser*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\SharpImpersonation.exe'; data_win_eventdata_originalFileName equals
+  'SharpImpersonation.exe'; data_win_eventdata_commandLine matches '* user:*',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://s3cur3th1ssh1t.github.io/SharpImpersonation-Introduction/
+  - https://github.com/S3cur3Th1sSh1t/SharpImpersonation
+  - https://attack.mitre.org/techniques/T1134/001/
+  - https://attack.mitre.org/techniques/T1134/003/
+
+response:
+  message: >
+    HackTool - SharpImpersonation Execution detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1134.001, T1134.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1134.001
+    - T1134.003
+  custom_tags:
+    - hacktool
+    - sharpimpersonation
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Hh][Aa][Rr][Pp][Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ii][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Hh][Aa][Rr][Pp][Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ii][Oo][Nn]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_commandLine:/.* [Uu][Ss][Ee][Rr]:.*/ AND data_win_eventdata_commandLine:/.* [Bb][Ii][Nn][Aa][Rr][Yy]:.*/) OR (data_win_eventdata_commandLine:/.* [Uu][Ss][Ee][Rr]:.*/ AND data_win_eventdata_commandLine:/.* [Ss][Hh][Ee][Ll][Ll][Cc][Oo][Dd][Ee]:.*/) OR data_win_eventdata_commandLine:/.* [Tt][Ee][Cc][Hh][Nn][Ii][Qq][Uu][Ee]:[Cc][Rr][Ee][Aa][Tt][Ee][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Aa][Ss][Uu][Ss][Ee][Rr][Ww].*/ OR data_win_eventdata_commandLine:/.* [Tt][Ee][Cc][Hh][Nn][Ii][Qq][Uu][Ee]:[Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ee][Ll][Oo][Gg][Gg][Ee][Dd][Oo][Nn][Uu][Ss][Ee][Rr].*/)

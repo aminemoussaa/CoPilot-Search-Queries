@@ -1,0 +1,160 @@
+name: Suspicious PowerShell WindowStyle Option
+id: 313fbb0a-a341-4682-848d-6d6f8c4fab7c
+version: 1
+schema_version: "1.0"
+date: "2023-01-03"
+author: frack113, Tim Shelton (fp AWS)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 313fbb0a-a341-4682-848d-6d6f8c4fab7c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may use hidden windows to conceal malicious activity from the
+  plain sight of users. In some cases, windows that would typically be displayed
+  when an application carries out an operation can be hidden. MITRE ATT&CK:
+  T1564.003.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*powershell*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*WindowStyle*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Hidden*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_scriptBlockText"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*:\\\\Program Files\\\\Amazon\\\\WorkSpacesConfig\\\\Scripts\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*$PSScriptRoot\\\\Module\\\\WorkspaceScriptModule\\\\WorkspaceScriptModule*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*powershell*';
+  data_win_eventdata_scriptBlockText matches '*WindowStyle*';
+  data_win_eventdata_scriptBlockText matches '*Hidden*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1564.003/T1564.003.md
+  - https://attack.mitre.org/techniques/T1564/003/
+
+response:
+  message: >
+    Suspicious PowerShell WindowStyle Option detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1564.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1564.003
+  custom_tags:
+    - powershell
+    - windowstyle
+    - option
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ AND data_win_eventdata_scriptBlockText:/.*[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*[Hh][Ii][Dd][Dd][Ee][Nn].*/ AND _exists_:data_win_eventdata_scriptBlockText AND NOT (data_win_eventdata_scriptBlockText:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Mm][Aa][Zz][Oo][Nn]\\[Ww][Oo][Rr][Kk][Ss][Pp][Aa][Cc][Ee][Ss][Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Cc][Rr][Ii][Pp][Tt][Ss]\\.*/ AND data_win_eventdata_scriptBlockText:/.*\$[Pp][Ss][Ss][Cc][Rr][Ii][Pp][Tt][Rr][Oo][Oo][Tt]\\[Mm][Oo][Dd][Uu][Ll][Ee]\\[Ww][Oo][Rr][Kk][Ss][Pp][Aa][Cc][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Mm][Oo][Dd][Uu][Ll][Ee]\\[Ww][Oo][Rr][Kk][Ss][Pp][Aa][Cc][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Mm][Oo][Dd][Uu][Ll][Ee].*/)

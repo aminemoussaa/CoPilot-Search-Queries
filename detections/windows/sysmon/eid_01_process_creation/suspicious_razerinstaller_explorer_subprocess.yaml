@@ -1,0 +1,162 @@
+name: Suspicious RazerInstaller Explorer Subprocess
+id: a4eaf250-7dc1-4842-862a-5e71cd59a167
+version: 1
+schema_version: "1.0"
+date: "2024-12-01"
+author: Florian Roth (Nextron Systems), Maxime Thiebaut
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a4eaf250-7dc1-4842-862a-5e71cd59a167
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a explorer.exe sub process of the RazerInstaller software which can be
+  invoked from the installer to select a different installation folder but can
+  also be exploited to escalate privileges to LOCAL SYSTEM. MITRE ATT&CK: T1553.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\RazerInstaller.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_integrityLevel:
+                    value: "System"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_integrityLevel:
+                    value: "S-1-16-16384"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "C:\\\\Windows\\\\Installer\\\\Razer\\\\Installer\\\\*"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_integrityLevel
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\RazerInstaller.exe'; data_win_eventdata_integrityLevel equals 'System';
+  data_win_eventdata_integrityLevel equals 'S-1-16-16384', among other
+  conditions.
+
+known_false_positives: >
+  User selecting a different installation folder (check for other sub processes
+  of this explorer.exe process). Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/j0nh4t/status/1429049506021138437
+  - https://streamable.com/q2dsji
+  - https://attack.mitre.org/techniques/T1553/
+
+response:
+  message: >
+    Suspicious RazerInstaller Explorer Subprocess detected on host $agent_name$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    Matched data_win_eventdata_integrityLevel:
+    $data_win_eventdata_integrityLevel$. MITRE ATT&CK: T1553
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_integrityLevel
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1553
+  custom_tags:
+    - razerinstaller
+    - explorer
+    - subprocess
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - defense_impairment
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Rr][Aa][Zz][Ee][Rr][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_integrityLevel:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_integrityLevel:/[Ss]-1-16-16384/) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\[Rr][Aa][Zz][Ee][Rr]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\.*/)

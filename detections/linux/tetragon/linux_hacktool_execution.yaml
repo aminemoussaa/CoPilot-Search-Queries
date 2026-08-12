@@ -1,0 +1,350 @@
+name: Linux HackTool Execution
+id: a015e032-146d-4717-8944-7a1884122111
+version: 1
+schema_version: "1.0"
+date: "2024-09-19"
+author: Nasreddine Bencherchali (Nextron Systems), Georg Lauenstein (sure[secure])
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a015e032-146d-4717-8944-7a1884122111
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects known hacktool execution based on image name. MITRE ATT&CK: T1587.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/crackmapexec"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/havoc"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/merlin-agent"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/merlinServer-Linux-x64"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/msfconsole"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/msfvenom"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ps-empire server"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ps-empire"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/sliver-client"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/sliver-server"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/Villain.py"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/cobaltstrike*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/teamserver*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/autorecon"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/httpx"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/legion"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/naabu"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/netdiscover"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nuclei"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/recon-ng"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/sniper*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/dirb"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/dirbuster"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/eyewitness"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/feroxbuster"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ffuf"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/gobuster"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/wfuzz"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/whatweb"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/joomscan"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nikto"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/wpscan"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/aircrack-ng"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/bloodhound-python"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/bpfdos"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ebpfki"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/evil-winrm"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/hashcat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/hoaxshell.py"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/hydra"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/john"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ncrack"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nxc-ubuntu-latest"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/pidhide"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/pspy32"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/pspy32s"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/pspy64"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/pspy64s"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/setoolkit"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/sqlmap"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/writeblocker"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/linpeas*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/crackmapexec';
+  data_process_exec_process_binary matches '*/havoc';
+  data_process_exec_process_binary matches '*/merlin-agent', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/Gui774ume/ebpfkit
+  - https://github.com/pathtofile/bad-bpf
+  - https://github.com/carlospolop/PEASS-ng
+  - https://github.com/t3l3machus/hoaxshell
+  - https://github.com/t3l3machus/Villain
+  - https://github.com/HavocFramework/Havoc
+  - https://github.com/1N3/Sn1per
+  - https://github.com/Ne0nd0g/merlin
+  - https://github.com/Pennyw0rth/NetExec/
+  - https://attack.mitre.org/techniques/T1587/
+
+response:
+  message: >
+    Linux HackTool Execution detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1587
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1587
+  custom_tags:
+    - hacktool
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - resource_development
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_binary:/.*\/[Cc][Rr][Aa][Cc][Kk][Mm][Aa][Pp][Ee][Xx][Ee][Cc]/ OR data_process_exec_process_binary:/.*\/[Hh][Aa][Vv][Oo][Cc]/ OR data_process_exec_process_binary:/.*\/[Mm][Ee][Rr][Ll][Ii][Nn]-[Aa][Gg][Ee][Nn][Tt]/ OR data_process_exec_process_binary:/.*\/[Mm][Ee][Rr][Ll][Ii][Nn][Ss][Ee][Rr][Vv][Ee][Rr]-[Ll][Ii][Nn][Uu][Xx]-[Xx]64/ OR data_process_exec_process_binary:/.*\/[Mm][Ss][Ff][Cc][Oo][Nn][Ss][Oo][Ll][Ee]/ OR data_process_exec_process_binary:/.*\/[Mm][Ss][Ff][Vv][Ee][Nn][Oo][Mm]/ OR data_process_exec_process_binary:/.*\/[Pp][Ss]-[Ee][Mm][Pp][Ii][Rr][Ee] [Ss][Ee][Rr][Vv][Ee][Rr]/ OR data_process_exec_process_binary:/.*\/[Pp][Ss]-[Ee][Mm][Pp][Ii][Rr][Ee]/ OR data_process_exec_process_binary:/.*\/[Ss][Ll][Ii][Vv][Ee][Rr]-[Cc][Ll][Ii][Ee][Nn][Tt]/ OR data_process_exec_process_binary:/.*\/[Ss][Ll][Ii][Vv][Ee][Rr]-[Ss][Ee][Rr][Vv][Ee][Rr]/ OR data_process_exec_process_binary:/.*\/[Vv][Ii][Ll][Ll][Aa][Ii][Nn]\.[Pp][Yy]/ OR data_process_exec_process_binary:/.*\/[Cc][Oo][Bb][Aa][Ll][Tt][Ss][Tt][Rr][Ii][Kk][Ee].*/ OR data_process_exec_process_binary:/.*\/[Tt][Ee][Aa][Mm][Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_process_exec_process_binary:/.*\/[Aa][Uu][Tt][Oo][Rr][Ee][Cc][Oo][Nn]/ OR data_process_exec_process_binary:/.*\/[Hh][Tt][Tt][Pp][Xx]/ OR data_process_exec_process_binary:/.*\/[Ll][Ee][Gg][Ii][Oo][Nn]/ OR data_process_exec_process_binary:/.*\/[Nn][Aa][Aa][Bb][Uu]/ OR data_process_exec_process_binary:/.*\/[Nn][Ee][Tt][Dd][Ii][Ss][Cc][Oo][Vv][Ee][Rr]/ OR data_process_exec_process_binary:/.*\/[Nn][Uu][Cc][Ll][Ee][Ii]/ OR data_process_exec_process_binary:/.*\/[Rr][Ee][Cc][Oo][Nn]-[Nn][Gg]/ OR data_process_exec_process_binary:/.*\/[Ss][Nn][Ii][Pp][Ee][Rr].*/ OR data_process_exec_process_binary:/.*\/[Dd][Ii][Rr][Bb]/ OR data_process_exec_process_binary:/.*\/[Dd][Ii][Rr][Bb][Uu][Ss][Tt][Ee][Rr]/ OR data_process_exec_process_binary:/.*\/[Ee][Yy][Ee][Ww][Ii][Tt][Nn][Ee][Ss][Ss]/ OR data_process_exec_process_binary:/.*\/[Ff][Ee][Rr][Oo][Xx][Bb][Uu][Ss][Tt][Ee][Rr]/ OR data_process_exec_process_binary:/.*\/[Ff][Ff][Uu][Ff]/ OR data_process_exec_process_binary:/.*\/[Gg][Oo][Bb][Uu][Ss][Tt][Ee][Rr]/ OR data_process_exec_process_binary:/.*\/[Ww][Ff][Uu][Zz][Zz]/ OR data_process_exec_process_binary:/.*\/[Ww][Hh][Aa][Tt][Ww][Ee][Bb]/ OR data_process_exec_process_binary:/.*\/[Jj][Oo][Oo][Mm][Ss][Cc][Aa][Nn]/ OR data_process_exec_process_binary:/.*\/[Nn][Ii][Kk][Tt][Oo]/ OR data_process_exec_process_binary:/.*\/[Ww][Pp][Ss][Cc][Aa][Nn]/ OR data_process_exec_process_binary:/.*\/[Aa][Ii][Rr][Cc][Rr][Aa][Cc][Kk]-[Nn][Gg]/ OR data_process_exec_process_binary:/.*\/[Bb][Ll][Oo][Oo][Dd][Hh][Oo][Uu][Nn][Dd]-[Pp][Yy][Tt][Hh][Oo][Nn]/ OR data_process_exec_process_binary:/.*\/[Bb][Pp][Ff][Dd][Oo][Ss]/ OR data_process_exec_process_binary:/.*\/[Ee][Bb][Pp][Ff][Kk][Ii]/ OR data_process_exec_process_binary:/.*\/[Ee][Vv][Ii][Ll]-[Ww][Ii][Nn][Rr][Mm]/ OR data_process_exec_process_binary:/.*\/[Hh][Aa][Ss][Hh][Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Hh][Oo][Aa][Xx][Ss][Hh][Ee][Ll][Ll]\.[Pp][Yy]/ OR data_process_exec_process_binary:/.*\/[Hh][Yy][Dd][Rr][Aa]/ OR data_process_exec_process_binary:/.*\/[Jj][Oo][Hh][Nn]/ OR data_process_exec_process_binary:/.*\/[Nn][Cc][Rr][Aa][Cc][Kk]/ OR data_process_exec_process_binary:/.*\/[Nn][Xx][Cc]-[Uu][Bb][Uu][Nn][Tt][Uu]-[Ll][Aa][Tt][Ee][Ss][Tt]/ OR data_process_exec_process_binary:/.*\/[Pp][Ii][Dd][Hh][Ii][Dd][Ee]/ OR data_process_exec_process_binary:/.*\/[Pp][Ss][Pp][Yy]32/ OR data_process_exec_process_binary:/.*\/[Pp][Ss][Pp][Yy]32[Ss]/ OR data_process_exec_process_binary:/.*\/[Pp][Ss][Pp][Yy]64/ OR data_process_exec_process_binary:/.*\/[Pp][Ss][Pp][Yy]64[Ss]/ OR data_process_exec_process_binary:/.*\/[Ss][Ee][Tt][Oo][Oo][Ll][Kk][Ii][Tt]/ OR data_process_exec_process_binary:/.*\/[Ss][Qq][Ll][Mm][Aa][Pp]/ OR data_process_exec_process_binary:/.*\/[Ww][Rr][Ii][Tt][Ee][Bb][Ll][Oo][Cc][Kk][Ee][Rr]/ OR data_process_exec_process_binary:/.*\/[Ll][Ii][Nn][Pp][Ee][Aa][Ss].*/)

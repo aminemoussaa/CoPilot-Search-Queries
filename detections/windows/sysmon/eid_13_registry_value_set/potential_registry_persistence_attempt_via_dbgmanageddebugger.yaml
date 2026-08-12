@@ -1,0 +1,148 @@
+name: Potential Registry Persistence Attempt Via DbgManagedDebugger
+id: 9827ae57-3802-418f-994b-d5ecf5cd974b
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9827ae57-3802-418f-994b-d5ecf5cd974b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the addition of the "Debugger" value to the "DbgManagedDebugger" key
+  in order to achieve persistence. Which will get invoked when an application
+  crashes. MITRE ATT&CK: T1574.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Microsoft\\\\.NETFramework\\\\DbgManagedDebugger"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - term:
+                  data_win_eventdata_details:
+                    value: "\"C:\\Windows\\system32\\vsjitdebugger.exe\" PID %d APPDOM %d EXTEXT \"%s\" EVTHDL %d"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Microsoft\.NETFramework\DbgManagedDebugger'; data_win_eventdata_details
+  equals '"C:\Windows\system32\vsjitdebugger.exe" PID %d APPDOM %d EXTEXT "%s"
+  EVTHDL %d'.
+
+known_false_positives: >
+  Legitimate use of the key to setup a debugger. Which is often the case on
+  developers machines. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://www.hexacorn.com/blog/2013/09/19/beyond-good-ol-run-key-part-4/
+  - https://github.com/last-byte/PersistenceSniper
+  - https://attack.mitre.org/techniques/T1574/
+
+response:
+  message: >
+    Potential Registry Persistence Attempt Via DbgManagedDebugger detected on
+    host $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1574
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574
+  custom_tags:
+    - registry
+    - persistence
+    - dbgmanageddebugger
+    - sysmon
+    - privilege_escalation
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\\.[Nn][Ee][Tt][Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]\\[Dd][Bb][Gg][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Dd][Ee][Bb][Uu][Gg][Gg][Ee][Rr]/ AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_details:/\"[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Vv][Ss][Jj][Ii][Tt][Dd][Ee][Bb][Uu][Gg][Gg][Ee][Rr]\.[Ee][Xx][Ee]\" [Pp][Ii][Dd] %[Dd] [Aa][Pp][Pp][Dd][Oo][Mm] %[Dd] [Ee][Xx][Tt][Ee][Xx][Tt] \"%[Ss]\" [Ee][Vv][Tt][Hh][Dd][Ll] %[Dd]/)

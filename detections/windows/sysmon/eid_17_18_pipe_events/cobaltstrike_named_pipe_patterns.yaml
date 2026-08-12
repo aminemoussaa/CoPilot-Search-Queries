@@ -1,0 +1,305 @@
+name: CobaltStrike Named Pipe Patterns
+id: 85adeb13-4fc9-4e68-8a4a-c7cb2c336eb7
+version: 1
+schema_version: "1.0"
+date: "2024-01-26"
+author: Florian Roth (Nextron Systems), Christian Burkard (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 85adeb13-4fc9-4e68-8a4a-c7cb2c336eb7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a named pipe with a pattern found in CobaltStrike
+  malleable C2 profiles. MITRE ATT&CK: T1055.
+
+data_source:
+  - Sysmon EventID 17/18 - Named Pipe
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "17"
+              - term:
+                  data_win_system_eventID: "18"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\DserNamePipe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\f4c3*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\f53f*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\fullduplex_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\mojo.5688.8052.183894939787088877*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\mojo.5688.8052.35780273329370473*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\MsFteWds*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\msrpc_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\mypipe-f*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\mypipe-h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\ntsvcs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\PGMessagePipe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\rpc_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\scerpc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\SearchTextHarvester*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\spoolss*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\win_svc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\win\\\\msrpc_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\windows.update.manager*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\wkssvc*"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\demoagent_11"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\demoagent_22"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_pipeName:
+                          value: "\\\\Winsock2\\\\CatalogChangeListener-*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_pipeName: "*-0,"
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_pipeName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_pipeName:
+                          value: "\\wkssvc"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_pipeName:
+                          value: "\\spoolss"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_pipeName:
+                          value: "\\scerpc"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_pipeName:
+                          value: "\\ntsvcs"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_pipeName:
+                          value: "\\SearchTextHarvester"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_pipeName:
+                          value: "\\PGMessagePipe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_pipeName:
+                          value: "\\MsFteWds"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_pipeName"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Program Files\\\\Websense\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Program Files (x86)\\\\Websense\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_pipeName:
+                                value: "\\\\DserNamePipeR*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_pipeName:
+                                value: "\\\\DserNamePipeW*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_pipeName
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon named pipe logging (EventIDs 17/18) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_pipeName matches '\DserNamePipe*';
+  data_win_eventdata_pipeName matches '\f4c3*'; data_win_eventdata_pipeName
+  matches '\f53f*', among other conditions.
+
+known_false_positives: >
+  Chrome instances using the exact same pipe name "mojo.xxx". Websense Endpoint
+  using the pipe name "DserNamePipe(R|W)\d{1,5}". Some applications may just
+  coincidentally use the pipe names which contain the same prefix as the ones
+  used by CobaltStrike, e.g. "f4c3". Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://svch0st.medium.com/guide-to-named-pipes-and-hunting-for-cobalt-strike-pipes-dc46b2c5f575
+  - https://gist.github.com/MHaggis/6c600e524045a6d49c35291a21e10752
+  - https://attack.mitre.org/techniques/T1055/
+
+response:
+  message: >
+    CobaltStrike Named Pipe Patterns detected on host $agent_name$. Matched
+    data_win_eventdata_pipeName: $data_win_eventdata_pipeName$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1055
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_pipeName
+      type: pipe
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055
+  custom_tags:
+    - cobaltstrike
+    - named
+    - patterns
+    - pipe_created
+    - sysmon
+    - privilege_escalation
+    - stealth
+    - stp_1k
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"17" OR data_win_system_eventID:"18") AND (data_win_eventdata_pipeName:/\\[Dd][Ss][Ee][Rr][Nn][Aa][Mm][Ee][Pp][Ii][Pp][Ee].*/ OR data_win_eventdata_pipeName:/\\[Ff]4[Cc]3.*/ OR data_win_eventdata_pipeName:/\\[Ff]53[Ff].*/ OR data_win_eventdata_pipeName:/\\[Ff][Uu][Ll][Ll][Dd][Uu][Pp][Ll][Ee][Xx]_.*/ OR data_win_eventdata_pipeName:/\\[Mm][Oo][Jj][Oo]\.5688\.8052\.183894939787088877.*/ OR data_win_eventdata_pipeName:/\\[Mm][Oo][Jj][Oo]\.5688\.8052\.35780273329370473.*/ OR data_win_eventdata_pipeName:/\\[Mm][Ss][Ff][Tt][Ee][Ww][Dd][Ss].*/ OR data_win_eventdata_pipeName:/\\[Mm][Ss][Rr][Pp][Cc]_.*/ OR data_win_eventdata_pipeName:/\\[Mm][Yy][Pp][Ii][Pp][Ee]-[Ff].*/ OR data_win_eventdata_pipeName:/\\[Mm][Yy][Pp][Ii][Pp][Ee]-[Hh].*/ OR data_win_eventdata_pipeName:/\\[Nn][Tt][Ss][Vv][Cc][Ss].*/ OR data_win_eventdata_pipeName:/\\[Pp][Gg][Mm][Ee][Ss][Ss][Aa][Gg][Ee][Pp][Ii][Pp][Ee].*/ OR data_win_eventdata_pipeName:/\\[Rr][Pp][Cc]_.*/ OR data_win_eventdata_pipeName:/\\[Ss][Cc][Ee][Rr][Pp][Cc].*/ OR data_win_eventdata_pipeName:/\\[Ss][Ee][Aa][Rr][Cc][Hh][Tt][Ee][Xx][Tt][Hh][Aa][Rr][Vv][Ee][Ss][Tt][Ee][Rr].*/ OR data_win_eventdata_pipeName:/\\[Ss][Pp][Oo][Oo][Ll][Ss][Ss].*/ OR data_win_eventdata_pipeName:/\\[Ww][Ii][Nn]_[Ss][Vv][Cc].*/ OR data_win_eventdata_pipeName:/\\[Ww][Ii][Nn]\\[Mm][Ss][Rr][Pp][Cc]_.*/ OR data_win_eventdata_pipeName:/\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Uu][Pp][Dd][Aa][Tt][Ee]\.[Mm][Aa][Nn][Aa][Gg][Ee][Rr].*/ OR data_win_eventdata_pipeName:/\\[Ww][Kk][Ss][Ss][Vv][Cc].*/ OR data_win_eventdata_pipeName:/\\[Dd][Ee][Mm][Oo][Aa][Gg][Ee][Nn][Tt]_11/ OR data_win_eventdata_pipeName:/\\[Dd][Ee][Mm][Oo][Aa][Gg][Ee][Nn][Tt]_22/ OR (data_win_eventdata_pipeName:/\\[Ww][Ii][Nn][Ss][Oo][Cc][Kk]2\\[Cc][Aa][Tt][Aa][Ll][Oo][Gg][Cc][Hh][Aa][Nn][Gg][Ee][Ll][Ii][Ss][Tt][Ee][Nn][Ee][Rr]-.*/ AND data_win_eventdata_pipeName:/.*-0,/)) AND _exists_:data_win_eventdata_pipeName AND NOT (data_win_eventdata_pipeName:/\\[Ww][Kk][Ss][Ss][Vv][Cc]/ OR data_win_eventdata_pipeName:/\\[Ss][Pp][Oo][Oo][Ll][Ss][Ss]/ OR data_win_eventdata_pipeName:/\\[Ss][Cc][Ee][Rr][Pp][Cc]/ OR data_win_eventdata_pipeName:/\\[Nn][Tt][Ss][Vv][Cc][Ss]/ OR data_win_eventdata_pipeName:/\\[Ss][Ee][Aa][Rr][Cc][Hh][Tt][Ee][Xx][Tt][Hh][Aa][Rr][Vv][Ee][Ss][Tt][Ee][Rr]/ OR data_win_eventdata_pipeName:/\\[Pp][Gg][Mm][Ee][Ss][Ss][Aa][Gg][Ee][Pp][Ii][Pp][Ee]/ OR data_win_eventdata_pipeName:/\\[Mm][Ss][Ff][Tt][Ee][Ww][Dd][Ss]/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_pipeName AND NOT ((data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ee][Bb][Ss][Ee][Nn][Ss][Ee]\\.*/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Ww][Ee][Bb][Ss][Ee][Nn][Ss][Ee]\\.*/) AND (data_win_eventdata_pipeName:/\\[Dd][Ss][Ee][Rr][Nn][Aa][Mm][Ee][Pp][Ii][Pp][Ee][Rr].*/ OR data_win_eventdata_pipeName:/\\[Dd][Ss][Ee][Rr][Nn][Aa][Mm][Ee][Pp][Ii][Pp][Ee][Ww].*/))

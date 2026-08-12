@@ -1,0 +1,158 @@
+name: Windows Defender Threat Detection Service Disabled
+id: 6c0a7755-6d31-44fa-80e1-133e57752680
+version: 1
+schema_version: "1.0"
+date: "2024-07-02"
+author: Ján Trenčanský, frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6c0a7755-6d31-44fa-80e1-133e57752680
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects when the "Windows Defender Threat Protection" service is disabled.
+  MITRE ATT&CK: T1685.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "7036"
+        - term:
+            data_win_system_providerName:
+              value: "Service Control Manager"
+              case_insensitive: true
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_param1:
+                    value: "Windows Defender Antivirus Service"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_param1:
+                    value: "Service antivirus Microsoft Defender"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_param2:
+                    value: "stopped"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_param2:
+                    value: "arrêté"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_param1
+    - data_win_eventdata_param2
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_eventID equals '7036';
+  data_win_system_providerName equals 'Service Control Manager';
+  data_win_eventdata_param1 equals 'Windows Defender Antivirus Service', among
+  other conditions.
+
+known_false_positives: >
+  Administrator actions. Auto updates of Windows Defender causes restarts.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/defender-endpoint/troubleshoot-microsoft-defender-antivirus
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1562.001/T1562.001.md
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Windows Defender Threat Detection Service Disabled detected on host
+    $agent_name$. Matched data_win_system_providerName:
+    $data_win_system_providerName$. Matched data_win_eventdata_param1:
+    $data_win_eventdata_param1$. MITRE ATT&CK: T1685
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_param1
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - defender
+    - threat
+    - service
+    - windows_system
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7036" AND data_win_system_providerName:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Mm][Aa][Nn][Aa][Gg][Ee][Rr]/ AND (data_win_eventdata_param1:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr] [Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss] [Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_param1:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss] [Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]/) AND (data_win_eventdata_param2:/[Ss][Tt][Oo][Pp][Pp][Ee][Dd]/ OR data_win_eventdata_param2:/[Aa][Rr][Rr][Êê][Tt][Éé]/)

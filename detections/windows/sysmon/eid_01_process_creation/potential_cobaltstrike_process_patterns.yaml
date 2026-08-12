@@ -1,0 +1,192 @@
+name: Potential CobaltStrike Process Patterns
+id: f35c5d71-b489-4e22-a115-f003df287317
+version: 1
+schema_version: "1.0"
+date: "2023-03-29"
+author: Florian Roth (Nextron Systems), Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f35c5d71-b489-4e22-a115-f003df287317
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential process patterns related to Cobalt Strike beacon activity.
+  MITRE ATT&CK: T1059.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*cmd.exe /C whoami"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "C:\\\\Temp\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\runonce.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\dllhost.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*cmd.exe /c echo*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*> \\\\\\\\.\\\\pipe*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*cmd.exe /C echo*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "* > \\\\\\\\.\\\\pipe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*conhost.exe 0xffffffff -ForceV1"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*/C whoami"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*conhost.exe 0xffffffff -ForceV1"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*cmd.exe /C whoami'; data_win_eventdata_parentImage matches 'C:\Temp\*';
+  data_win_eventdata_parentImage matches '*\runonce.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://hausec.com/2021/07/26/cobalt-strike-and-tradecraft/
+  - https://thedfirreport.com/2021/08/29/cobalt-strike-a-defenders-guide/
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    Potential CobaltStrike Process Patterns detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    MITRE ATT&CK: T1059
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+  custom_tags:
+    - cobaltstrike
+    - patterns
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Cc][Mm][Dd]\.[Ee][Xx][Ee] \/[Cc] [Ww][Hh][Oo][Aa][Mm][Ii]/ AND data_win_eventdata_parentImage:/[Cc]:\\[Tt][Ee][Mm][Pp]\\.*/) OR ((data_win_eventdata_parentImage:/.*\\[Rr][Uu][Nn][Oo][Nn][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Dd][Ll][Ll][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Cc][Mm][Dd]\.[Ee][Xx][Ee] \/[Cc] [Ee][Cc][Hh][Oo].*/ AND data_win_eventdata_commandLine:/.*\> \\\\\.\\[Pp][Ii][Pp][Ee].*/) OR (data_win_eventdata_parentCommandLine:/.*[Cc][Mm][Dd]\.[Ee][Xx][Ee] \/[Cc] [Ee][Cc][Hh][Oo].*/ AND data_win_eventdata_parentCommandLine:/.* \> \\\\\.\\[Pp][Ii][Pp][Ee].*/ AND data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee] 0[Xx][Ff][Ff][Ff][Ff][Ff][Ff][Ff][Ff] -[Ff][Oo][Rr][Cc][Ee][Vv]1/) OR (data_win_eventdata_parentCommandLine:/.*\/[Cc] [Ww][Hh][Oo][Aa][Mm][Ii]/ AND data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee] 0[Xx][Ff][Ff][Ff][Ff][Ff][Ff][Ff][Ff] -[Ff][Oo][Rr][Cc][Ee][Vv]1/))

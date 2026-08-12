@@ -1,0 +1,394 @@
+name: DSInternals Suspicious PowerShell Cmdlets - ScriptBlock
+id: 846c7a87-8e14-4569-9d49-ecfd4276a01c
+version: 1
+schema_version: "1.0"
+date: "2024-06-26"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 846c7a87-8e14-4569-9d49-ecfd4276a01c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution and usage of the DSInternals PowerShell module. Which can be
+  used to perform what might be considered as suspicious activity such as
+  dumping DPAPI backup keys or manipulating NTDS.DIT files. The DSInternals
+  PowerShell Module exposes several internal features of Active Directory and
+  Azure Active Directory. These include FIDO2 and NGC key auditing, offline
+  ntds.dit file manipulation, password auditing, DC recovery from IFM backups
+  and password hash calculation. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Add-ADDBSidHistory*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Add-ADNgcKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Add-ADReplNgcKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertFrom-ADManagedPasswordBlob*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertFrom-GPPrefPassword*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertFrom-ManagedPasswordBlob*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertFrom-UnattendXmlPassword*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertFrom-UnicodePassword*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-AADHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-GPPrefPassword*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-KerberosKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-LMHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-MsoPasswordHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-NTHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-OrgIdHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ConvertTo-UnicodePassword*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Disable-ADDBAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Enable-ADDBAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDBAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDBBackupKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDBDomainController*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDBGroupManagedServiceAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDBKdsRootKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDBSchemaAttribute*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDBServiceAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADDefaultPasswordPolicy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADKeyCredential*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADPasswordPolicy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADReplAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADReplBackupKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADReplicationAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-ADSIAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-AzureADUserEx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-BootKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-KeyCredential*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-LsaBackupKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-LsaPolicy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-SamPasswordPolicy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-SysKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-SystemKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ADDBRestoreFromMediaScript*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ADKeyCredential*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ADNgcKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-NTHashSet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Remove-ADDBObject*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Save-DPAPIBlob*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-ADAccountPasswordHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-ADDBAccountPassword*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-ADDBBootKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-ADDBDomainController*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-ADDBPrimaryGroup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-ADDBSysKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-AzureADUserEx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-LsaPolicy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-SamAccountPasswordHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-WinUserPasswordHash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Test-ADDBPasswordQuality*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Test-ADPasswordQuality*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Test-ADReplPasswordQuality*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Test-PasswordQuality*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Unlock-ADDBAccount*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Write-ADNgcKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Write-ADReplNgcKey*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Add-ADDBSidHistory*';
+  data_win_eventdata_scriptBlockText matches '*Add-ADNgcKey*';
+  data_win_eventdata_scriptBlockText matches '*Add-ADReplNgcKey*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate usage of DSInternals for administration or audit purpose. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://github.com/MichaelGrafnetter/DSInternals/blob/39ee8a69bbdc1cfd12c9afdd7513b4788c4895d4/Src/DSInternals.PowerShell/DSInternals.psd1
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    DSInternals Suspicious PowerShell Cmdlets - ScriptBlock detected on host
+    $agent_name$. Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - dsinternals
+    - powershell
+    - cmdlets
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Aa][Dd][Dd]-[Aa][Dd][Dd][Bb][Ss][Ii][Dd][Hh][Ii][Ss][Tt][Oo][Rr][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Aa][Dd][Dd]-[Aa][Dd][Nn][Gg][Cc][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Aa][Dd][Dd]-[Aa][Dd][Rr][Ee][Pp][Ll][Nn][Gg][Cc][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Aa][Dd][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Bb][Ll][Oo][Bb].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Gg][Pp][Pp][Rr][Ee][Ff][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Mm][Aa][Nn][Aa][Gg][Ee][Dd][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Bb][Ll][Oo][Bb].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Uu][Nn][Aa][Tt][Tt][Ee][Nn][Dd][Xx][Mm][Ll][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Uu][Nn][Ii][Cc][Oo][Dd][Ee][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Aa][Aa][Dd][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Gg][Pp][Pp][Rr][Ee][Ff][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Kk][Ee][Rr][Bb][Ee][Rr][Oo][Ss][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Ll][Mm][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Mm][Ss][Oo][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Nn][Tt][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Oo][Rr][Gg][Ii][Dd][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Tt][Oo]-[Uu][Nn][Ii][Cc][Oo][Dd][Ee][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Ii][Ss][Aa][Bb][Ll][Ee]-[Aa][Dd][Dd][Bb][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Nn][Aa][Bb][Ll][Ee]-[Aa][Dd][Dd][Bb][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Bb][Aa][Cc][Kk][Uu][Pp][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Dd][Oo][Mm][Aa][Ii][Nn][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ll][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Gg][Rr][Oo][Uu][Pp][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Kk][Dd][Ss][Rr][Oo][Oo][Tt][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Ss][Cc][Hh][Ee][Mm][Aa][Aa][Tt][Tt][Rr][Ii][Bb][Uu][Tt][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Ee][Ff][Aa][Uu][Ll][Tt][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Pp][Oo][Ll][Ii][Cc][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Kk][Ee][Yy][Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Pp][Oo][Ll][Ii][Cc][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Rr][Ee][Pp][Ll][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Rr][Ee][Pp][Ll][Bb][Aa][Cc][Kk][Uu][Pp][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Rr][Ee][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Dd][Ss][Ii][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Zz][Uu][Rr][Ee][Aa][Dd][Uu][Ss][Ee][Rr][Ee][Xx].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Bb][Oo][Oo][Tt][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Kk][Ee][Yy][Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ll][Ss][Aa][Bb][Aa][Cc][Kk][Uu][Pp][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ll][Ss][Aa][Pp][Oo][Ll][Ii][Cc][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ss][Aa][Mm][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Pp][Oo][Ll][Ii][Cc][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ss][Yy][Ss][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ss][Yy][Ss][Tt][Ee][Mm][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Aa][Dd][Dd][Bb][Rr][Ee][Ss][Tt][Oo][Rr][Ee][Ff][Rr][Oo][Mm][Mm][Ee][Dd][Ii][Aa][Ss][Cc][Rr][Ii][Pp][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Aa][Dd][Kk][Ee][Yy][Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Aa][Dd][Nn][Gg][Cc][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Nn][Tt][Hh][Aa][Ss][Hh][Ss][Ee][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Aa][Dd][Dd][Bb][Oo][Bb][Jj][Ee][Cc][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Aa][Vv][Ee]-[Dd][Pp][Aa][Pp][Ii][Bb][Ll][Oo][Bb].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Dd][Aa][Cc][Cc][Oo][Uu][Nn][Tt][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Dd][Dd][Bb][Aa][Cc][Cc][Oo][Uu][Nn][Tt][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Dd][Dd][Bb][Bb][Oo][Oo][Tt][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Dd][Dd][Bb][Dd][Oo][Mm][Aa][Ii][Nn][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ll][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Dd][Dd][Bb][Pp][Rr][Ii][Mm][Aa][Rr][Yy][Gg][Rr][Oo][Uu][Pp].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Dd][Dd][Bb][Ss][Yy][Ss][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Zz][Uu][Rr][Ee][Aa][Dd][Uu][Ss][Ee][Rr][Ee][Xx].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Ll][Ss][Aa][Pp][Oo][Ll][Ii][Cc][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Ss][Aa][Mm][Aa][Cc][Cc][Oo][Uu][Nn][Tt][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Ww][Ii][Nn][Uu][Ss][Ee][Rr][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Ee][Ss][Tt]-[Aa][Dd][Dd][Bb][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Qq][Uu][Aa][Ll][Ii][Tt][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Ee][Ss][Tt]-[Aa][Dd][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Qq][Uu][Aa][Ll][Ii][Tt][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Ee][Ss][Tt]-[Aa][Dd][Rr][Ee][Pp][Ll][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Qq][Uu][Aa][Ll][Ii][Tt][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Ee][Ss][Tt]-[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Qq][Uu][Aa][Ll][Ii][Tt][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Uu][Nn][Ll][Oo][Cc][Kk]-[Aa][Dd][Dd][Bb][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Ww][Rr][Ii][Tt][Ee]-[Aa][Dd][Nn][Gg][Cc][Kk][Ee][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Ww][Rr][Ii][Tt][Ee]-[Aa][Dd][Rr][Ee][Pp][Ll][Nn][Gg][Cc][Kk][Ee][Yy].*/)

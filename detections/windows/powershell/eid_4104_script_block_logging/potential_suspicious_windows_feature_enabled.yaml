@@ -1,0 +1,173 @@
+name: Potential Suspicious Windows Feature Enabled
+id: 55c925c1-7195-426b-a136-a9396800e29b
+version: 1
+schema_version: "1.0"
+date: "2022-12-29"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 55c925c1-7195-426b-a136-a9396800e29b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of the built-in PowerShell cmdlet
+  "Enable-WindowsOptionalFeature" used as a Deployment Image Servicing and
+  Management tool. Similar to DISM.exe, this cmdlet is used to enumerate,
+  install, uninstall, configure, and update features and packages in Windows
+  images.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Enable-WindowsOptionalFeature*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*-Online*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*-FeatureName*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TelnetServer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Internet-Explorer-Optional-amd64*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TFTP*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*SMB1Protocol*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Client-ProjFS*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Microsoft-Windows-Subsystem-Linux*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Enable-WindowsOptionalFeature*';
+  data_win_eventdata_scriptBlockText matches '*-Online*';
+  data_win_eventdata_scriptBlockText matches '*-FeatureName*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate usage of the features listed in the rule. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/powershell/module/dism/enable-windowsoptionalfeature?view=windowsserver2022-ps
+  - https://learn.microsoft.com/en-us/windows/win32/projfs/enabling-windows-projected-file-system
+  - https://learn.microsoft.com/en-us/windows/wsl/install-on-server
+
+response:
+  message: >
+    Potential Suspicious Windows Feature Enabled detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - feature
+    - powershell
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Ee][Nn][Aa][Bb][Ll][Ee]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Oo][Pp][Tt][Ii][Oo][Nn][Aa][Ll][Ff][Ee][Aa][Tt][Uu][Rr][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*-[Oo][Nn][Ll][Ii][Nn][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*-[Ff][Ee][Aa][Tt][Uu][Rr][Ee][Nn][Aa][Mm][Ee].*/ AND (data_win_eventdata_scriptBlockText:/.*[Tt][Ee][Ll][Nn][Ee][Tt][Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt]-[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]-[Oo][Pp][Tt][Ii][Oo][Nn][Aa][Ll]-[Aa][Mm][Dd]64.*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Ff][Tt][Pp].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Mm][Bb]1[Pp][Rr][Oo][Tt][Oo][Cc][Oo][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Ll][Ii][Ee][Nn][Tt]-[Pp][Rr][Oo][Jj][Ff][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Ss][Uu][Bb][Ss][Yy][Ss][Tt][Ee][Mm]-[Ll][Ii][Nn][Uu][Xx].*/)

@@ -1,0 +1,201 @@
+name: Potential Vcruntime140 DLL Sideloading
+id: d7a63acb-1284-49bc-bfea-7771146c8b1c
+version: 1
+schema_version: "1.0"
+date: "2026-05-18"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d7a63acb-1284-49bc-bfea-7771146c8b1c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential DLL sideloading of vcruntime140.dll, a common C++ runtime
+  library. Threat actors have been observed using DLL sideloading techniques to
+  load malicious payloads under the guise of legitimate applications such as
+  SqlWriter, SqlDumper etc. Notably, APT29 has been documented leveraging
+  WinELOADER to sideload vcruntime140.dll for executing malicious code. MITRE
+  ATT&CK: T1574.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_imageLoaded:
+              value: "*\\\\vcruntime140.dll"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - exists:
+            field: "data_win_eventdata_signed"
+        - exists:
+            field: "data_win_eventdata_signatureStatus"
+        - exists:
+            field: "data_win_eventdata_description"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files (x86)\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_signed: true
+                          - term:
+                              data_win_eventdata_signatureStatus:
+                                value: "Valid"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_description:
+                                value: "*C Runtime Library"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signed
+    - data_win_eventdata_signatureStatus
+    - data_win_eventdata_description
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\vcruntime140.dll'; data_win_eventdata_imageLoaded matches
+  'C:\Windows\System32\*'; data_win_eventdata_imageLoaded matches
+  'C:\Windows\SysWOW64\*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.mandiant.com/resources/blog/apt29-wineloader-german-political-parties
+  - https://www.zscaler.com/blogs/security-research/european-diplomats-targeted-spikedwine-wineloader
+  - https://www.nextron-systems.com/2023/09/15/detecting-janelarat-with-yara-and-thor/
+  - https://attack.mitre.org/techniques/T1574/001/
+
+response:
+  message: >
+    Potential Vcruntime140 DLL Sideloading detected on host $agent_name$.
+    Matched data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$.
+    Matched data_win_eventdata_signed: $data_win_eventdata_signed$. MITRE
+    ATT&CK: T1574.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_signed
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.001
+  custom_tags:
+    - vcruntime140
+    - sideloading
+    - image_load
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_imageLoaded:/.*\\[Vv][Cc][Rr][Uu][Nn][Tt][Ii][Mm][Ee]140\.[Dd][Ll][Ll]/ AND _exists_:data_win_eventdata_imageLoaded AND _exists_:data_win_eventdata_signed AND _exists_:data_win_eventdata_signatureStatus AND _exists_:data_win_eventdata_description AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR (data_win_eventdata_signed:true AND data_win_eventdata_signatureStatus:/[Vv][Aa][Ll][Ii][Dd]/ AND data_win_eventdata_description:/.*[Cc] [Rr][Uu][Nn][Tt][Ii][Mm][Ee] [Ll][Ii][Bb][Rr][Aa][Rr][Yy]/)) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee]\\.*/)

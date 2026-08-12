@@ -1,0 +1,173 @@
+name: Devcon Execution Disabling VMware VMCI Device
+id: 85f520e7-6f5e-43ca-874c-222e5bf9c0de
+version: 1
+schema_version: "1.0"
+date: "2026-01-02"
+author: Matt Anderson, Dray Agha, Anna Pham (Huntress)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 85f520e7-6f5e-43ca-874c-222e5bf9c0de
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of devcon.exe with commands that disable the VMware Virtual
+  Machine Communication Interface (VMCI) device. This can be legitimate during
+  VMware Tools troubleshooting or driver conflicts, but may also indicate
+  malware attempting to hijack communication with the hardware via the VMCI
+  device. This has been used to facilitate VMware ESXi vulnerability exploits to
+  escape VMs and execute code on the ESXi host. MITRE ATT&CK: T1543.003, T1685.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\devcon.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "DevCon.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* disable *"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*15AD&DEV_0740*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VMWVMCIHOSTDEV*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\devcon.exe'; data_win_eventdata_originalFileName equals 'DevCon.exe';
+  data_win_eventdata_commandLine matches '* disable *', among other conditions.
+
+known_false_positives: >
+  Legitimate VMware administration, Tools installation/uninstallation, or
+  troubleshooting driver conflicts.. Automated scripts in virtualized
+  environments for device cleanup. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/devcon
+  - https://communities.vmware.com/t5/VMware-Workstation-Pro/VMCI-driver-issues/td-p/2866060
+  - https://github.com/search?q=devcon+disable+VMWVMCIHOSTDEV
+  - https://huntress.com/blog/esxi-vm-escape-exploit
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Devcon Execution Disabling VMware VMCI Device detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1543.003, T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+    - T1685
+  custom_tags:
+    - devcon
+    - disabling
+    - vmware
+    - process_creation
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Dd][Ee][Vv][Cc][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Dd][Ee][Vv][Cc][Oo][Nn]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.* [Dd][Ii][Ss][Aa][Bb][Ll][Ee] .*/ AND (data_win_eventdata_commandLine:/.*15[Aa][Dd]\&[Dd][Ee][Vv]_0740.*/ OR data_win_eventdata_commandLine:/.*[Vv][Mm][Ww][Vv][Mm][Cc][Ii][Hh][Oo][Ss][Tt][Dd][Ee][Vv].*/)

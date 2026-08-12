@@ -1,0 +1,279 @@
+name: PowerShell Base64 Encoded WMI Classes
+id: 1816994b-42e1-4fb1-afd2-134d88184f71
+version: 1
+schema_version: "1.0"
+date: "2023-01-30"
+author: Christian Burkard (Nextron Systems), Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1816994b-42e1-4fb1-afd2-134d88184f71
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects calls to base64 encoded WMI class such as "Win32_ShadowCopy",
+  "Win32_ScheduledJob", etc. MITRE ATT&CK: T1059.001, T1027.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PowerShell.EXE"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "pwsh.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VwBpAG4AMwAyAF8AUwBoAGEAZABvAHcAYwBvAHAAeQ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cAaQBuADMAMgBfAFMAaABhAGQAbwB3AGMAbwBwAHkA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XAGkAbgAzADIAXwBTAGgAYQBkAG8AdwBjAG8AcAB5A*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*V2luMzJfU2hhZG93Y29we*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dpbjMyX1NoYWRvd2NvcH*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XaW4zMl9TaGFkb3djb3B5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VwBpAG4AMwAyAF8AUwBjAGgAZQBkAHUAbABlAGQASgBvAGIA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cAaQBuADMAMgBfAFMAYwBoAGUAZAB1AGwAZQBkAEoAbwBiA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XAGkAbgAzADIAXwBTAGMAaABlAGQAdQBsAGUAZABKAG8AYg*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*V2luMzJfU2NoZWR1bGVkSm9i*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dpbjMyX1NjaGVkdWxlZEpvY*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XaW4zMl9TY2hlZHVsZWRKb2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VwBpAG4AMwAyAF8AUAByAG8AYwBlAHMAcw*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cAaQBuADMAMgBfAFAAcgBvAGMAZQBzAHMA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XAGkAbgAzADIAXwBQAHIAbwBjAGUAcwBzA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*V2luMzJfUHJvY2Vzc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dpbjMyX1Byb2Nlc3*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XaW4zMl9Qcm9jZXNz*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VwBpAG4AMwAyAF8AVQBzAGUAcgBBAGMAYwBvAHUAbgB0A*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cAaQBuADMAMgBfAFUAcwBlAHIAQQBjAGMAbwB1AG4AdA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XAGkAbgAzADIAXwBVAHMAZQByAEEAYwBjAG8AdQBuAHQA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*V2luMzJfVXNlckFjY291bn*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dpbjMyX1VzZXJBY2NvdW50*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XaW4zMl9Vc2VyQWNjb3Vud*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VwBpAG4AMwAyAF8ATABvAGcAZwBlAGQATwBuAFUAcwBlAHIA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cAaQBuADMAMgBfAEwAbwBnAGcAZQBkAE8AbgBVAHMAZQByA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XAGkAbgAzADIAXwBMAG8AZwBnAGUAZABPAG4AVQBzAGUAcg*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*V2luMzJfTG9nZ2VkT25Vc2Vy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dpbjMyX0xvZ2dlZE9uVXNlc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*XaW4zMl9Mb2dnZWRPblVzZX*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell.exe'; data_win_eventdata_image matches '*\pwsh.exe';
+  data_win_eventdata_originalFileName equals 'PowerShell.EXE', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/Neo23x0/Raccine/blob/20a569fa21625086433dcce8bb2765d0ea08dcb6/yara/mal_revil.yar
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+
+response:
+  message: >
+    PowerShell Base64 Encoded WMI Classes detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1059.001, T1027
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1027
+  custom_tags:
+    - powershell
+    - base64
+    - encoded
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ww][Ss][Hh]\.[Dd][Ll][Ll]/) AND (data_win_eventdata_commandLine:/.*[Vv][Ww][Bb][Pp][Aa][Gg]4[Aa][Mm][Ww][Aa][Yy][Aa][Ff]8[Aa][Uu][Ww][Bb][Oo][Aa][Gg][Ee][Aa][Zz][Aa][Bb][Vv][Aa][Hh][Cc][Aa][Yy][Ww][Bb][Vv][Aa][Hh][Aa][Aa][Ee][Qq].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Aa][Qq][Bb][Uu][Aa][Dd][Mm][Aa][Mm][Gg][Bb][Ff][Aa][Ff][Mm][Aa][Aa][Aa][Bb][Hh][Aa][Gg][Qq][Aa][Bb][Ww][Bb]3[Aa][Gg][Mm][Aa][Bb][Ww][Bb][Ww][Aa][Hh][Kk][Aa].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Gg][Kk][Aa][Bb][Gg][Aa][Zz][Aa][Dd][Ii][Aa][Xx][Ww][Bb][Tt][Aa][Gg][Gg][Aa][Yy][Qq][Bb][Kk][Aa][Gg]8[Aa][Dd][Ww][Bb][Jj][Aa][Gg]8[Aa][Cc][Aa][Bb]5[Aa].*/ OR data_win_eventdata_commandLine:/.*[Vv]2[Ll][Uu][Mm][Zz][Jj][Ff][Uu]2[Hh][Hh][Zz][Gg]93[Yy]29[Ww][Ee].*/ OR data_win_eventdata_commandLine:/.*[Dd][Pp][Bb][Jj][Mm][Yy][Xx]1[Nn][Oo][Yy][Ww][Rr][Vv][Dd]2[Nn][Vv][Cc][Hh].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Ww]4[Zz][Mm][Ll]9[Tt][Aa][Gg][Ff][Kk][Bb]3[Dd][Jj][Bb]3[Bb]5.*/ OR data_win_eventdata_commandLine:/.*[Vv][Ww][Bb][Pp][Aa][Gg]4[Aa][Mm][Ww][Aa][Yy][Aa][Ff]8[Aa][Uu][Ww][Bb][Jj][Aa][Gg][Gg][Aa][Zz][Qq][Bb][Kk][Aa][Hh][Uu][Aa][Bb][Aa][Bb][Ll][Aa][Gg][Qq][Aa][Ss][Gg][Bb][Vv][Aa][Gg][Ii][Aa].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Aa][Qq][Bb][Uu][Aa][Dd][Mm][Aa][Mm][Gg][Bb][Ff][Aa][Ff][Mm][Aa][Yy][Ww][Bb][Oo][Aa][Gg][Uu][Aa][Zz][Aa][Bb]1[Aa][Gg][Ww][Aa][Zz][Qq][Bb][Kk][Aa][Ee][Oo][Aa][Bb][Ww][Bb][Ii][Aa].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Gg][Kk][Aa][Bb][Gg][Aa][Zz][Aa][Dd][Ii][Aa][Xx][Ww][Bb][Tt][Aa][Gg][Mm][Aa][Aa][Aa][Bb][Ll][Aa][Gg][Qq][Aa][Dd][Qq][Bb][Ss][Aa][Gg][Uu][Aa][Zz][Aa][Bb][Kk][Aa][Gg]8[Aa][Yy][Gg].*/ OR data_win_eventdata_commandLine:/.*[Vv]2[Ll][Uu][Mm][Zz][Jj][Ff][Uu]2[Nn][Oo][Zz][Ww][Rr]1[Bb][Gg][Vv][Kk][Ss][Mm]9[Ii].*/ OR data_win_eventdata_commandLine:/.*[Dd][Pp][Bb][Jj][Mm][Yy][Xx]1[Nn][Jj][Aa][Gg][Vv][Kk][Dd][Ww][Xx][Ll][Zz][Ee][Pp][Vv][Yy].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Ww]4[Zz][Mm][Ll]9[Tt][Yy]2[Hh][Ll][Zz][Hh][Vv][Ss][Zz][Ww][Rr][Kk][Bb]2.*/ OR data_win_eventdata_commandLine:/.*[Vv][Ww][Bb][Pp][Aa][Gg]4[Aa][Mm][Ww][Aa][Yy][Aa][Ff]8[Aa][Uu][Aa][Bb][Yy][Aa][Gg]8[Aa][Yy][Ww][Bb][Ll][Aa][Hh][Mm][Aa][Cc][Ww].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Aa][Qq][Bb][Uu][Aa][Dd][Mm][Aa][Mm][Gg][Bb][Ff][Aa][Ff][Aa][Aa][Cc][Gg][Bb][Vv][Aa][Gg][Mm][Aa][Zz][Qq][Bb][Zz][Aa][Hh][Mm][Aa].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Gg][Kk][Aa][Bb][Gg][Aa][Zz][Aa][Dd][Ii][Aa][Xx][Ww][Bb][Qq][Aa][Hh][Ii][Aa][Bb][Ww][Bb][Jj][Aa][Gg][Uu][Aa][Cc][Ww][Bb][Zz][Aa].*/ OR data_win_eventdata_commandLine:/.*[Vv]2[Ll][Uu][Mm][Zz][Jj][Ff][Uu][Hh][Jj][Vv][Yy]2[Vv][Zz][Cc].*/ OR data_win_eventdata_commandLine:/.*[Dd][Pp][Bb][Jj][Mm][Yy][Xx]1[Bb][Yy][Bb]2[Nn][Ll][Cc]3.*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Ww]4[Zz][Mm][Ll]9[Qq][Cc][Mm]9[Jj][Zz][Xx][Nn][Zz].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ww][Bb][Pp][Aa][Gg]4[Aa][Mm][Ww][Aa][Yy][Aa][Ff]8[Aa][Vv][Qq][Bb][Zz][Aa][Gg][Uu][Aa][Cc][Gg][Bb][Bb][Aa][Gg][Mm][Aa][Yy][Ww][Bb][Vv][Aa][Hh][Uu][Aa][Bb][Gg][Bb]0[Aa].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Aa][Qq][Bb][Uu][Aa][Dd][Mm][Aa][Mm][Gg][Bb][Ff][Aa][Ff][Uu][Aa][Cc][Ww][Bb][Ll][Aa][Hh][Ii][Aa][Qq][Qq][Bb][Jj][Aa][Gg][Mm][Aa][Bb][Ww][Bb]1[Aa][Gg]4[Aa][Dd][Aa].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Gg][Kk][Aa][Bb][Gg][Aa][Zz][Aa][Dd][Ii][Aa][Xx][Ww][Bb][Vv][Aa][Hh][Mm][Aa][Zz][Qq][Bb][Yy][Aa][Ee][Ee][Aa][Yy][Ww][Bb][Jj][Aa][Gg]8[Aa][Dd][Qq][Bb][Uu][Aa][Hh][Qq][Aa].*/ OR data_win_eventdata_commandLine:/.*[Vv]2[Ll][Uu][Mm][Zz][Jj][Ff][Vv][Xx][Nn][Ll][Cc][Kk][Ff][Jj][Yy]291[Bb][Nn].*/ OR data_win_eventdata_commandLine:/.*[Dd][Pp][Bb][Jj][Mm][Yy][Xx]1[Vv][Zz][Zz][Xx][Jj][Bb][Yy]2[Nn][Vv][Dd][Ww]50.*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Ww]4[Zz][Mm][Ll]9[Vv][Cc]2[Vv][Yy][Qq][Ww][Nn][Jj][Bb]3[Vv][Uu][Dd].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ww][Bb][Pp][Aa][Gg]4[Aa][Mm][Ww][Aa][Yy][Aa][Ff]8[Aa][Tt][Aa][Bb][Vv][Aa][Gg][Cc][Aa][Zz][Ww][Bb][Ll][Aa][Gg][Qq][Aa][Tt][Ww][Bb][Uu][Aa][Ff][Uu][Aa][Cc][Ww][Bb][Ll][Aa][Hh][Ii][Aa].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Aa][Qq][Bb][Uu][Aa][Dd][Mm][Aa][Mm][Gg][Bb][Ff][Aa][Ee][Ww][Aa][Bb][Ww][Bb][Nn][Aa][Gg][Cc][Aa][Zz][Qq][Bb][Kk][Aa][Ee]8[Aa][Bb][Gg][Bb][Vv][Aa][Hh][Mm][Aa][Zz][Qq][Bb][Yy][Aa].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Gg][Kk][Aa][Bb][Gg][Aa][Zz][Aa][Dd][Ii][Aa][Xx][Ww][Bb][Mm][Aa][Gg]8[Aa][Zz][Ww][Bb][Nn][Aa][Gg][Uu][Aa][Zz][Aa][Bb][Pp][Aa][Gg]4[Aa][Vv][Qq][Bb][Zz][Aa][Gg][Uu][Aa][Cc][Gg].*/ OR data_win_eventdata_commandLine:/.*[Vv]2[Ll][Uu][Mm][Zz][Jj][Ff][Tt][Gg]9[Nn][Zz]2[Vv][Kk][Tt]25[Vv][Cc]2[Vv][Yy].*/ OR data_win_eventdata_commandLine:/.*[Dd][Pp][Bb][Jj][Mm][Yy][Xx]0[Xx][Vv][Zz]2[Dd][Ll][Zz][Ee]9[Uu][Vv][Xx][Nn][Ll][Cc].*/ OR data_win_eventdata_commandLine:/.*[Xx][Aa][Ww]4[Zz][Mm][Ll]9[Mm][Bb]2[Dd][Nn][Zz][Ww][Rr][Pp][Bb][Ll][Vv][Zz][Zz][Xx].*/)

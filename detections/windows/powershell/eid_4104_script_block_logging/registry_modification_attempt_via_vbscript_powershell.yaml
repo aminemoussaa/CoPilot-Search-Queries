@@ -1,0 +1,157 @@
+name: Registry Modification Attempt Via VBScript - PowerShell
+id: 2a0a169d-cc66-43ce-9ae2-6e678e54e46a
+version: 1
+schema_version: "1.0"
+date: "2025-08-13"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2a0a169d-cc66-43ce-9ae2-6e678e54e46a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects attempts to modify the registry using VBScript's
+  CreateObject("Wscript.shell") and RegWrite methods embedded within PowerShell
+  scripts or commands. Threat actors commonly embed VBScript code within
+  PowerShell to perform registry modifications, attempting to evade detection
+  that monitors for direct registry access through traditional tools. This
+  technique can be used for persistence, defense evasion, and privilege
+  escalation by modifying registry keys without using regedit.exe, reg.exe, or
+  PowerShell's native registry cmdlets. MITRE ATT&CK: T1112, T1059.005.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*CreateObject*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Wscript.shell*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*.RegWrite*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*CreateObject*';
+  data_win_eventdata_scriptBlockText matches '*Wscript.shell*';
+  data_win_eventdata_scriptBlockText matches '*.RegWrite*'.
+
+known_false_positives: >
+  Some legitimate admin or install scripts may use these processes for registry
+  modifications. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.linkedin.com/posts/mauricefielenbach_livingofftheland-redteam-persistence-activity-7344801774182051843-TE00/
+  - https://www.nextron-systems.com/2025/07/29/detecting-the-most-popular-mitre-persistence-method-registry-run-keys-startup-folder/
+  - https://detect.fyi/hunting-fileless-malware-in-the-windows-registry-1339ccde00ad
+  - https://attack.mitre.org/techniques/T1112/
+  - https://attack.mitre.org/techniques/T1059/005/
+
+response:
+  message: >
+    Registry Modification Attempt Via VBScript - PowerShell detected on host
+    $agent_name$. Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1112, T1059.005
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+    - T1059.005
+  custom_tags:
+    - registry
+    - vbscript
+    - powershell
+    - persistence
+    - execution
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_scriptBlockText:/.*[Ww][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ss][Hh][Ee][Ll][Ll].*/ AND data_win_eventdata_scriptBlockText:/.*\.[Rr][Ee][Gg][Ww][Rr][Ii][Tt][Ee].*/

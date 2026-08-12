@@ -1,0 +1,251 @@
+name: Potential SMB Relay Attack Tool Execution
+id: 5589ab4f-a767-433c-961d-c91f3f704db1
+version: 1
+schema_version: "1.0"
+date: "2023-02-14"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5589ab4f-a767-433c-961d-c91f3f704db1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects different hacktools used for relay attacks on Windows for privilege
+  escalation. MITRE ATT&CK: T1557.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*PetitPotam*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*RottenPotato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*HotPotato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*JuicyPotato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\just_dce_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*Juicy Potato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\temp\\\\rot.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Potato.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SpoolSample.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Responder.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\smbrelayx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ntlmrelayx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\LocalPotato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-Tater*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* smbrelay*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* ntlmrelay*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cme smb *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /ntlm:NTLMhash *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-PetitPotam*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.exe -t * -p *"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.exe -c \"{*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*}\" -z"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*HotPotatoes6*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*HotPotatoes7*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*HotPotatoes *"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*PetitPotam*'; data_win_eventdata_image matches '*RottenPotato*';
+  data_win_eventdata_image matches '*HotPotato*', among other conditions.
+
+known_false_positives: >
+  Legitimate files with these rare hacktool names. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://foxglovesecurity.com/2016/09/26/rotten-potato-privilege-escalation-from-service-accounts-to-system/
+  - https://pentestlab.blog/2017/04/13/hot-potato/
+  - https://github.com/ohpe/juicy-potato
+  - https://hunter2.gitbook.io/darthsidious/other/war-stories/domain-admin-in-30-minutes
+  - https://hunter2.gitbook.io/darthsidious/execution/responder-with-ntlm-relay-and-empire
+  - https://www.localpotato.com/
+  - https://attack.mitre.org/techniques/T1557/001/
+
+response:
+  message: >
+    Potential SMB Relay Attack Tool Execution detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1557.001
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1557.001
+  custom_tags:
+    - relay
+    - attack
+    - process_creation
+    - sysmon
+    - collection
+    - execution
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*[Pp][Ee][Tt][Ii][Tt][Pp][Oo][Tt][Aa][Mm].*/ OR data_win_eventdata_image:/.*[Rr][Oo][Tt][Tt][Ee][Nn][Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_image:/.*[Hh][Oo][Tt][Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_image:/.*[Jj][Uu][Ii][Cc][Yy][Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_image:/.*\\[Jj][Uu][Ss][Tt]_[Dd][Cc][Ee]_.*/ OR data_win_eventdata_image:/.*[Jj][Uu][Ii][Cc][Yy] [Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_image:/.*\\[Tt][Ee][Mm][Pp]\\[Rr][Oo][Tt]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Tt][Aa][Tt][Oo]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Ss][Pp][Oo][Oo][Ll][Ss][Aa][Mm][Pp][Ll][Ee]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Rr][Ee][Ss][Pp][Oo][Nn][Dd][Ee][Rr]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Ss][Mm][Bb][Rr][Ee][Ll][Aa][Yy][Xx].*/ OR data_win_eventdata_image:/.*\\[Nn][Tt][Ll][Mm][Rr][Ee][Ll][Aa][Yy][Xx].*/ OR data_win_eventdata_image:/.*\\[Ll][Oo][Cc][Aa][Ll][Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Tt][Aa][Tt][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.* [Ss][Mm][Bb][Rr][Ee][Ll][Aa][Yy].*/ OR data_win_eventdata_commandLine:/.* [Nn][Tt][Ll][Mm][Rr][Ee][Ll][Aa][Yy].*/ OR data_win_eventdata_commandLine:/.*[Cc][Mm][Ee] [Ss][Mm][Bb] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Tt][Ll][Mm]:[Nn][Tt][Ll][Mm][Hh][Aa][Ss][Hh] .*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Pp][Ee][Tt][Ii][Tt][Pp][Oo][Tt][Aa][Mm].*/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] -[Tt] .* -[Pp] .*/ OR (data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] -[Cc] \"\{.*/ AND data_win_eventdata_commandLine:/.*\}\" -[Zz]/)) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*[Hh][Oo][Tt][Pp][Oo][Tt][Aa][Tt][Oo][Ee][Ss]6.*/ OR data_win_eventdata_image:/.*[Hh][Oo][Tt][Pp][Oo][Tt][Aa][Tt][Oo][Ee][Ss]7.*/ OR data_win_eventdata_image:/.*[Hh][Oo][Tt][Pp][Oo][Tt][Aa][Tt][Oo][Ee][Ss] .*/)

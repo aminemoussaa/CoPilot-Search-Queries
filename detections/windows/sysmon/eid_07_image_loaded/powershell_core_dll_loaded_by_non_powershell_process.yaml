@@ -1,0 +1,344 @@
+name: PowerShell Core DLL Loaded By Non PowerShell Process
+id: 092bc4b9-3d1d-43b4-a6b4-8c8acd83522f
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Tom Kern, oscd.community, Natalia Shornikova, Tim Shelton, Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 092bc4b9-3d1d-43b4-a6b4-8c8acd83522f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects loading of essential DLLs used by PowerShell by non-PowerShell
+  process. Detects behavior similar to meterpreter's "load powershell"
+  extension. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_description:
+                    value: "System.Management.Automation"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "System.Management.Automation.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\System.Management.Automation.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\System.Management.Automation.ni.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\PowerShell\\7-preview\\pwsh.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell_ise.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell_ise.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*C:\\\\Program Files\\\\WindowsApps\\\\Microsoft.PowerShellPreview*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\Microsoft.PowerShellPreview*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe"
+                                case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\dsac.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\WINDOWS\\System32\\RemoteFXvGPUDisablement.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\runscripthelper.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\WINDOWS\\System32\\sdiagnhost.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\ServerManager.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\SyncAppvPublishingServer.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\winrshost.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\wsmprovhost.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\SysWOW64\\winrshost.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\SysWOW64\\wsmprovhost.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\FrameworkArm\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\FrameworkArm64\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\Framework64\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\mscorsvw.exe"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\Microsoft SQL Server Management Studio*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Microsoft SQL Server Management Studio*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\IDE\\\\Ssms.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\Microsoft SQL Server\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Microsoft SQL Server\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Tools\\\\Binn\\\\SQLPS.exe"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\Citrix\\\\ConfigSync\\\\ConfigSyncRun.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files (x86)\\\\Microsoft Visual Studio\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\Microsoft Visual Studio\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\ProgramData\\\\chocolatey\\\\choco.exe*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Windows\\\\Temp\\\\asgard2-agent\\\\*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\thor64.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*\\\\thor.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_image"
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_description
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_image
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_description equals
+  'System.Management.Automation'; data_win_eventdata_originalFileName equals
+  'System.Management.Automation.dll'; data_win_eventdata_imageLoaded matches
+  '*\System.Management.Automation.dll', among other conditions.
+
+known_false_positives: >
+  Used by some .NET binaries, minimal on user workstation.. Used by Microsoft
+  SQL Server Management Studio. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://adsecurity.org/?p=2921
+  - https://github.com/p3nt4/PowerShdll
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    PowerShell Core DLL Loaded By Non PowerShell Process detected on host
+    $agent_name$. Matched data_win_eventdata_description:
+    $data_win_eventdata_description$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_description
+      type: other
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - powershell
+    - image_load
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND (data_win_eventdata_description:/[Ss][Yy][Ss][Tt][Ee][Mm]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Aa][Uu][Tt][Oo][Mm][Aa][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_originalFileName:/[Ss][Yy][Ss][Tt][Ee][Mm]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Aa][Uu][Tt][Oo][Mm][Aa][Tt][Ii][Oo][Nn]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Aa][Uu][Tt][Oo][Mm][Aa][Tt][Ii][Oo][Nn]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Aa][Uu][Tt][Oo][Mm][Aa][Tt][Ii][Oo][Nn]\.[Nn][Ii]\.[Dd][Ll][Ll]/) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7-[Pp][Rr][Ee][Vv][Ii][Ee][Ww]\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll][Pp][Rr][Ee][Vv][Ii][Ee][Ww].*/ OR data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll][Pp][Rr][Ee][Vv][Ii][Ee][Ww].*/) AND data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Ss][Aa][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Rr][Ee][Mm][Oo][Tt][Ee][Ff][Xx][Vv][Gg][Pp][Uu][Dd][Ii][Ss][Aa][Bb][Ll][Ee][Mm][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Rr][Uu][Nn][Ss][Cc][Rr][Ii][Pp][Tt][Hh][Ee][Ll][Pp][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Dd][Ii][Aa][Gg][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Ee][Rr][Vv][Ee][Rr][Mm][Aa][Nn][Aa][Gg][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Yy][Nn][Cc][Aa][Pp][Pp][Vv][Pp][Uu][Bb][Ll][Ii][Ss][Hh][Ii][Nn][Gg][Ss][Ee][Rr][Vv][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Rr][Ss][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ss][Mm][Pp][Rr][Oo][Vv][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Rr][Ss][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ss][Mm][Pp][Rr][Oo][Vv][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk][Aa][Rr][Mm]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk][Aa][Rr][Mm]64\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]64\\.*/) AND data_win_eventdata_image:/.*\\[Mm][Ss][Cc][Oo][Rr][Ss][Vv][Ww]\.[Ee][Xx][Ee]/)) AND NOT (((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Qq][Ll] [Ss][Ee][Rr][Vv][Ee][Rr] [Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt] [Ss][Tt][Uu][Dd][Ii][Oo].*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Qq][Ll] [Ss][Ee][Rr][Vv][Ee][Rr] [Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt] [Ss][Tt][Uu][Dd][Ii][Oo].*/) AND data_win_eventdata_image:/.*\\[Ii][Dd][Ee]\\[Ss][Ss][Mm][Ss]\.[Ee][Xx][Ee]/) OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Qq][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Qq][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\.*/) AND data_win_eventdata_image:/.*\\[Tt][Oo][Oo][Ll][Ss]\\[Bb][Ii][Nn][Nn]\\[Ss][Qq][Ll][Pp][Ss]\.[Ee][Xx][Ee]/) OR data_win_eventdata_image:/.*\\[Cc][Ii][Tt][Rr][Ii][Xx]\\[Cc][Oo][Nn][Ff][Ii][Gg][Ss][Yy][Nn][Cc]\\[Cc][Oo][Nn][Ff][Ii][Gg][Ss][Yy][Nn][Cc][Rr][Uu][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ii][Ss][Uu][Aa][Ll] [Ss][Tt][Uu][Dd][Ii][Oo]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ii][Ss][Uu][Aa][Ll] [Ss][Tt][Uu][Dd][Ii][Oo]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Cc][Hh][Oo][Cc][Oo][Ll][Aa][Tt][Ee][Yy]\\[Cc][Hh][Oo][Cc][Oo]\.[Ee][Xx][Ee].*/ OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\[Aa][Ss][Gg][Aa][Rr][Dd]2-[Aa][Gg][Ee][Nn][Tt]\\.*/ AND (data_win_eventdata_image:/.*\\[Tt][Hh][Oo][Rr]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Tt][Hh][Oo][Rr]\.[Ee][Xx][Ee]/)) OR NOT _exists_:data_win_eventdata_image)

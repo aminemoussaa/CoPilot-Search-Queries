@@ -1,0 +1,218 @@
+name: Potential Crypto Mining Activity
+id: 66c3b204-9f88-4d0a-a7f7-8a57d521ca55
+version: 1
+schema_version: "1.0"
+date: "2023-02-13"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 66c3b204-9f88-4d0a-a7f7-8a57d521ca55
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects command line parameters or strings often used by crypto miners. MITRE
+  ATT&CK: T1496.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --cpu-priority=*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--donate-level=0*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -o pool.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --nicehash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --algo=rx/0 *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*stratum+tcp://*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*stratum+udp://*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*LS1kb25hdGUtbGV2ZWw9*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*0tZG9uYXRlLWxldmVsP*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*tLWRvbmF0ZS1sZXZlbD*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*c3RyYXR1bSt0Y3A6Ly*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*N0cmF0dW0rdGNwOi8v*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*zdHJhdHVtK3RjcDovL*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*c3RyYXR1bSt1ZHA6Ly*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*N0cmF0dW0rdWRwOi8v*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*zdHJhdHVtK3VkcDovL*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* pool.c *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* pool.o *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*gcc -*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*
+  --cpu-priority=*'; data_win_eventdata_commandLine matches
+  '*--donate-level=0*'; data_win_eventdata_commandLine matches '* -o pool.*',
+  among other conditions.
+
+known_false_positives: >
+  Legitimate use of crypto miners. Some build frameworks. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://www.poolwatch.io/coin/monero
+  - https://attack.mitre.org/techniques/T1496/
+
+response:
+  message: >
+    Potential Crypto Mining Activity detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1496
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1496
+  custom_tags:
+    - crypto
+    - mining
+    - process_creation
+    - sysmon
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.* --[Cc][Pp][Uu]-[Pp][Rr][Ii][Oo][Rr][Ii][Tt][Yy]=.*/ OR data_win_eventdata_commandLine:/.*--[Dd][Oo][Nn][Aa][Tt][Ee]-[Ll][Ee][Vv][Ee][Ll]=0.*/ OR data_win_eventdata_commandLine:/.* -[Oo] [Pp][Oo][Oo][Ll]\..*/ OR data_win_eventdata_commandLine:/.* --[Nn][Ii][Cc][Ee][Hh][Aa][Ss][Hh].*/ OR data_win_eventdata_commandLine:/.* --[Aa][Ll][Gg][Oo]=[Rr][Xx]\/0 .*/ OR data_win_eventdata_commandLine:/.*[Ss][Tt][Rr][Aa][Tt][Uu][Mm]\+[Tt][Cc][Pp]:\/\/.*/ OR data_win_eventdata_commandLine:/.*[Ss][Tt][Rr][Aa][Tt][Uu][Mm]\+[Uu][Dd][Pp]:\/\/.*/ OR data_win_eventdata_commandLine:/.*[Ll][Ss]1[Kk][Bb]25[Hh][Dd][Gg][Uu][Tt][Bb][Gg][Vv]2[Zz][Ww][Ww]9.*/ OR data_win_eventdata_commandLine:/.*0[Tt][Zz][Gg]9[Uu][Yy][Xx][Rr][Ll][Ll][Ww][Xx][Ll][Dd][Mm][Vv][Ss][Pp].*/ OR data_win_eventdata_commandLine:/.*[Tt][Ll][Ww][Rr][Vv][Bb][Mm][Ff]0[Zz][Ss]1[Ss][Zz][Xx][Zz][Ll][Bb][Dd].*/ OR data_win_eventdata_commandLine:/.*[Cc]3[Rr][Yy][Yy][Xx][Rr]1[Bb][Ss][Tt]0[Yy]3[Aa]6[Ll][Yy].*/ OR data_win_eventdata_commandLine:/.*[Nn]0[Cc][Mm][Ff]0[Dd][Ww]0[Rr][Dd][Gg][Nn][Ww][Oo][Ii]8[Vv].*/ OR data_win_eventdata_commandLine:/.*[Zz][Dd][Hh][Jj][Hh][Dd][Hh][Vv][Tt][Kk]3[Rr][Jj][Cc][Dd][Oo][Vv][Ll].*/ OR data_win_eventdata_commandLine:/.*[Cc]3[Rr][Yy][Yy][Xx][Rr]1[Bb][Ss][Tt]1[Zz][Hh][Aa]6[Ll][Yy].*/ OR data_win_eventdata_commandLine:/.*[Nn]0[Cc][Mm][Ff]0[Dd][Ww]0[Rr][Dd][Ww][Rr][Ww][Oo][Ii]8[Vv].*/ OR data_win_eventdata_commandLine:/.*[Zz][Dd][Hh][Jj][Hh][Dd][Hh][Vv][Tt][Kk]3[Vv][Kk][Cc][Dd][Oo][Vv][Ll].*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.* [Pp][Oo][Oo][Ll]\.[Cc] .*/ OR data_win_eventdata_commandLine:/.* [Pp][Oo][Oo][Ll]\.[Oo] .*/ OR data_win_eventdata_commandLine:/.*[Gg][Cc][Cc] -.*/)

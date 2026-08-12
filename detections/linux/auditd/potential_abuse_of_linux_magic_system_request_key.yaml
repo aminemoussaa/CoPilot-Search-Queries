@@ -1,0 +1,165 @@
+name: Potential Abuse of Linux Magic System Request Key
+id: ea61bb82-a5e0-42e6-8537-91d29500f1b9
+version: 1
+schema_version: "1.0"
+date: "2025-05-23"
+author: Milad Cheraghi
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ea61bb82-a5e0-42e6-8537-91d29500f1b9
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the potential abuse of the Linux Magic SysRq (System Request) key by
+  adversaries with root or sufficient privileges to silently manipulate or
+  destabilize a system. By writing to /proc/sysrq-trigger, they can crash the
+  system, kill processes, or disrupt forensic analysis—all while bypassing
+  standard logging. Though intended for recovery and debugging, SysRq can be
+  misused as a stealthy post-exploitation tool. It is controlled via
+  /proc/sys/kernel/sysrq or permanently through /etc/sysctl.conf. MITRE ATT&CK:
+  T1059.004, T1529, T1489, T1499.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_audit_type:
+              value: "PATH"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_audit_file_name:
+                    value: "*/sysrq"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "*/sysctl.conf"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "*/sysrq-trigger"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_file_name
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_execve_a0
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'PATH'; data_audit_file_name matches '*/sysrq'; data_audit_file_name matches
+  '*/sysctl.conf', among other conditions.
+
+known_false_positives: >
+  Legitimate administrative activity. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.kernel.org/doc/html/v4.10/_sources/admin-guide/sysrq.txt
+  - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/4/html/reference_guide/s3-proc-sys-kernel
+  - https://www.splunk.com/en_us/blog/security/threat-update-awfulshred-script-wiper.html
+  - https://attack.mitre.org/techniques/T1059/004/
+  - https://attack.mitre.org/techniques/T1529/
+  - https://attack.mitre.org/techniques/T1489/
+  - https://attack.mitre.org/techniques/T1499/
+
+response:
+  message: >
+    Potential Abuse of Linux Magic System Request Key detected on host
+    $agent_name$. Matched data_audit_type: $data_audit_type$. Matched
+    data_audit_file_name: $data_audit_file_name$. MITRE ATT&CK: T1059.004,
+    T1529, T1489, T1499
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_file_name
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.004
+    - T1529
+    - T1489
+    - T1499
+  custom_tags:
+    - abuse
+    - magic
+    - system
+    - linux
+    - auditd
+    - execution
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_audit_type:/[Pp][Aa][Tt][Hh]/ AND (data_audit_file_name:/.*\/[Ss][Yy][Ss][Rr][Qq]/ OR data_audit_file_name:/.*\/[Ss][Yy][Ss][Cc][Tt][Ll]\.[Cc][Oo][Nn][Ff]/ OR data_audit_file_name:/.*\/[Ss][Yy][Ss][Rr][Qq]-[Tt][Rr][Ii][Gg][Gg][Ee][Rr]/)

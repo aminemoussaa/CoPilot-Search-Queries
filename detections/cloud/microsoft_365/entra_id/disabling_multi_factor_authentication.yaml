@@ -1,0 +1,67 @@
+name: Disabling Multi Factor Authentication
+id: 60de9b57-dc4d-48b9-a6a0-b39e0469f876
+version: 1
+schema_version: "1.0"
+date: "2023-09-18"
+author: Splunk Threat Research Team (original rule), Harjot Singh @cyb3rjy0t (sigma rule)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 60de9b57-dc4d-48b9-a6a0-b39e0469f876
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: match
+description: >
+  Detects disabling of Multi Factor Authentication. MITRE ATT&CK: T1556.006.
+data_source:
+  - Office 365 Management Activity API
+  - "Workload: AzureActiveDirectory"
+workload: AzureActiveDirectory
+how_to_implement: >
+  Requires the Wazuh office365 module configured with an Azure AD application
+  subscribed to the Office 365 Management Activity API for the relevant
+  workload, ingested into the wazuh-* indices. The detection looks for events
+  where data_office365_Operation matches '*Disable Strong Authentication.*'.
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+references:
+  - https://research.splunk.com/cloud/c783dd98-c703-4252-9e8a-f19d9f5c949e/
+  - https://attack.mitre.org/techniques/T1556/006/
+response:
+  message: >
+    Disabling Multi Factor Authentication detected for user
+    $data_office365_UserId$. Matched data_office365_Operation:
+    $data_office365_Operation$. Matched data_office365_ClientIP:
+    $data_office365_ClientIP$. MITRE ATT&CK: T1556.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: data_office365_UserId
+      type: user
+      score: 75
+  threat_objects:
+    - field: data_office365_Operation
+      type: operation
+    - field: data_office365_ClientIP
+      type: ip_address
+tags:
+  asset_type: Cloud Identity
+  mitre_attack_id:
+    - T1556.006
+  custom_tags:
+    - disabling
+    - multi
+    - factor
+    - o365
+    - audit
+    - persistence
+    - credential_access
+    - defense_impairment
+  product:
+    - Office 365
+  security_domain: cloud
+graylog:
+  query: data_office365_Operation:/.*[Dd][Ii][Ss][Aa][Bb][Ll][Ee] [Ss][Tt][Rr][Oo][Nn][Gg] [Aa][Uu][Tt][Hh][Ee][Nn][Tt][Ii][Cc][Aa][Tt][Ii][Oo][Nn]\..*/

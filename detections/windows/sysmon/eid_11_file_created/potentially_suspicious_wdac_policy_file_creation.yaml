@@ -1,0 +1,228 @@
+name: Potentially Suspicious WDAC Policy File Creation
+id: 1d2de8a6-4803-4fde-b85b-f58f3aa7a705
+version: 1
+schema_version: "1.0"
+date: "2026-05-18"
+author: X__Junior
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1d2de8a6-4803-4fde-b85b-f58f3aa7a705
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious Windows Defender Application Control (WDAC) policy file
+  creation from abnormal processes that could be abused by attacker to block
+  EDR/AV components while allowing their own malicious code to run on the
+  system.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\Windows\\\\System32\\\\CodeIntegrity\\\\*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\Microsoft.ConfigurationManagement.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\WDAC Wizard.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Program Files\\\\PowerShell\\\\7-preview\\\\pwsh.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\System32\\\\dllhost.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell_ise.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\SysWOW64\\\\dllhost.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\SysWOW64\\\\WindowsPowerShell\\\\v1.0\\\\powershell_ise.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\SysWOW64\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*ConvertFrom-CIPolicy -XmlFilePath*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-BinaryFilePath *"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*CiTool --update-policy*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Copy-Item -Path*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-Destination*"
+                                case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "System"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\wuauclt.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\UUS\\arm64\\wuaucltcore.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\UUS\\Packages\\Preview\\arm64\\wuaucltcore.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\Windows\System32\CodeIntegrity\*'; data_win_eventdata_image matches
+  '*\Microsoft.ConfigurationManagement.exe'; data_win_eventdata_image matches
+  '*\WDAC Wizard.exe', among other conditions.
+
+known_false_positives: >
+  Administrators and security vendors could leverage WDAC, apply additional
+  filters as needed. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/deployment/deploy-appcontrol-policies-using-group-policy
+  - https://beierle.win/2024-12-20-Weaponizing-WDAC-Killing-the-Dreams-of-EDR/
+  - https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/deployment/appcontrol-deployment-guide
+  - https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/deployment/deploy-appcontrol-policies-with-script
+  - https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/deployment/deploy-appcontrol-policies-with-memcm
+
+response:
+  message: >
+    Potentially Suspicious WDAC Policy File Creation detected on host
+    $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - policy
+    - file_event
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_targetFilename:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Oo][Dd][Ee][Ii][Nn][Tt][Ee][Gg][Rr][Ii][Tt][Yy]\\.*/ AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_image:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Aa][Tt][Ii][Oo][Nn][Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Dd][Aa][Cc] [Ww][Ii][Zz][Aa][Rr][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7-[Pp][Rr][Ee][Vv][Ii][Ee][Ww]\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Ll][Ll][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Dd][Ll][Ll][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Cc][Ii][Pp][Oo][Ll][Ii][Cc][Yy] -[Xx][Mm][Ll][Ff][Ii][Ll][Ee][Pp][Aa][Tt][Hh].*/ AND data_win_eventdata_commandLine:/.*-[Bb][Ii][Nn][Aa][Rr][Yy][Ff][Ii][Ll][Ee][Pp][Aa][Tt][Hh] .*/) OR data_win_eventdata_commandLine:/.*[Cc][Ii][Tt][Oo][Oo][Ll] --[Uu][Pp][Dd][Aa][Tt][Ee]-[Pp][Oo][Ll][Ii][Cc][Yy].*/ OR (data_win_eventdata_commandLine:/.*[Cc][Oo][Pp][Yy]-[Ii][Tt][Ee][Mm] -[Pp][Aa][Tt][Hh].*/ AND data_win_eventdata_commandLine:/.*-[Dd][Ee][Ss][Tt][Ii][Nn][Aa][Tt][Ii][Oo][Nn].*/) OR data_win_eventdata_image:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Uu][Aa][Uu][Cc][Ll][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Uu][Uu][Ss]\\[Aa][Rr][Mm]64\\[Ww][Uu][Aa][Uu][Cc][Ll][Tt][Cc][Oo][Rr][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Uu][Uu][Ss]\\[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss]\\[Pp][Rr][Ee][Vv][Ii][Ee][Ww]\\[Aa][Rr][Mm]64\\[Ww][Uu][Aa][Uu][Cc][Ll][Tt][Cc][Oo][Rr][Ee]\.[Ee][Xx][Ee]/)

@@ -1,0 +1,154 @@
+name: Operation Wocao Activity - Security
+id: 74ad4314-482e-4c3e-b237-3f7ed3b9ca8d
+version: 1
+schema_version: "1.0"
+date: "2022-11-27"
+author: Florian Roth (Nextron Systems), frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 74ad4314-482e-4c3e-b237-3f7ed3b9ca8d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects activity mentioned in Operation Wocao report. MITRE ATT&CK: T1012,
+  T1036.004, T1027, T1053.005, T1059.001.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4799"
+        - wildcard:
+            data_win_eventdata_targetUserName:
+              value: "Administr*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_callerProcessName:
+              value: "*\\\\checkadmin.exe"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetUserName
+    - data_win_eventdata_callerProcessName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4799'; data_win_eventdata_targetUserName
+  matches 'Administr*'; data_win_eventdata_callerProcessName matches
+  '*\checkadmin.exe'.
+
+known_false_positives: >
+  Administrators that use checkadmin.exe tool to enumerate local administrators.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://web.archive.org/web/20200226212615/https://www.fox-it.com/en/news/whitepapers/operation-wocao-shining-a-light-on-one-of-chinas-hidden-hacking-groups/
+  - https://web.archive.org/web/20200226212615/https://resources.fox-it.com/rs/170-CAK-271/images/201912_Report_Operation_Wocao.pdf
+  - https://twitter.com/SBousseaden/status/1207671369963646976
+  - https://attack.mitre.org/techniques/T1012/
+  - https://attack.mitre.org/techniques/T1036/004/
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Operation Wocao Activity - Security detected on host $agent_name$. Matched
+    data_win_eventdata_targetUserName: $data_win_eventdata_targetUserName$.
+    Matched data_win_eventdata_callerProcessName:
+    $data_win_eventdata_callerProcessName$. MITRE ATT&CK: T1012, T1036.004,
+    T1027, T1053.005, T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetUserName
+      type: user
+    - field: data_win_eventdata_callerProcessName
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1012
+    - T1036.004
+    - T1027
+    - T1053.005
+    - T1059.001
+  custom_tags:
+    - operation
+    - wocao
+    - security
+    - windows_security
+    - privilege_escalation
+    - persistence
+    - discovery
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4799" AND data_win_eventdata_targetUserName:/[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr].*/ AND data_win_eventdata_callerProcessName:/.*\\[Cc][Hh][Ee][Cc][Kk][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee]/

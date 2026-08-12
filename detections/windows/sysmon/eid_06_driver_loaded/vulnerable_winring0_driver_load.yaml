@@ -1,0 +1,161 @@
+name: Vulnerable WinRing0 Driver Load
+id: 1a42dfa6-6cb2-4df9-9b48-295be477e835
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1a42dfa6-6cb2-4df9-9b48-295be477e835
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the load of a signed WinRing0 driver often used by threat actors,
+  crypto miners (XMRIG) or malware for privilege escalation. MITRE ATT&CK:
+  T1543.003.
+
+data_source:
+  - Sysmon EventID 6 - Driver Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "6"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=D41FA95D4642DC981F10DE36F4DC8CD7*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\WinRing0x64.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\WinRing0.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\WinRing0.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\WinRing0x64.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\winring00x64.sys"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_hashes
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signature
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 6 (driver loaded) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_hashes matches
+  '*IMPHASH=D41FA95D4642DC981F10DE36F4DC8CD7*'; data_win_eventdata_imageLoaded
+  matches '*\WinRing0x64.sys'; data_win_eventdata_imageLoaded matches
+  '*\WinRing0.sys', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/xmrig/xmrig/tree/master/bin/WinRing0
+  - https://www.rapid7.com/blog/post/2021/12/13/driver-based-attacks-past-and-present/
+  - https://attack.mitre.org/techniques/T1543/003/
+
+response:
+  message: >
+    Vulnerable WinRing0 Driver Load detected on host $agent_name$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. MITRE
+    ATT&CK: T1543.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_hashes
+      type: file_hash
+    - field: data_win_eventdata_imageLoaded
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+  custom_tags:
+    - vulnerable
+    - winring0
+    - driver
+    - driver_load
+    - sysmon
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"6" AND (data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Dd]41[Ff][Aa]95[Dd]4642[Dd][Cc]981[Ff]10[Dd][Ee]36[Ff]4[Dd][Cc]8[Cc][Dd]7.*/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Rr][Ii][Nn][Gg]0[Xx]64\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Rr][Ii][Nn][Gg]0\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Rr][Ii][Nn][Gg]0\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Rr][Ii][Nn][Gg]0[Xx]64\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Rr][Ii][Nn][Gg]00[Xx]64\.[Ss][Yy][Ss]/)

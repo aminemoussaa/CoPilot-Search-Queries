@@ -1,0 +1,184 @@
+name: Suspicious Binary In User Directory Spawned From Office Application
+id: aa3a6f94-890e-4e22-b634-ffdfd54792cc
+version: 1
+schema_version: "1.0"
+date: "2023-02-04"
+author: Jason Lynch
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: aa3a6f94-890e-4e22-b634-ffdfd54792cc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects an executable in the users directory started from one of the Microsoft
+  Office suite applications (Word, Excel, PowerPoint, Publisher, Visio). MITRE
+  ATT&CK: T1204.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\WINWORD.EXE"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\EXCEL.EXE"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\POWERPNT.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\MSPUB.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\VISIO.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\MSACCESS.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\EQNEDT32.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_image:
+              value: "C:\\\\users\\\\*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*.exe"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Teams.exe"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\WINWORD.EXE'; data_win_eventdata_parentImage matches '*\EXCEL.EXE';
+  data_win_eventdata_parentImage matches '*\POWERPNT.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blog.morphisec.com/fin7-not-finished-morphisec-spots-new-campaign
+  - https://www.virustotal.com/gui/file/23160972c6ae07f740800fa28e421a81d7c0ca5d5cab95bc082b4a986fbac57
+  - https://attack.mitre.org/techniques/T1204/002/
+
+response:
+  message: >
+    Suspicious Binary In User Directory Spawned From Office Application detected
+    on host $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1204.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1204.002
+  custom_tags:
+    - binary
+    - directory
+    - spawned
+    - process_creation
+    - sysmon
+    - execution
+    - g0046
+    - car_2013_05_002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Ww][Ii][Nn][Ww][Oo][Rr][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ee][Xx][Cc][Ee][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Pp][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Mm][Ss][Pp][Uu][Bb]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Vv][Ii][Ss][Ii][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Mm][Ss][Aa][Cc][Cc][Ee][Ss][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ee][Qq][Nn][Ee][Dd][Tt]32\.[Ee][Xx][Ee]/) AND data_win_eventdata_image:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_image:/.*\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Tt][Ee][Aa][Mm][Ss]\.[Ee][Xx][Ee]/)

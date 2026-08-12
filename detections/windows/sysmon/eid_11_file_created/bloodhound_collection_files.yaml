@@ -1,0 +1,196 @@
+name: BloodHound Collection Files
+id: 02773bed-83bf-469f-b7ff-e676e7d78bab
+version: 1
+schema_version: "1.0"
+date: "2026-02-19"
+author: C.J. May
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 02773bed-83bf-469f-b7ff-e676e7d78bab
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects default file names outputted by the BloodHound collection tool
+  SharpHound. MITRE ATT&CK: T1087.001, T1087.002, T1482, T1069.001, T1069.002,
+  T1059.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*BloodHound.zip"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*_computers.json"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*_containers.json"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*_gpos.json"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*_groups.json"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*_ous.json"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*_users.json"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\svchost.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "C:\\\\Program Files\\\\WindowsApps\\\\Microsoft.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\pocket_containers.json"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*BloodHound.zip'; data_win_eventdata_targetFilename matches
+  '*_computers.json'; data_win_eventdata_targetFilename matches
+  '*_containers.json', among other conditions.
+
+known_false_positives: >
+  Some false positives may arise in some environment and this may require some
+  tuning. Add additional filters or reduce level depending on the level of
+  noise. Baseline expected activity in your environment and tune this detection
+  before relying on it for automated response.
+
+references:
+  - https://academy.hackthebox.com/course/preview/active-directory-bloodhound/bloodhound--data-collection
+  - https://attack.mitre.org/techniques/T1087/001/
+  - https://attack.mitre.org/techniques/T1087/002/
+  - https://attack.mitre.org/techniques/T1482/
+  - https://attack.mitre.org/techniques/T1069/001/
+  - https://attack.mitre.org/techniques/T1069/002/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    BloodHound Collection Files detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1087.001, T1087.002, T1482, T1069.001, T1069.002, T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1087.001
+    - T1087.002
+    - T1482
+    - T1069.001
+    - T1069.002
+    - T1059.001
+  custom_tags:
+    - bloodhound
+    - collection
+    - file_event
+    - sysmon
+    - discovery
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*[Bb][Ll][Oo][Oo][Dd][Hh][Oo][Uu][Nn][Dd]\.[Zz][Ii][Pp]/ OR data_win_eventdata_targetFilename:/.*_[Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr][Ss]\.[Jj][Ss][Oo][Nn]/ OR data_win_eventdata_targetFilename:/.*_[Cc][Oo][Nn][Tt][Aa][Ii][Nn][Ee][Rr][Ss]\.[Jj][Ss][Oo][Nn]/ OR data_win_eventdata_targetFilename:/.*_[Gg][Pp][Oo][Ss]\.[Jj][Ss][Oo][Nn]/ OR data_win_eventdata_targetFilename:/.*_[Gg][Rr][Oo][Uu][Pp][Ss]\.[Jj][Ss][Oo][Nn]/ OR data_win_eventdata_targetFilename:/.*_[Oo][Uu][Ss]\.[Jj][Ss][Oo][Nn]/ OR data_win_eventdata_targetFilename:/.*_[Uu][Ss][Ee][Rr][Ss]\.[Jj][Ss][Oo][Nn]/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_image:/.*\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\..*/ AND data_win_eventdata_targetFilename:/.*\\[Pp][Oo][Cc][Kk][Ee][Tt]_[Cc][Oo][Nn][Tt][Aa][Ii][Nn][Ee][Rr][Ss]\.[Jj][Ss][Oo][Nn]/)

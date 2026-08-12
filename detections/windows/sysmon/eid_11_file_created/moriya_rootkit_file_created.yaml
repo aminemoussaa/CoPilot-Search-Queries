@@ -1,0 +1,137 @@
+name: Moriya Rootkit File Created
+id: a1507d71-0b60-44f6-b17c-bf53220fdd88
+version: 1
+schema_version: "1.0"
+date: "2023-05-05"
+author: Bhabesh Raj
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a1507d71-0b60-44f6-b17c-bf53220fdd88
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a file named "MoriyaStreamWatchmen.sys" in a specific
+  location. This filename was reported to be related to the Moriya rootkit as
+  described in the securelist's Operation TunnelSnake report. MITRE ATT&CK:
+  T1543.003.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - term:
+            data_win_eventdata_targetFilename:
+              value: "C:\\Windows\\System32\\drivers\\MoriyaStreamWatchmen.sys"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename equals
+  'C:\Windows\System32\drivers\MoriyaStreamWatchmen.sys'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://securelist.com/operation-tunnelsnake-and-moriya-rootkit/101831
+  - https://attack.mitre.org/techniques/T1543/003/
+
+response:
+  message: >
+    Moriya Rootkit File Created detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1543.003
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+  custom_tags:
+    - moriya
+    - rootkit
+    - file_event
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Rr][Ii][Vv][Ee][Rr][Ss]\\[Mm][Oo][Rr][Ii][Yy][Aa][Ss][Tt][Rr][Ee][Aa][Mm][Ww][Aa][Tt][Cc][Hh][Mm][Ee][Nn]\.[Ss][Yy][Ss]/

@@ -1,0 +1,140 @@
+name: Pnscan Binary Data Transmission Activity
+id: 97de11cd-4b67-4abf-9a8b-1020e670aa9e
+version: 1
+schema_version: "1.0"
+date: "2024-04-16"
+author: David Burkett (@signalblur)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 97de11cd-4b67-4abf-9a8b-1020e670aa9e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects command line patterns associated with the use of Pnscan for sending
+  and receiving binary data across the network. This behavior has been
+  identified in a Linux malware campaign targeting Docker, Apache Hadoop, Redis,
+  and Confluence and was previously used by the threat actor known as TeamTNT.
+  MITRE ATT&CK: T1046.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - regexp:
+            data_process_exec_process_arguments: ".*(-(W|R)[ ]?([ ]|\"|')([0-9a-fA-F]{2}[ ]?){2,20}([ ]|\"|')).*"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_arguments
+    - data_process_exec_process_binary
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_arguments matches the regex /.*(-(W|R)[ ]?([
+  ]|"|')([0-9a-fA-F]{2}[ ]?){2,20}([ ]|"|')).*/.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.cadosecurity.com/blog/spinning-yarn-a-new-linux-malware-campaign-targets-docker-apache-hadoop-redis-and-confluence
+  - https://intezer.com/wp-content/uploads/2021/09/TeamTNT-Cryptomining-Explosion.pdf
+  - https://regex101.com/r/RugQYK/1
+  - https://www.virustotal.com/gui/file/beddf70a7bab805f0c0b69ac0989db6755949f9f68525c08cb874988353f78a9/content
+  - https://attack.mitre.org/techniques/T1046/
+
+response:
+  message: >
+    Pnscan Binary Data Transmission Activity detected on host $agent_name$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$. MITRE
+    ATT&CK: T1046
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_arguments
+      type: other
+    - field: data_process_exec_process_binary
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1046
+  custom_tags:
+    - pnscan
+    - binary
+    - transmission
+    - linux
+    - tetragon
+    - process_creation
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_arguments:/.*(-(W|R)[ ]?([ ]|\"|')([0-9a-fA-F]{2}[ ]?){2,20}([ ]|\"|')).*/

@@ -1,0 +1,167 @@
+name: UAC Bypass via ICMLuaUtil
+id: 49f2f17b-b4c8-4172-a68b-d5bf95d05130
+version: 1
+schema_version: "1.0"
+date: "2022-09-27"
+author: Florian Roth (Nextron Systems), Elastic (idea)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 49f2f17b-b4c8-4172-a68b-d5bf95d05130
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the pattern of UAC Bypass using ICMLuaUtil Elevated COM interface.
+  MITRE ATT&CK: T1548.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\dllhost.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*/Processid:{3E5FC7F9-9A51-4367-9063-A120244FBEC7}*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*/Processid:{D2E7041B-2927-42FB-8E9F-7CE93B6DC937}*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_originalFileName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\WerFault.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_originalFileName:
+                          value: "WerFault.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\dllhost.exe'; data_win_eventdata_parentCommandLine matches
+  '*/Processid:{3E5FC7F9-9A51-4367-9063-A120244FBEC7}*';
+  data_win_eventdata_parentCommandLine matches
+  '*/Processid:{D2E7041B-2927-42FB-8E9F-7CE93B6DC937}*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.elastic.co/guide/en/security/current/uac-bypass-via-icmluautil-elevated-com-interface.html
+  - https://attack.mitre.org/techniques/T1548/002/
+
+response:
+  message: >
+    UAC Bypass via ICMLuaUtil detected on host $agent_name$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_parentCommandLine:
+    $data_win_eventdata_parentCommandLine$. MITRE ATT&CK: T1548.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_parentCommandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1548.002
+  custom_tags:
+    - bypass
+    - icmluautil
+    - process_creation
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Dd][Ll][Ll][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_parentCommandLine:/.*\/[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ii][Dd]:\{3[Ee]5[Ff][Cc]7[Ff]9-9[Aa]51-4367-9063-[Aa]120244[Ff][Bb][Ee][Cc]7\}.*/ OR data_win_eventdata_parentCommandLine:/.*\/[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ii][Dd]:\{[Dd]2[Ee]7041[Bb]-2927-42[Ff][Bb]-8[Ee]9[Ff]-7[Cc][Ee]93[Bb]6[Dd][Cc]937\}.*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_originalFileName AND NOT (data_win_eventdata_image:/.*\\[Ww][Ee][Rr][Ff][Aa][Uu][Ll][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ee][Rr][Ff][Aa][Uu][Ll][Tt]\.[Ee][Xx][Ee]/)

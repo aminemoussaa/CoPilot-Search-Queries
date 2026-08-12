@@ -1,0 +1,162 @@
+name: Turla Group Commands May 2020
+id: 9e2e51c5-c699-4794-ba5a-29f5da40ac0c
+version: 1
+schema_version: "1.0"
+date: "2025-10-19"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9e2e51c5-c699-4794-ba5a-29f5da40ac0c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects commands used by Turla group as reported by ESET in May 2020. MITRE
+  ATT&CK: T1059.001, T1053.005, T1027.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*tracert -h 10 yahoo.com*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.WSqmCons))|iex;*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Fr`omBa`se6`4Str`ing*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - regexp:
+                        data_win_eventdata_commandLine: ".*(net[ ]+use[ ]+https://docs.live.net).*"
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*@aol.co.uk*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*tracert -h 10 yahoo.com*'; data_win_eventdata_commandLine matches
+  '*.WSqmCons))|iex;*'; data_win_eventdata_commandLine matches
+  '*Fr`omBa`se6`4Str`ing*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.welivesecurity.com/wp-content/uploads/2020/05/ESET_Turla_ComRAT.pdf
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://attack.mitre.org/techniques/T1027/
+
+response:
+  message: >
+    Turla Group Commands May 2020 detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1059.001, T1053.005, T1027
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1053.005
+    - T1027
+  custom_tags:
+    - turla
+    - group
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - stealth
+    - g0010
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Tt][Rr][Aa][Cc][Ee][Rr][Tt] -[Hh] 10 [Yy][Aa][Hh][Oo][Oo]\.[Cc][Oo][Mm].*/ OR data_win_eventdata_commandLine:/.*\.[Ww][Ss][Qq][Mm][Cc][Oo][Nn][Ss]\)\)\|[Ii][Ee][Xx];.*/ OR data_win_eventdata_commandLine:/.*[Ff][Rr]`[Oo][Mm][Bb][Aa]`[Ss][Ee]6`4[Ss][Tt][Rr]`[Ii][Nn][Gg].*/ OR (data_win_eventdata_commandLine:/.*(net[ ]+use[ ]+https:\/\/docs.live.net).*/ AND data_win_eventdata_commandLine:/.*\@[Aa][Oo][Ll]\.[Cc][Oo]\.[Uu][Kk].*/))

@@ -1,0 +1,161 @@
+name: Qakbot Uninstaller Execution
+id: bc309b7a-3c29-4937-a4a3-e232473f9168
+version: 1
+schema_version: "1.0"
+date: "2023-09-01"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bc309b7a-3c29-4937-a4a3-e232473f9168
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of the Qakbot uninstaller file mentioned in the
+  USAO-CDCA document on the disruption of the Qakbot malware and botnet.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\QbotUninstall.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=E772C815072311D6FB8C3390743E6BE5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=423A9D13D410E2DC38EABB9FDF3121D2072472D0426260283A638B822DCD5180*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=559CAE635F0D870652B9482EF436B31D4BB1A5A0F51750836F328D749291D0B6*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=855EB5481F77DDE5AD8FA6E9D953D4AEBC280DDDF9461144B16ED62817CC5071*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=FAB408536AA37C4ABC8BE97AB9C1F86CB33B63923D423FDC2859EB9D63FA8EA0*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\QbotUninstall.exe'; data_win_eventdata_hashes matches
+  '*IMPHASH=E772C815072311D6FB8C3390743E6BE5*'; data_win_eventdata_hashes
+  matches
+  '*SHA256=423A9D13D410E2DC38EABB9FDF3121D2072472D0426260283A638B822DCD5180*',
+  among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.justice.gov/usao-cdca/divisions/national-security-division/qakbot-resources
+  - https://www.virustotal.com/gui/file/7cdee5a583eacf24b1f142413aabb4e556ccf4ef3a4764ad084c1526cc90e117/community
+  - https://www.virustotal.com/gui/file/fab408536aa37c4abc8be97ab9c1f86cb33b63923d423fdc2859eb9d63fa8ea0/community
+
+response:
+  message: >
+    Qakbot Uninstaller Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - qakbot
+    - uninstaller
+    - process_creation
+    - sysmon
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Qq][Bb][Oo][Tt][Uu][Nn][Ii][Nn][Ss][Tt][Aa][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ee]772[Cc]815072311[Dd]6[Ff][Bb]8[Cc]3390743[Ee]6[Bb][Ee]5.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=423[Aa]9[Dd]13[Dd]410[Ee]2[Dd][Cc]38[Ee][Aa][Bb][Bb]9[Ff][Dd][Ff]3121[Dd]2072472[Dd]0426260283[Aa]638[Bb]822[Dd][Cc][Dd]5180.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=559[Cc][Aa][Ee]635[Ff]0[Dd]870652[Bb]9482[Ee][Ff]436[Bb]31[Dd]4[Bb][Bb]1[Aa]5[Aa]0[Ff]51750836[Ff]328[Dd]749291[Dd]0[Bb]6.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=855[Ee][Bb]5481[Ff]77[Dd][Dd][Ee]5[Aa][Dd]8[Ff][Aa]6[Ee]9[Dd]953[Dd]4[Aa][Ee][Bb][Cc]280[Dd][Dd][Dd][Ff]9461144[Bb]16[Ee][Dd]62817[Cc][Cc]5071.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Ff][Aa][Bb]408536[Aa][Aa]37[Cc]4[Aa][Bb][Cc]8[Bb][Ee]97[Aa][Bb]9[Cc]1[Ff]86[Cc][Bb]33[Bb]63923[Dd]423[Ff][Dd][Cc]2859[Ee][Bb]9[Dd]63[Ff][Aa]8[Ee][Aa]0.*/)

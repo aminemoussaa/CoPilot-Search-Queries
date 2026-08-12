@@ -1,0 +1,442 @@
+name: Potentially Suspicious GrantedAccess Flags On LSASS
+id: a18dd26b-6450-46de-8c91-9659150cf088
+version: 1
+schema_version: "1.0"
+date: "2026-06-29"
+author: Florian Roth, Roberto Rodriguez, Dimitrios Slamaris, Mark Russinovich, Thomas Patzke, Teymur Kheirkhabarov, Sherif Eldeeb, James Dickenson, Aleksey Potapov, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a18dd26b-6450-46de-8c91-9659150cf088
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects process access requests to LSASS process with potentially suspicious
+  access flags. MITRE ATT&CK: T1003.001.
+
+data_source:
+  - Sysmon EventID 10 - Process Access
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "10"
+        
+        - wildcard:
+            data_win_eventdata_targetImage:
+              value: "*\\\\lsass.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*30"
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*50"
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*70"
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*90"
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*B0"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*D0"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*F0"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*18"
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*38"
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*58"
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*78"
+              - wildcard:
+                  data_win_eventdata_grantedAccess: "*98"
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*B8"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*D8"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*F8"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*1A"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*3A"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*5A"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*7A"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*9A"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*BA"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*DA"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*FA"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "*0x14C2"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x100000*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x1418*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x1438*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x143a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x1f0fff*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x1f1fff*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x1f2fff*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x1f3fff*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_grantedAccess:
+                    value: "0x40*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_sourceImage"
+        - exists:
+            field: "data_win_eventdata_callTrace"
+        - exists:
+            field: "data_win_eventdata_grantedAccess"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*:\\\\Program Files (x86)\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*:\\\\Program Files\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*:\\\\ProgramData\\\\Microsoft\\\\Windows Defender\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\MsMpEng.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_callTrace:
+                                value: "*|?:\\\\ProgramData\\\\Microsoft\\\\Windows Defender\\\\Definition Updates\\\\{*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_callTrace:
+                                value: "*}\\\\mpengine.dll+*"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x1418"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_callTrace:
+                          value: "*|c:\\\\program files\\\\windows defender\\\\mprtp.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_callTrace:
+                          value: "*|c:\\\\program files\\\\windows defender\\\\MpClient.dll*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\explorer.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x401"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_sourceImage"
+        - exists:
+            field: "data_win_eventdata_grantedAccess"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*:\\\\ProgramData\\\\MALWAREBYTES\\\\MBAMSERVICE\\\\ctlrupdate\\\\mbupdatr.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*\\\\AppData\\\\Local\\\\Programs\\\\Microsoft VS Code\\\\Code.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*:\\\\ProgramData\\\\VMware\\\\VMware Tools\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\vmtoolsd.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\PROCEXP64.EXE"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\PROCEXP.EXE"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x40"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\MBAMInstallerService.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x40"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\aurora-agent-64.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\aurora-agent.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\thor.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\thor64.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x40"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\handle.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\handle64.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*\\\\handle64a.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x40"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\AppData\\\\Local\\\\WebEx\\\\WebexHost.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x401"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*\\\\SteamLibrary\\\\steamapps\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetImage
+    - data_win_eventdata_grantedAccess
+    - data_win_eventdata_sourceImage
+    - data_win_eventdata_callTrace
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 10 (process access) enabled in the Sysmon
+  configuration for the monitored target processes and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetImage matches
+  '*\lsass.exe'; data_win_eventdata_grantedAccess matches '*30';
+  data_win_eventdata_grantedAccess matches '*50', among other conditions.
+
+known_false_positives: >
+  Legitimate software such as AV and EDR. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows/win32/procthread/process-security-and-access-rights
+  - https://onedrive.live.com/view.aspx?resid=D026B4699190F1E6!2843&ithint=file%2cpptx&app=PowerPoint&authkey=!AMvCRTKB_V1J5ow
+  - https://web.archive.org/web/20230208123920/https://cyberwardog.blogspot.com/2017/03/chronicles-of-threat-hunter-hunting-for_22.html
+  - https://www.slideshare.net/heirhabarov/hunting-for-credentials-dumping-in-windows-environment
+  - https://web.archive.org/web/20230420013146/http://security-research.dyndns.org/pub/slides/FIRST2017/FIRST-2017_Tom-Ueltschi_Sysmon_FINAL_notes.pdf
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    Potentially Suspicious GrantedAccess Flags On LSASS detected on host
+    $agent_name$. Matched data_win_eventdata_targetImage:
+    $data_win_eventdata_targetImage$. Matched data_win_eventdata_grantedAccess:
+    $data_win_eventdata_grantedAccess$. MITRE ATT&CK: T1003.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetImage
+      type: process
+    - field: data_win_eventdata_grantedAccess
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.001
+  custom_tags:
+    - grantedaccess
+    - flags
+    - lsass
+    - process_access
+    - sysmon
+    - credential_access
+    - s0002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"10" AND data_win_eventdata_targetImage:/.*\\[Ll][Ss][Aa][Ss][Ss]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_grantedAccess:/.*30/ OR data_win_eventdata_grantedAccess:/.*50/ OR data_win_eventdata_grantedAccess:/.*70/ OR data_win_eventdata_grantedAccess:/.*90/ OR data_win_eventdata_grantedAccess:/.*[Bb]0/ OR data_win_eventdata_grantedAccess:/.*[Dd]0/ OR data_win_eventdata_grantedAccess:/.*[Ff]0/ OR data_win_eventdata_grantedAccess:/.*18/ OR data_win_eventdata_grantedAccess:/.*38/ OR data_win_eventdata_grantedAccess:/.*58/ OR data_win_eventdata_grantedAccess:/.*78/ OR data_win_eventdata_grantedAccess:/.*98/ OR data_win_eventdata_grantedAccess:/.*[Bb]8/ OR data_win_eventdata_grantedAccess:/.*[Dd]8/ OR data_win_eventdata_grantedAccess:/.*[Ff]8/ OR data_win_eventdata_grantedAccess:/.*1[Aa]/ OR data_win_eventdata_grantedAccess:/.*3[Aa]/ OR data_win_eventdata_grantedAccess:/.*5[Aa]/ OR data_win_eventdata_grantedAccess:/.*7[Aa]/ OR data_win_eventdata_grantedAccess:/.*9[Aa]/ OR data_win_eventdata_grantedAccess:/.*[Bb][Aa]/ OR data_win_eventdata_grantedAccess:/.*[Dd][Aa]/ OR data_win_eventdata_grantedAccess:/.*[Ff][Aa]/ OR data_win_eventdata_grantedAccess:/.*0[Xx]14[Cc]2/ OR data_win_eventdata_grantedAccess:/0[Xx]100000.*/ OR data_win_eventdata_grantedAccess:/0[Xx]1418.*/ OR data_win_eventdata_grantedAccess:/0[Xx]1438.*/ OR data_win_eventdata_grantedAccess:/0[Xx]143[Aa].*/ OR data_win_eventdata_grantedAccess:/0[Xx]1[Ff]0[Ff][Ff][Ff].*/ OR data_win_eventdata_grantedAccess:/0[Xx]1[Ff]1[Ff][Ff][Ff].*/ OR data_win_eventdata_grantedAccess:/0[Xx]1[Ff]2[Ff][Ff][Ff].*/ OR data_win_eventdata_grantedAccess:/0[Xx]1[Ff]3[Ff][Ff][Ff].*/ OR data_win_eventdata_grantedAccess:/0[Xx]40.*/) AND _exists_:data_win_eventdata_sourceImage AND _exists_:data_win_eventdata_callTrace AND _exists_:data_win_eventdata_grantedAccess AND NOT (data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_sourceImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_sourceImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR (data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/ AND data_win_eventdata_sourceImage:/.*\\[Mm][Ss][Mm][Pp][Ee][Nn][Gg]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_callTrace:/.*\|.:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Dd][Ee][Ff][Ii][Nn][Ii][Tt][Ii][Oo][Nn] [Uu][Pp][Dd][Aa][Tt][Ee][Ss]\\\{.*/ AND data_win_eventdata_callTrace:/.*\}\\[Mm][Pp][Ee][Nn][Gg][Ii][Nn][Ee]\.[Dd][Ll][Ll]\+.*/ AND data_win_eventdata_grantedAccess:/0[Xx]1418/) OR data_win_eventdata_callTrace:/.*\|[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Mm][Pp][Rr][Tt][Pp]\.[Dd][Ll][Ll].*/ OR data_win_eventdata_callTrace:/.*\|[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Mm][Pp][Cc][Ll][Ii][Ee][Nn][Tt]\.[Dd][Ll][Ll].*/ OR (data_win_eventdata_sourceImage:/.*\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_grantedAccess:/0[Xx]401/)) AND _exists_:data_win_eventdata_sourceImage AND _exists_:data_win_eventdata_grantedAccess AND NOT (data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Mm][Aa][Ll][Ww][Aa][Rr][Ee][Bb][Yy][Tt][Ee][Ss]\\[Mm][Bb][Aa][Mm][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\\[Cc][Tt][Ll][Rr][Uu][Pp][Dd][Aa][Tt][Ee]\\[Mm][Bb][Uu][Pp][Dd][Aa][Tt][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ss] [Cc][Oo][Dd][Ee]\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Vv][Mm][Ww][Aa][Rr][Ee]\\[Vv][Mm][Ww][Aa][Rr][Ee] [Tt][Oo][Oo][Ll][Ss]\\.*/ AND data_win_eventdata_sourceImage:/.*\\[Vv][Mm][Tt][Oo][Oo][Ll][Ss][Dd]\.[Ee][Xx][Ee]/) OR ((data_win_eventdata_sourceImage:/.*\\[Pp][Rr][Oo][Cc][Ee][Xx][Pp]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Rr][Oo][Cc][Ee][Xx][Pp]\.[Ee][Xx][Ee]/) AND data_win_eventdata_grantedAccess:/0[Xx]40/) OR (data_win_eventdata_sourceImage:/.*\\[Mm][Bb][Aa][Mm][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_grantedAccess:/0[Xx]40/) OR ((data_win_eventdata_sourceImage:/.*\\[Aa][Uu][Rr][Oo][Rr][Aa]-[Aa][Gg][Ee][Nn][Tt]-64\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Aa][Uu][Rr][Oo][Rr][Aa]-[Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Tt][Hh][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Tt][Hh][Oo][Rr]64\.[Ee][Xx][Ee]/) AND data_win_eventdata_grantedAccess:/0[Xx]40/) OR ((data_win_eventdata_sourceImage:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee]64[Aa]\.[Ee][Xx][Ee]/) AND data_win_eventdata_grantedAccess:/0[Xx]40/) OR (data_win_eventdata_sourceImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Ww][Ee][Bb][Ee][Xx]\\[Ww][Ee][Bb][Ee][Xx][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_grantedAccess:/0[Xx]401/) OR data_win_eventdata_sourceImage:/.*\\[Ss][Tt][Ee][Aa][Mm][Ll][Ii][Bb][Rr][Aa][Rr][Yy]\\[Ss][Tt][Ee][Aa][Mm][Aa][Pp][Pp][Ss]\\.*/)

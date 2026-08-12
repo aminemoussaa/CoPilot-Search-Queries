@@ -1,0 +1,161 @@
+name: OMIGOD SCX RunAsProvider ExecuteScript
+id: 6eea1bf6-f8d2-488a-a742-e6ef6c1b67db
+version: 1
+schema_version: "1.0"
+date: "2022-10-05"
+author: Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research), MSTIC
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6eea1bf6-f8d2-488a-a742-e6ef6c1b67db
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Rule to detect the use of the SCX RunAsProvider ExecuteScript to execute any
+  UNIX/Linux script using the /bin/sh shell. Script being executed gets created
+  as a temp file in /tmp folder with a scx* prefix. Then it is invoked from the
+  following directory /etc/opt/microsoft/scx/conf/tmpdir/. The file in that
+  directory has the same prefix scx*. SCXcore, started as the Microsoft
+  Operations Manager UNIX/Linux Agent, is now used in a host of products
+  including Microsoft Operations Manager, Microsoft Azure, and Microsoft
+  Operations Management Suite. MITRE ATT&CK: T1068, T1190, T1203.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_process_exec_process_uid:
+              value: "root"
+              case_insensitive: true
+        - term:
+            data_process_exec_process_auid: "0"
+        - term:
+            data_process_exec_process_cwd:
+              value: "/var/opt/microsoft/scx/tmp"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*/etc/opt/microsoft/scx/conf/tmpdir/scx*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_uid
+    - data_process_exec_process_auid
+    - data_process_exec_process_cwd
+    - data_process_exec_process_arguments
+    - data_process_exec_process_binary
+    - data_process_exec_parent_binary
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_uid equals 'root'; data_process_exec_process_auid
+  equals '0'; data_process_exec_process_cwd equals '/var/opt/microsoft/scx/tmp',
+  among other conditions.
+
+known_false_positives: >
+  Legitimate use of SCX RunAsProvider ExecuteScript. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.wiz.io/blog/omigod-critical-vulnerabilities-in-omi-azure
+  - https://github.com/Azure/Azure-Sentinel/pull/3059
+  - https://attack.mitre.org/techniques/T1068/
+  - https://attack.mitre.org/techniques/T1190/
+  - https://attack.mitre.org/techniques/T1203/
+
+response:
+  message: >
+    OMIGOD SCX RunAsProvider ExecuteScript detected on host $agent_name$.
+    Matched data_process_exec_process_uid: $data_process_exec_process_uid$.
+    Matched data_process_exec_process_auid: $data_process_exec_process_auid$.
+    MITRE ATT&CK: T1068, T1190, T1203
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_uid
+      type: other
+    - field: data_process_exec_process_auid
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1068
+    - T1190
+    - T1203
+  custom_tags:
+    - omigod
+    - runasprovider
+    - executescript
+    - linux
+    - tetragon
+    - process_creation
+    - privilege_escalation
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_uid:/[Rr][Oo][Oo][Tt]/ AND data_process_exec_process_auid:"0" AND data_process_exec_process_cwd:/\/[Vv][Aa][Rr]\/[Oo][Pp][Tt]\/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\/[Ss][Cc][Xx]\/[Tt][Mm][Pp]/ AND data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/[Oo][Pp][Tt]\/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\/[Ss][Cc][Xx]\/[Cc][Oo][Nn][Ff]\/[Tt][Mm][Pp][Dd][Ii][Rr]\/[Ss][Cc][Xx].*/

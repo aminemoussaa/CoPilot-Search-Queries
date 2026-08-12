@@ -1,0 +1,142 @@
+name: DCERPC SMB Spoolss Named Pipe
+id: 214e8f95-100a-4e04-bb31-ef6cba8ce07e
+version: 1
+schema_version: "1.0"
+date: "2022-08-11"
+author: OTR (Open Threat Research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 214e8f95-100a-4e04-bb31-ef6cba8ce07e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of the spoolss named pipe over SMB. This can be used to
+  trigger the authentication via NTLM of any machine that has the spoolservice
+  enabled. MITRE ATT&CK: T1021.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5145"
+        - term:
+            data_win_eventdata_shareName:
+              value: "\\\\*\\IPC$"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_relativeTargetName:
+              value: "spoolss"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_shareName
+    - data_win_eventdata_relativeTargetName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5145'; data_win_eventdata_shareName equals
+  '\\*\IPC$'; data_win_eventdata_relativeTargetName equals 'spoolss'.
+
+known_false_positives: >
+  Domain Controllers acting as printer servers too? :). Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://posts.specterops.io/hunting-in-active-directory-unconstrained-delegation-forests-trusts-71f2b33688e1
+  - https://dirkjanm.io/a-different-way-of-abusing-zerologon/
+  - https://twitter.com/_dirkjan/status/1309214379003588608
+  - https://attack.mitre.org/techniques/T1021/002/
+
+response:
+  message: >
+    DCERPC SMB Spoolss Named Pipe detected on host $agent_name$. Matched
+    data_win_eventdata_shareName: $data_win_eventdata_shareName$. Matched
+    data_win_eventdata_relativeTargetName:
+    $data_win_eventdata_relativeTargetName$. MITRE ATT&CK: T1021.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_shareName
+      type: other
+    - field: data_win_eventdata_relativeTargetName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1021.002
+  custom_tags:
+    - dcerpc
+    - spoolss
+    - named
+    - windows_security
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5145" AND data_win_eventdata_shareName:/\\\\\*\\[Ii][Pp][Cc]\$/ AND data_win_eventdata_relativeTargetName:/[Ss][Pp][Oo][Oo][Ll][Ss][Ss]/

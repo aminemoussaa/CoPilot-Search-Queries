@@ -1,0 +1,210 @@
+name: Scheduled Tasks Names Used By SVR For GraphicalProton Backdoor - Task Scheduler
+id: 2bfc1373-0220-4fbd-8b10-33ddafd2a142
+version: 1
+schema_version: "1.0"
+date: "2023-12-18"
+author: CISA
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2bfc1373-0220-4fbd-8b10-33ddafd2a142
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Hunts for known SVR-specific scheduled task names.
+
+data_source:
+  - Windows Task Scheduler Operational Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "129"
+              - term:
+                  data_win_system_eventID: "140"
+              - term:
+                  data_win_system_eventID: "141"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\defender"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\DefenderService"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Application Experience\\StartupAppTaskCheck"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Application Experience\\StartupAppTaskCkeck"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\ATPUpd"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Data Integrity Scan\\Data Integrity Update"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\DefenderUPDService"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\IISUpdateService"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Speech\\SpeechModelInstallTask"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\WiMSDFS"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Windows Defender\\Defender Update Service"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Windows Defender\\Service Update"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Windows Error Reporting\\CheckReporting"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Windows Error Reporting\\SubmitReporting"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\Windows Filtering Platform\\BfeOnServiceStart"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\WindowsDefenderService"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\WindowsDefenderService2"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\WindowsUpdate\\Scheduled AutoCheck"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\Microsoft\\Windows\\WindowsUpdate\\Scheduled Check"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_taskName:
+                    value: "\\WindowUpdate"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_taskName
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_eventID equals '129'; data_win_system_eventID
+  equals '140'; data_win_system_eventID equals '141', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.cisa.gov/news-events/cybersecurity-advisories/aa23-347a
+
+response:
+  message: >
+    Scheduled Tasks Names Used By SVR For GraphicalProton Backdoor - Task
+    Scheduler detected on host $agent_name$. Matched
+    data_win_eventdata_taskName: $data_win_eventdata_taskName$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_taskName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - scheduled
+    - tasks
+    - names
+    - taskscheduler
+    - persistence
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"129" OR data_win_system_eventID:"140" OR data_win_system_eventID:"141") AND (data_win_eventdata_taskName:/\\[Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn] [Ee][Xx][Pp][Ee][Rr][Ii][Ee][Nn][Cc][Ee]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp][Aa][Pp][Pp][Tt][Aa][Ss][Kk][Cc][Hh][Ee][Cc][Kk]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn] [Ee][Xx][Pp][Ee][Rr][Ii][Ee][Nn][Cc][Ee]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp][Aa][Pp][Pp][Tt][Aa][Ss][Kk][Cc][Kk][Ee][Cc][Kk]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Aa][Tt][Pp][Uu][Pp][Dd]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Dd][Aa][Tt][Aa] [Ii][Nn][Tt][Ee][Gg][Rr][Ii][Tt][Yy] [Ss][Cc][Aa][Nn]\\[Dd][Aa][Tt][Aa] [Ii][Nn][Tt][Ee][Gg][Rr][Ii][Tt][Yy] [Uu][Pp][Dd][Aa][Tt][Ee]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr][Uu][Pp][Dd][Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Ii][Ss][Uu][Pp][Dd][Aa][Tt][Ee][Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Pp][Ee][Ee][Cc][Hh]\\[Ss][Pp][Ee][Ee][Cc][Hh][Mm][Oo][Dd][Ee][Ll][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Tt][Aa][Ss][Kk]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Mm][Ss][Dd][Ff][Ss]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr] [Uu][Pp][Dd][Aa][Tt][Ee] [Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Uu][Pp][Dd][Aa][Tt][Ee]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Ee][Rr][Rr][Oo][Rr] [Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]\\[Cc][Hh][Ee][Cc][Kk][Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Ee][Rr][Rr][Oo][Rr] [Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]\\[Ss][Uu][Bb][Mm][Ii][Tt][Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Ff][Ii][Ll][Tt][Ee][Rr][Ii][Nn][Gg] [Pp][Ll][Aa][Tt][Ff][Oo][Rr][Mm]\\[Bb][Ff][Ee][Oo][Nn][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss][Tt][Aa][Rr][Tt]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]2/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Uu][Pp][Dd][Aa][Tt][Ee]\\[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd] [Aa][Uu][Tt][Oo][Cc][Hh][Ee][Cc][Kk]/ OR data_win_eventdata_taskName:/\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Uu][Pp][Dd][Aa][Tt][Ee]\\[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd] [Cc][Hh][Ee][Cc][Kk]/ OR data_win_eventdata_taskName:/\\[Ww][Ii][Nn][Dd][Oo][Ww][Uu][Pp][Dd][Aa][Tt][Ee]/)

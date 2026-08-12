@@ -1,0 +1,172 @@
+name: Uncommon Connection to Active Directory Web Services
+id: b3ad3c0f-c949-47a1-a30e-b0491ccae876
+version: 1
+schema_version: "1.0"
+date: "2024-01-26"
+author: "@kostastsale"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b3ad3c0f-c949-47a1-a30e-b0491ccae876
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects uncommon network connections to the Active Directory Web Services
+  (ADWS) from processes not typically associated with ADWS management. MITRE
+  ATT&CK: T1087.
+
+data_source:
+  - Sysmon EventID 3 - Network Connection
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "3"
+        
+        - term:
+            data_win_eventdata_initiated: true
+        - term:
+            data_win_eventdata_destinationPort: "9389"
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\system32\\dsac.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\Microsoft Monitoring Agent\\"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\PowerShell\\\\7-preview\\\\pwsh.ex*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Windows\\\\SysWOW64\\\\WindowsPowerShell\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_initiated
+    - data_win_eventdata_destinationPort
+    - data_win_eventdata_image
+    - data_win_eventdata_destinationIp
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 3 (network connection) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_initiated equals 'True'; data_win_eventdata_destinationPort
+  equals '9389'; data_win_eventdata_image equals 'C:\Windows\system32\dsac.exe',
+  among other conditions.
+
+known_false_positives: >
+  ADWS is used by a number of legitimate applications that need to interact with
+  Active Directory. These applications should be added to the allow-listing to
+  avoid false positives. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://medium.com/falconforce/soaphound-tool-to-collect-active-directory-data-via-adws-165aca78288c
+  - https://github.com/FalconForceTeam/FalconFriday/blob/a9219dfcfd89836f34660223f47d766982bdce46/Discovery/ADWS_Connection_from_Unexpected_Binary-Win.md
+  - https://attack.mitre.org/techniques/T1087/
+
+response:
+  message: >
+    Uncommon Connection to Active Directory Web Services detected on host
+    $agent_name$. Matched data_win_eventdata_initiated:
+    $data_win_eventdata_initiated$. Matched data_win_eventdata_destinationPort:
+    $data_win_eventdata_destinationPort$. MITRE ATT&CK: T1087
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_initiated
+      type: other
+    - field: data_win_eventdata_destinationPort
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1087
+  custom_tags:
+    - uncommon
+    - connection
+    - active
+    - network_connection
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"3" AND data_win_eventdata_initiated:true AND data_win_eventdata_destinationPort:"9389" AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Ss][Aa][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg] [Aa][Gg][Ee][Nn][Tt][\\]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7-[Pp][Rr][Ee][Vv][Ii][Ee][Ww]\\[Pp][Ww][Ss][Hh]\.[Ee][Xx].*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\.*/)

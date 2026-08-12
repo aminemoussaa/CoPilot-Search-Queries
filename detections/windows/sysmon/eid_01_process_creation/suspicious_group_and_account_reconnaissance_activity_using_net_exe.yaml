@@ -1,0 +1,231 @@
+name: Suspicious Group And Account Reconnaissance Activity Using Net.EXE
+id: d95de845-b83c-4a9a-8a6a-4fc802ebf6c0
+version: 1
+schema_version: "1.0"
+date: "2023-03-02"
+author: Florian Roth (Nextron Systems), omkar72, @svch0st, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d95de845-b83c-4a9a-8a6a-4fc802ebf6c0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious reconnaissance command line activity on Windows systems
+  using Net.EXE Check if the user that executed the commands is suspicious (e.g.
+  service accounts, LOCAL_SYSTEM). MITRE ATT&CK: T1087.001, T1087.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\net.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\net1.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "net.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "net1.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* group *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* localgroup *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*domain admins*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* administrator*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* administrateur*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*enterprise admins*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Exchange Trusted Subsystem*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Remote Desktop Users*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Utilisateurs du Bureau à distance*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Usuarios de escritorio remoto*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /do*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - exists:
+                        field: "data_win_eventdata_commandLine"
+                    - bool:
+                        must_not:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /add*"
+                                case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* accounts *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /do*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\net.exe';
+  data_win_eventdata_image matches '*\net1.exe';
+  data_win_eventdata_originalFileName equals 'net.exe', among other conditions.
+
+known_false_positives: >
+  Inventory tool runs. Administrative activity. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://redcanary.com/blog/how-one-hospital-thwarted-a-ryuk-ransomware-outbreak/
+  - https://thedfirreport.com/2020/10/18/ryuk-in-5-hours/
+  - https://research.nccgroup.com/2022/08/19/back-in-black-unlocking-a-lockbit-3-0-ransomware-attack/
+  - https://attack.mitre.org/techniques/T1087/001/
+  - https://attack.mitre.org/techniques/T1087/002/
+
+response:
+  message: >
+    Suspicious Group And Account Reconnaissance Activity Using Net.EXE detected
+    on host $agent_name$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1087.001, T1087.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1087.001
+    - T1087.002
+  custom_tags:
+    - group
+    - account
+    - reconnaissance
+    - process_creation
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ee][Tt]1\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ee][Tt]1\.[Ee][Xx][Ee]/) AND (((data_win_eventdata_commandLine:/.* [Gg][Rr][Oo][Uu][Pp] .*/ OR data_win_eventdata_commandLine:/.* [Ll][Oo][Cc][Aa][Ll][Gg][Rr][Oo][Uu][Pp] .*/) AND (data_win_eventdata_commandLine:/.*[Dd][Oo][Mm][Aa][Ii][Nn] [Aa][Dd][Mm][Ii][Nn][Ss].*/ OR data_win_eventdata_commandLine:/.* [Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Oo][Rr].*/ OR data_win_eventdata_commandLine:/.* [Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Ee][Uu][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ee][Nn][Tt][Ee][Rr][Pp][Rr][Ii][Ss][Ee] [Aa][Dd][Mm][Ii][Nn][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ee][Xx][Cc][Hh][Aa][Nn][Gg][Ee] [Tt][Rr][Uu][Ss][Tt][Ee][Dd] [Ss][Uu][Bb][Ss][Yy][Ss][Tt][Ee][Mm].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Mm][Oo][Tt][Ee] [Dd][Ee][Ss][Kk][Tt][Oo][Pp] [Uu][Ss][Ee][Rr][Ss].*/ OR data_win_eventdata_commandLine:/.*[Uu][Tt][Ii][Ll][Ii][Ss][Aa][Tt][Ee][Uu][Rr][Ss] [Dd][Uu] [Bb][Uu][Rr][Ee][Aa][Uu] [Àà] [Dd][Ii][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Uu][Aa][Rr][Ii][Oo][Ss] [Dd][Ee] [Ee][Ss][Cc][Rr][Ii][Tt][Oo][Rr][Ii][Oo] [Rr][Ee][Mm][Oo][Tt][Oo].*/ OR data_win_eventdata_commandLine:/.* \/[Dd][Oo].*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.* \/[Aa][Dd][Dd].*/)) OR (data_win_eventdata_commandLine:/.* [Aa][Cc][Cc][Oo][Uu][Nn][Tt][Ss] .*/ AND data_win_eventdata_commandLine:/.* \/[Dd][Oo].*/))

@@ -1,0 +1,145 @@
+name: Potentially Suspicious Execution From Tmp Folder
+id: 312b42b1-bded-4441-8b58-163a3af58775
+version: 1
+schema_version: "1.0"
+date: "2025-08-05"
+author: Joseliyo Sanchez, @Joseliyo_Jstnk
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 312b42b1-bded-4441-8b58-163a3af58775
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a potentially suspicious execution of a process located in the '/tmp/'
+  folder. MITRE ATT&CK: T1036.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "/tmp/*"
+              case_insensitive: true
+        - exists:
+            field: "data_process_exec_process_binary"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/usr/bin/nextcloud"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '/tmp/*';
+  data_process_exec_process_binary matches '*/usr/bin/nextcloud'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blogs.jpcert.or.jp/en/2023/05/gobrat.html
+  - https://jstnk9.github.io/jstnk9/research/GobRAT-Malware/
+  - https://www.virustotal.com/gui/file/60bcd645450e4c846238cf0e7226dc40c84c96eba99f6b2cffcd0ab4a391c8b3/detection
+  - https://www.virustotal.com/gui/file/3e44c807a25a56f4068b5b8186eee5002eed6f26d665a8b791c472ad154585d1/detection
+  - https://attack.mitre.org/techniques/T1036/
+
+response:
+  message: >
+    Potentially Suspicious Execution From Tmp Folder detected on host
+    $agent_name$. Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1036
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036
+  custom_tags:
+    - folder
+    - linux
+    - tetragon
+    - process_creation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/\/[Tt][Mm][Pp]\/.*/ AND _exists_:data_process_exec_process_binary AND NOT (data_process_exec_process_binary:/.*\/[Uu][Ss][Rr]\/[Bb][Ii][Nn]\/[Nn][Ee][Xx][Tt][Cc][Ll][Oo][Uu][Dd]/)

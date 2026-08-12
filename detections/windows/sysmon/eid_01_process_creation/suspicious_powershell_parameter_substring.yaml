@@ -1,0 +1,579 @@
+name: Suspicious PowerShell Parameter Substring
+id: 36210e0d-5b19-485d-a087-c096088885f0
+version: 1
+schema_version: "1.0"
+date: "2022-07-14"
+author: Florian Roth (Nextron Systems), Daniel Bohannon (idea), Roberto Rodriguez (Fix)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 36210e0d-5b19-485d-a087-c096088885f0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious PowerShell invocation with a parameter substring. MITRE
+  ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -windowstyle h *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -windowstyl h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -windowsty h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -windowst h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -windows h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -windo h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -wind h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -win h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -wi h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -win h *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -win hi *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -win hid *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -win hidd *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -win hidde *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoPr *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoPro *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoProf *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoProfi *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoProfil *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -nonin *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -nonint *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noninte *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noninter *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -nonintera *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noninterac *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noninteract *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noninteracti *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noninteractiv *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -ec *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encodedComman *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encodedComma *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encodedComm *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encodedCom *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encodedCo *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encodedC *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encoded *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encode *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -encod *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -enco *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -en *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -executionpolic *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -executionpoli *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -executionpol *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -executionpo *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -executionp *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -execution bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -executio bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -executi bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -execut bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -execu bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -exec bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -exe bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -ex bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -ep bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /windowstyle h *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /windowstyl h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /windowsty h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /windowst h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /windows h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /windo h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /wind h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /win h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /wi h*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /win h *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /win hi *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /win hid *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /win hidd *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /win hidde *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /NoPr *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /NoPro *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /NoProf *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /NoProfi *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /NoProfil *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /nonin *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /nonint *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /noninte *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /noninter *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /nonintera *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /noninterac *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /noninteract *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /noninteracti *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /noninteractiv *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /ec *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encodedComman *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encodedComma *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encodedComm *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encodedCom *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encodedCo *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encodedC *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encoded *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encode *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /encod *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /enco *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /en *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /executionpolic *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /executionpoli *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /executionpol *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /executionpo *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /executionp *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /execution bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /executio bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /executi bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /execut bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /execu bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /exec bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /exe bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /ex bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /ep bypass*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell.exe'; data_win_eventdata_image matches '*\pwsh.exe';
+  data_win_eventdata_commandLine matches '* -windowstyle h *', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - http://www.danielbohannon.com/blog-1/2017/3/12/powershell-execution-argument-obfuscation-how-it-can-make-detection-easier
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Suspicious PowerShell Parameter Substring detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - powershell
+    - parameter
+    - substring
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll][Ee] [Hh] .*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd][Oo] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii] [Hh].*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn] [Hh] .*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn] [Hh][Ii] .*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn] [Hh][Ii][Dd] .*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn] [Hh][Ii][Dd][Dd] .*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn] [Hh][Ii][Dd][Dd][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp][Rr] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp][Rr][Oo] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp][Rr][Oo][Ff] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp][Rr][Oo][Ff][Ii] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp][Rr][Oo][Ff][Ii][Ll] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc][Tt] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc][Tt][Ii] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc][Tt][Ii][Vv] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt][Ii] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu][Tt] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc][Uu] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Pp] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll][Ee] [Hh] .*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd][Oo] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii] [Hh].*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn] [Hh] .*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn] [Hh][Ii] .*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn] [Hh][Ii][Dd] .*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn] [Hh][Ii][Dd][Dd] .*/ OR data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn] [Hh][Ii][Dd][Dd][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Pp][Rr] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Pp][Rr][Oo] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Pp][Rr][Oo][Ff] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Pp][Rr][Oo][Ff][Ii] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Pp][Rr][Oo][Ff][Ii][Ll] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc][Tt] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc][Tt][Ii] .*/ OR data_win_eventdata_commandLine:/.* \/[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc][Tt][Ii][Vv] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Cc] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee][Dd] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo][Dd] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Oo] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt][Ii] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu][Tt] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc][Uu] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Cc] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Xx] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Pp] [Bb][Yy][Pp][Aa][Ss][Ss].*/)

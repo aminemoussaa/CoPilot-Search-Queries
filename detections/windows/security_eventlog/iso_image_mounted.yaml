@@ -1,0 +1,165 @@
+name: ISO Image Mounted
+id: 0248a7bc-8a9a-4cd8-a57e-3ae8e073a073
+version: 1
+schema_version: "1.0"
+date: "2023-11-09"
+author: Syed Hasan (@syedhasan009)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0248a7bc-8a9a-4cd8-a57e-3ae8e073a073
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the mount of an ISO image on an endpoint. MITRE ATT&CK: T1566.001.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4663"
+        - term:
+            data_win_eventdata_objectServer:
+              value: "Security"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_objectType:
+              value: "File"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_objectName:
+              value: "\\\\Device\\\\CdRom*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_objectName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_objectName:
+                          value: "\\Device\\CdRom0\\autorun.ico"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_objectName:
+                          value: "\\Device\\CdRom0\\setup.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_objectName:
+                          value: "\\Device\\CdRom0\\setup64.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_objectServer
+    - data_win_eventdata_objectType
+    - data_win_eventdata_objectName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4663'; data_win_eventdata_objectServer equals
+  'Security'; data_win_eventdata_objectType equals 'File', among other
+  conditions.
+
+known_false_positives: >
+  Software installation ISO files. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.trendmicro.com/vinfo/hk-en/security/news/cybercrime-and-digital-threats/malicious-spam-campaign-uses-iso-image-files-to-deliver-lokibot-and-nanocore
+  - https://www.proofpoint.com/us/blog/threat-insight/threat-actor-profile-ta2719-uses-colorful-lures-deliver-rats-local-languages
+  - https://twitter.com/MsftSecIntel/status/1257324139515269121
+  - https://github.com/redcanaryco/atomic-red-team/blob/0f229c0e42bfe7ca736a14023836d65baa941ed2/atomics/T1553.005/T1553.005.md#atomic-test-1---mount-iso-image
+  - https://attack.mitre.org/techniques/T1566/001/
+
+response:
+  message: >
+    ISO Image Mounted detected on host $agent_name$. Matched
+    data_win_eventdata_objectServer: $data_win_eventdata_objectServer$. Matched
+    data_win_eventdata_objectType: $data_win_eventdata_objectType$. MITRE
+    ATT&CK: T1566.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_objectServer
+      type: other
+    - field: data_win_eventdata_objectType
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1566.001
+  custom_tags:
+    - image
+    - mounted
+    - windows_security
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4663" AND data_win_eventdata_objectServer:/[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy]/ AND data_win_eventdata_objectType:/[Ff][Ii][Ll][Ee]/ AND data_win_eventdata_objectName:/\\[Dd][Ee][Vv][Ii][Cc][Ee]\\[Cc][Dd][Rr][Oo][Mm].*/ AND _exists_:data_win_eventdata_objectName AND NOT (data_win_eventdata_objectName:/\\[Dd][Ee][Vv][Ii][Cc][Ee]\\[Cc][Dd][Rr][Oo][Mm]0\\[Aa][Uu][Tt][Oo][Rr][Uu][Nn]\.[Ii][Cc][Oo]/ OR data_win_eventdata_objectName:/\\[Dd][Ee][Vv][Ii][Cc][Ee]\\[Cc][Dd][Rr][Oo][Mm]0\\[Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_objectName:/\\[Dd][Ee][Vv][Ii][Cc][Ee]\\[Cc][Dd][Rr][Oo][Mm]0\\[Ss][Ee][Tt][Uu][Pp]64\.[Ee][Xx][Ee]/)

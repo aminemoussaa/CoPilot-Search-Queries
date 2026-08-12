@@ -1,0 +1,271 @@
+name: Process Proxy Execution Via Squirrel.EXE
+id: 45239e6a-b035-4aaf-b339-8ad379fcb67e
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Nasreddine Bencherchali (Nextron Systems), Karneades / Markus Neis, Jonhnathan Ribeiro, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 45239e6a-b035-4aaf-b339-8ad379fcb67e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the usage of the "Squirrel.exe" binary to execute arbitrary processes.
+  This binary is part of multiple Electron based software installations (Slack,
+  Teams, Discord, etc.). MITRE ATT&CK: T1218.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\squirrel.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\update.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--processStart*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--processStartAndWait*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--createShortcut*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\AppData\\\\Local\\\\Discord\\\\Update.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Discord.exe*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--createShortcut*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--processStart*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\AppData\\\\Local\\\\GitHubDesktop\\\\Update.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*GitHubDesktop.exe*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--createShortcut*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--processStartAndWait*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\Update.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Teams.exe*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--processStart*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--createShortcut*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\AppData\\\\Local\\\\yammerdesktop\\\\Update.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Yammer.exe*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--processStart*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*--createShortcut*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\squirrel.exe'; data_win_eventdata_image matches '*\update.exe';
+  data_win_eventdata_commandLine matches '*--processStart*', among other
+  conditions.
+
+known_false_positives: >
+  Expected FP with some Electron based applications such as (1Clipboard, Beaker
+  Browser, Caret, Discord, GitHub Desktop, etc.). Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://lolbas-project.github.io/lolbas/OtherMSBinaries/Squirrel/
+  - http://www.hexacorn.com/blog/2019/03/30/sqirrel-packages-manager-as-a-lolbin-a-k-a-many-electron-apps-are-lolbins-by-default/
+  - http://www.hexacorn.com/blog/2018/08/16/squirrel-as-a-lolbin/
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Process Proxy Execution Via Squirrel.EXE detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1218
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+  custom_tags:
+    - proxy
+    - squirrel
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Qq][Uu][Ii][Rr][Rr][Ee][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*--[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ss][Tt][Aa][Rr][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ss][Tt][Aa][Rr][Tt][Aa][Nn][Dd][Ww][Aa][Ii][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Cc][Rr][Ee][Aa][Tt][Ee][Ss][Hh][Oo][Rr][Tt][Cc][Uu][Tt].*/) AND _exists_:data_win_eventdata_commandLine AND NOT ((data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_commandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Dd][Ii][Ss][Cc][Oo][Rr][Dd]\\[Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_commandLine:/.*[Dd][Ii][Ss][Cc][Oo][Rr][Dd]\.[Ee][Xx][Ee].*/ AND (data_win_eventdata_commandLine:/.*--[Cc][Rr][Ee][Aa][Tt][Ee][Ss][Hh][Oo][Rr][Tt][Cc][Uu][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ss][Tt][Aa][Rr][Tt].*/)) OR (data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_commandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Gg][Ii][Tt][Hh][Uu][Bb][Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\[Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_commandLine:/.*[Gg][Ii][Tt][Hh][Uu][Bb][Dd][Ee][Ss][Kk][Tt][Oo][Pp]\.[Ee][Xx][Ee].*/ AND (data_win_eventdata_commandLine:/.*--[Cc][Rr][Ee][Aa][Tt][Ee][Ss][Hh][Oo][Rr][Tt][Cc][Uu][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ss][Tt][Aa][Rr][Tt][Aa][Nn][Dd][Ww][Aa][Ii][Tt].*/)) OR (data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_commandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Tt][Ee][Aa][Mm][Ss]\\[Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_commandLine:/.*[Tt][Ee][Aa][Mm][Ss]\.[Ee][Xx][Ee].*/ AND (data_win_eventdata_commandLine:/.*--[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ss][Tt][Aa][Rr][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Cc][Rr][Ee][Aa][Tt][Ee][Ss][Hh][Oo][Rr][Tt][Cc][Uu][Tt].*/)) OR (data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_commandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Yy][Aa][Mm][Mm][Ee][Rr][Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\[Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_commandLine:/.*[Yy][Aa][Mm][Mm][Ee][Rr]\.[Ee][Xx][Ee].*/ AND (data_win_eventdata_commandLine:/.*--[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ss][Tt][Aa][Rr][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Cc][Rr][Ee][Aa][Tt][Ee][Ss][Hh][Oo][Rr][Tt][Cc][Uu][Tt].*/)))

@@ -1,0 +1,204 @@
+name: Potential Ryuk Ransomware Activity
+id: c37510b8-2107-4b78-aa32-72f251e7a844
+version: 1
+schema_version: "1.0"
+date: "2023-02-03"
+author: Florian Roth (Nextron Systems), Vasiliy Burov, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c37510b8-2107-4b78-aa32-72f251e7a844
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects Ryuk ransomware activity. MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Microsoft\\\\Windows\\\\CurrentVersion\\\\Run*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*C:\\\\users\\\\Public\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*del /s /f /q c:\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\*.bac*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\*.bak*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\*.bkf*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\net.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\net1.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* stop *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /y*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*samss*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*audioendpointbuilder*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*unistoresvc_*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*AcrSch2Svc*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*Microsoft\Windows\CurrentVersion\Run*'; data_win_eventdata_commandLine
+  matches '*C:\users\Public\*'; data_win_eventdata_commandLine matches '*del /s
+  /f /q c:\*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://app.any.run/tasks/d860402c-3ff4-4c1f-b367-0237da714ed1/
+  - https://research.checkpoint.com/ryuk-ransomware-targeted-campaign-break/
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Potential Ryuk Ransomware Activity detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1547.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - ransomware
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn].*/ AND data_win_eventdata_commandLine:/.*[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/) OR (data_win_eventdata_commandLine:/.*[Dd][Ee][Ll] \/[Ss] \/[Ff] \/[Qq] [Cc]:\\.*/ AND data_win_eventdata_commandLine:/.*\*\.[Bb][Aa][Cc].*/ AND data_win_eventdata_commandLine:/.*\*\.[Bb][Aa][Kk].*/ AND data_win_eventdata_commandLine:/.*\*\.[Bb][Kk][Ff].*/) OR ((data_win_eventdata_image:/.*\\[Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ee][Tt]1\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.* [Ss][Tt][Oo][Pp] .*/ AND data_win_eventdata_commandLine:/.* \/[Yy].*/ AND (data_win_eventdata_commandLine:/.*[Ss][Aa][Mm][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Aa][Uu][Dd][Ii][Oo][Ee][Nn][Dd][Pp][Oo][Ii][Nn][Tt][Bb][Uu][Ii][Ll][Dd][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Uu][Nn][Ii][Ss][Tt][Oo][Rr][Ee][Ss][Vv][Cc]_.*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Rr][Ss][Cc][Hh]2[Ss][Vv][Cc].*/)))

@@ -1,0 +1,157 @@
+name: Suspicious Keyboard Layout Load
+id: 34aa0252-6039-40ff-951f-939fd6ce47d8
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 34aa0252-6039-40ff-951f-939fd6ce47d8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the keyboard preload installation with a suspicious keyboard layout,
+  e.g. Chinese, Iranian or Vietnamese layout load in user session on systems
+  maintained by US staff only. MITRE ATT&CK: T1588.002.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Keyboard Layout\\\\Preload\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Keyboard Layout\\\\Substitutes\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details: "*00000429*"
+              - wildcard:
+                  data_win_eventdata_details: "*00050429*"
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*0000042a*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Keyboard Layout\Preload\*'; data_win_eventdata_targetObject matches
+  '*\Keyboard Layout\Substitutes\*'; data_win_eventdata_details matches
+  '*00000429*', among other conditions.
+
+known_false_positives: >
+  Administrators or users that actually use the selected keyboard layouts
+  (heavily depends on the organisation's user base). Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://renenyffenegger.ch/notes/Windows/registry/tree/HKEY_CURRENT_USER/Keyboard-Layout/Preload/index
+  - https://github.com/SwiftOnSecurity/sysmon-config/pull/92/files
+  - https://attack.mitre.org/techniques/T1588/002/
+
+response:
+  message: >
+    Suspicious Keyboard Layout Load detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_details: $data_win_eventdata_details$. MITRE ATT&CK:
+    T1588.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1588.002
+  custom_tags:
+    - keyboard
+    - layout
+    - registry
+    - sysmon
+    - resource_development
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Kk][Ee][Yy][Bb][Oo][Aa][Rr][Dd] [Ll][Aa][Yy][Oo][Uu][Tt]\\[Pp][Rr][Ee][Ll][Oo][Aa][Dd]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Kk][Ee][Yy][Bb][Oo][Aa][Rr][Dd] [Ll][Aa][Yy][Oo][Uu][Tt]\\[Ss][Uu][Bb][Ss][Tt][Ii][Tt][Uu][Tt][Ee][Ss]\\.*/) AND (data_win_eventdata_details:/.*00000429.*/ OR data_win_eventdata_details:/.*00050429.*/ OR data_win_eventdata_details:/.*0000042[Aa].*/)

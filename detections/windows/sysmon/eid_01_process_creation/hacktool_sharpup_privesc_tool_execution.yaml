@@ -1,0 +1,179 @@
+name: HackTool - SharpUp PrivEsc Tool Execution
+id: c484e533-ee16-4a93-b6ac-f0ea4868b2f1
+version: 1
+schema_version: "1.0"
+date: "2023-02-13"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c484e533-ee16-4a93-b6ac-f0ea4868b2f1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of SharpUp, a tool for local privilege escalation. MITRE
+  ATT&CK: T1615, T1569.002, T1574.005.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SharpUp.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "SharpUp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*HijackablePaths*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*UnquotedServicePath*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ProcessDLLHijack*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ModifiableServiceBinaries*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ModifiableScheduledTask*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*DomainGPPPassword*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CachedGPPPassword*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_description
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\SharpUp.exe'; data_win_eventdata_description equals 'SharpUp';
+  data_win_eventdata_commandLine matches '*HijackablePaths*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/GhostPack/SharpUp
+  - https://attack.mitre.org/techniques/T1615/
+  - https://attack.mitre.org/techniques/T1569/002/
+  - https://attack.mitre.org/techniques/T1574/005/
+
+response:
+  message: >
+    HackTool - SharpUp PrivEsc Tool Execution detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_description: $data_win_eventdata_description$. MITRE
+    ATT&CK: T1615, T1569.002, T1574.005
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_description
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1615
+    - T1569.002
+    - T1574.005
+  custom_tags:
+    - hacktool
+    - sharpup
+    - privesc
+    - process_creation
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Hh][Aa][Rr][Pp][Uu][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_description:/[Ss][Hh][Aa][Rr][Pp][Uu][Pp]/ OR data_win_eventdata_commandLine:/.*[Hh][Ii][Jj][Aa][Cc][Kk][Aa][Bb][Ll][Ee][Pp][Aa][Tt][Hh][Ss].*/ OR data_win_eventdata_commandLine:/.*[Uu][Nn][Qq][Uu][Oo][Tt][Ee][Dd][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Pp][Aa][Tt][Hh].*/ OR data_win_eventdata_commandLine:/.*[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Dd][Ll][Ll][Hh][Ii][Jj][Aa][Cc][Kk].*/ OR data_win_eventdata_commandLine:/.*[Mm][Oo][Dd][Ii][Ff][Ii][Aa][Bb][Ll][Ee][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Bb][Ii][Nn][Aa][Rr][Ii][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*[Mm][Oo][Dd][Ii][Ff][Ii][Aa][Bb][Ll][Ee][Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk].*/ OR data_win_eventdata_commandLine:/.*[Dd][Oo][Mm][Aa][Ii][Nn][Gg][Pp][Pp][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Cc][Hh][Ee][Dd][Gg][Pp][Pp][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/)

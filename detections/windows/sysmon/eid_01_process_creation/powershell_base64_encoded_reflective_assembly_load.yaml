@@ -1,0 +1,193 @@
+name: PowerShell Base64 Encoded Reflective Assembly Load
+id: 62b7ccc9-23b4-471e-aa15-6da3663c4d59
+version: 1
+schema_version: "1.0"
+date: "2023-01-30"
+author: Christian Burkard (Nextron Systems), pH-T (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 62b7ccc9-23b4-471e-aa15-6da3663c4d59
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects base64 encoded .NET reflective loading of Assembly. MITRE ATT&CK:
+  T1059.001, T1027, T1620.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*WwBSAGUAZgBsAGUAYwB0AGkAbwBuAC4AQQBzAHMAZQBtAGIAbAB5AF0AOgA6AEwAbwBhAGQAKA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*sAUgBlAGYAbABlAGMAdABpAG8AbgAuAEEAcwBzAGUAbQBiAGwAeQBdADoAOgBMAG8AYQBkACgA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*bAFIAZQBmAGwAZQBjAHQAaQBvAG4ALgBBAHMAcwBlAG0AYgBsAHkAXQA6ADoATABvAGEAZAAoA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*AFsAcgBlAGYAbABlAGMAdABpAG8AbgAuAGEAcwBzAGUAbQBiAGwAeQBdADoAOgAoACIATABvAGEAZAAiAC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*BbAHIAZQBmAGwAZQBjAHQAaQBvAG4ALgBhAHMAcwBlAG0AYgBsAHkAXQA6ADoAKAAiAEwAbwBhAGQAIgAp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*AWwByAGUAZgBsAGUAYwB0AGkAbwBuAC4AYQBzAHMAZQBtAGIAbAB5AF0AOgA6ACgAIgBMAG8AYQBkACIAK*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*WwBSAGUAZgBsAGUAYwB0AGkAbwBuAC4AQQBzAHMAZQBtAGIAbAB5AF0AOgA6ACgAIgBMAG8AYQBkACIAKQ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*sAUgBlAGYAbABlAGMAdABpAG8AbgAuAEEAcwBzAGUAbQBiAGwAeQBdADoAOgAoACIATABvAGEAZAAiACkA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*bAFIAZQBmAGwAZQBjAHQAaQBvAG4ALgBBAHMAcwBlAG0AYgBsAHkAXQA6ADoAKAAiAEwAbwBhAGQAIgApA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*WwByAGUAZgBsAGUAYwB0AGkAbwBuAC4AYQBzAHMAZQBtAGIAbAB5AF0AOgA6AEwAbwBhAGQAKA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*sAcgBlAGYAbABlAGMAdABpAG8AbgAuAGEAcwBzAGUAbQBiAGwAeQBdADoAOgBMAG8AYQBkACgA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*bAHIAZQBmAGwAZQBjAHQAaQBvAG4ALgBhAHMAcwBlAG0AYgBsAHkAXQA6ADoATABvAGEAZAAoA*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*WwBSAGUAZgBsAGUAYwB0AGkAbwBuAC4AQQBzAHMAZQBtAGIAbAB5AF0AOgA6AEwAbwBhAGQAKA*';
+  data_win_eventdata_commandLine matches
+  '*sAUgBlAGYAbABlAGMAdABpAG8AbgAuAEEAcwBzAGUAbQBiAGwAeQBdADoAOgBMAG8AYQBkACgA*';
+  data_win_eventdata_commandLine matches
+  '*bAFIAZQBmAGwAZQBjAHQAaQBvAG4ALgBBAHMAcwBlAG0AYgBsAHkAXQA6ADoATABvAGEAZAAoA*',
+  among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/Neo23x0/Raccine/blob/20a569fa21625086433dcce8bb2765d0ea08dcb6/yara/mal_revil.yar
+  - https://thedfirreport.com/2022/05/09/seo-poisoning-a-gootloader-story/
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1620/
+
+response:
+  message: >
+    PowerShell Base64 Encoded Reflective Assembly Load detected on host
+    $agent_name$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1059.001, T1027, T1620
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1027
+    - T1620
+  custom_tags:
+    - powershell
+    - base64
+    - encoded
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Ww][Ww][Bb][Ss][Aa][Gg][Uu][Aa][Zz][Gg][Bb][Ss][Aa][Gg][Uu][Aa][Yy][Ww][Bb]0[Aa][Gg][Kk][Aa][Bb][Ww][Bb][Uu][Aa][Cc]4[Aa][Qq][Qq][Bb][Zz][Aa][Hh][Mm][Aa][Zz][Qq][Bb][Tt][Aa][Gg][Ii][Aa][Bb][Aa][Bb]5[Aa][Ff]0[Aa][Oo][Gg][Aa]6[Aa][Ee][Ww][Aa][Bb][Ww][Bb][Hh][Aa][Gg][Qq][Aa][Kk][Aa].*/ OR data_win_eventdata_commandLine:/.*[Ss][Aa][Uu][Gg][Bb][Ll][Aa][Gg][Yy][Aa][Bb][Aa][Bb][Ll][Aa][Gg][Mm][Aa][Dd][Aa][Bb][Pp][Aa][Gg]8[Aa][Bb][Gg][Aa][Uu][Aa][Ee][Ee][Aa][Cc][Ww][Bb][Zz][Aa][Gg][Uu][Aa][Bb][Qq][Bb][Ii][Aa][Gg][Ww][Aa][Ee][Qq][Bb][Dd][Aa][Dd][Oo][Aa][Oo][Gg][Bb][Mm][Aa][Gg]8[Aa][Yy][Qq][Bb][Kk][Aa][Cc][Gg][Aa].*/ OR data_win_eventdata_commandLine:/.*[Bb][Aa][Ff][Ii][Aa][Zz][Qq][Bb][Mm][Aa][Gg][Ww][Aa][Zz][Qq][Bb][Jj][Aa][Hh][Qq][Aa][Aa][Qq][Bb][Vv][Aa][Gg]4[Aa][Ll][Gg][Bb][Bb][Aa][Hh][Mm][Aa][Cc][Ww][Bb][Ll][Aa][Gg]0[Aa][Yy][Gg][Bb][Ss][Aa][Hh][Kk][Aa][Xx][Qq][Aa]6[Aa][Dd][Oo][Aa][Tt][Aa][Bb][Vv][Aa][Gg][Ee][Aa][Zz][Aa][Aa][Oo][Aa].*/ OR data_win_eventdata_commandLine:/.*[Aa][Ff][Ss][Aa][Cc][Gg][Bb][Ll][Aa][Gg][Yy][Aa][Bb][Aa][Bb][Ll][Aa][Gg][Mm][Aa][Dd][Aa][Bb][Pp][Aa][Gg]8[Aa][Bb][Gg][Aa][Uu][Aa][Gg][Ee][Aa][Cc][Ww][Bb][Zz][Aa][Gg][Uu][Aa][Bb][Qq][Bb][Ii][Aa][Gg][Ww][Aa][Ee][Qq][Bb][Dd][Aa][Dd][Oo][Aa][Oo][Gg][Aa][Oo][Aa][Cc][Ii][Aa][Tt][Aa][Bb][Vv][Aa][Gg][Ee][Aa][Zz][Aa][Aa][Ii][Aa][Cc].*/ OR data_win_eventdata_commandLine:/.*[Bb][Bb][Aa][Hh][Ii][Aa][Zz][Qq][Bb][Mm][Aa][Gg][Ww][Aa][Zz][Qq][Bb][Jj][Aa][Hh][Qq][Aa][Aa][Qq][Bb][Vv][Aa][Gg]4[Aa][Ll][Gg][Bb][Hh][Aa][Hh][Mm][Aa][Cc][Ww][Bb][Ll][Aa][Gg]0[Aa][Yy][Gg][Bb][Ss][Aa][Hh][Kk][Aa][Xx][Qq][Aa]6[Aa][Dd][Oo][Aa][Kk][Aa][Aa][Ii][Aa][Ee][Ww][Aa][Bb][Ww][Bb][Hh][Aa][Gg][Qq][Aa][Ii][Gg][Aa][Pp].*/ OR data_win_eventdata_commandLine:/.*[Aa][Ww][Ww][Bb][Yy][Aa][Gg][Uu][Aa][Zz][Gg][Bb][Ss][Aa][Gg][Uu][Aa][Yy][Ww][Bb]0[Aa][Gg][Kk][Aa][Bb][Ww][Bb][Uu][Aa][Cc]4[Aa][Yy][Qq][Bb][Zz][Aa][Hh][Mm][Aa][Zz][Qq][Bb][Tt][Aa][Gg][Ii][Aa][Bb][Aa][Bb]5[Aa][Ff]0[Aa][Oo][Gg][Aa]6[Aa][Cc][Gg][Aa][Ii][Gg][Bb][Mm][Aa][Gg]8[Aa][Yy][Qq][Bb][Kk][Aa][Cc][Ii][Aa][Kk].*/ OR data_win_eventdata_commandLine:/.*[Ww][Ww][Bb][Ss][Aa][Gg][Uu][Aa][Zz][Gg][Bb][Ss][Aa][Gg][Uu][Aa][Yy][Ww][Bb]0[Aa][Gg][Kk][Aa][Bb][Ww][Bb][Uu][Aa][Cc]4[Aa][Qq][Qq][Bb][Zz][Aa][Hh][Mm][Aa][Zz][Qq][Bb][Tt][Aa][Gg][Ii][Aa][Bb][Aa][Bb]5[Aa][Ff]0[Aa][Oo][Gg][Aa]6[Aa][Cc][Gg][Aa][Ii][Gg][Bb][Mm][Aa][Gg]8[Aa][Yy][Qq][Bb][Kk][Aa][Cc][Ii][Aa][Kk][Qq].*/ OR data_win_eventdata_commandLine:/.*[Ss][Aa][Uu][Gg][Bb][Ll][Aa][Gg][Yy][Aa][Bb][Aa][Bb][Ll][Aa][Gg][Mm][Aa][Dd][Aa][Bb][Pp][Aa][Gg]8[Aa][Bb][Gg][Aa][Uu][Aa][Ee][Ee][Aa][Cc][Ww][Bb][Zz][Aa][Gg][Uu][Aa][Bb][Qq][Bb][Ii][Aa][Gg][Ww][Aa][Ee][Qq][Bb][Dd][Aa][Dd][Oo][Aa][Oo][Gg][Aa][Oo][Aa][Cc][Ii][Aa][Tt][Aa][Bb][Vv][Aa][Gg][Ee][Aa][Zz][Aa][Aa][Ii][Aa][Cc][Kk][Aa].*/ OR data_win_eventdata_commandLine:/.*[Bb][Aa][Ff][Ii][Aa][Zz][Qq][Bb][Mm][Aa][Gg][Ww][Aa][Zz][Qq][Bb][Jj][Aa][Hh][Qq][Aa][Aa][Qq][Bb][Vv][Aa][Gg]4[Aa][Ll][Gg][Bb][Bb][Aa][Hh][Mm][Aa][Cc][Ww][Bb][Ll][Aa][Gg]0[Aa][Yy][Gg][Bb][Ss][Aa][Hh][Kk][Aa][Xx][Qq][Aa]6[Aa][Dd][Oo][Aa][Kk][Aa][Aa][Ii][Aa][Ee][Ww][Aa][Bb][Ww][Bb][Hh][Aa][Gg][Qq][Aa][Ii][Gg][Aa][Pp][Aa].*/ OR data_win_eventdata_commandLine:/.*[Ww][Ww][Bb][Yy][Aa][Gg][Uu][Aa][Zz][Gg][Bb][Ss][Aa][Gg][Uu][Aa][Yy][Ww][Bb]0[Aa][Gg][Kk][Aa][Bb][Ww][Bb][Uu][Aa][Cc]4[Aa][Yy][Qq][Bb][Zz][Aa][Hh][Mm][Aa][Zz][Qq][Bb][Tt][Aa][Gg][Ii][Aa][Bb][Aa][Bb]5[Aa][Ff]0[Aa][Oo][Gg][Aa]6[Aa][Ee][Ww][Aa][Bb][Ww][Bb][Hh][Aa][Gg][Qq][Aa][Kk][Aa].*/ OR data_win_eventdata_commandLine:/.*[Ss][Aa][Cc][Gg][Bb][Ll][Aa][Gg][Yy][Aa][Bb][Aa][Bb][Ll][Aa][Gg][Mm][Aa][Dd][Aa][Bb][Pp][Aa][Gg]8[Aa][Bb][Gg][Aa][Uu][Aa][Gg][Ee][Aa][Cc][Ww][Bb][Zz][Aa][Gg][Uu][Aa][Bb][Qq][Bb][Ii][Aa][Gg][Ww][Aa][Ee][Qq][Bb][Dd][Aa][Dd][Oo][Aa][Oo][Gg][Bb][Mm][Aa][Gg]8[Aa][Yy][Qq][Bb][Kk][Aa][Cc][Gg][Aa].*/ OR data_win_eventdata_commandLine:/.*[Bb][Aa][Hh][Ii][Aa][Zz][Qq][Bb][Mm][Aa][Gg][Ww][Aa][Zz][Qq][Bb][Jj][Aa][Hh][Qq][Aa][Aa][Qq][Bb][Vv][Aa][Gg]4[Aa][Ll][Gg][Bb][Hh][Aa][Hh][Mm][Aa][Cc][Ww][Bb][Ll][Aa][Gg]0[Aa][Yy][Gg][Bb][Ss][Aa][Hh][Kk][Aa][Xx][Qq][Aa]6[Aa][Dd][Oo][Aa][Tt][Aa][Bb][Vv][Aa][Gg][Ee][Aa][Zz][Aa][Aa][Oo][Aa].*/)

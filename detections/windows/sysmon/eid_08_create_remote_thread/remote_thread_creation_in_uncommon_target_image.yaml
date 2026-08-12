@@ -1,0 +1,266 @@
+name: Remote Thread Creation In Uncommon Target Image
+id: a1a144b7-5c9b-4853-a559-2172be8d4a03
+version: 1
+schema_version: "1.0"
+date: "2025-07-04"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a1a144b7-5c9b-4853-a559-2172be8d4a03
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects uncommon target processes for remote thread creation. MITRE ATT&CK:
+  T1055.003.
+
+data_source:
+  - Sysmon EventID 8 - CreateRemoteThread
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "8"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\calc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\calculator.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\mspaint.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\notepad.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\ping.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\sethc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\spoolsv.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\wordpad.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetImage:
+                    value: "*\\\\write.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_sourceImage"
+        - exists:
+            field: "data_win_eventdata_targetImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_sourceImage:
+                          value: "C:\\Windows\\System32\\csrss.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_sourceImage:
+                                      value: "C:\\Windows\\System32\\explorer.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_sourceImage:
+                                      value: "C:\\Windows\\System32\\OpenWith.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - term:
+                              data_win_eventdata_targetImage:
+                                value: "C:\\Windows\\System32\\notepad.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_sourceImage:
+                                value: "C:\\Windows\\System32\\AtBroker.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_targetImage:
+                                value: "C:\\Windows\\System32\\Sethc.exe"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_startFunction"
+        - exists:
+            field: "data_win_eventdata_sourceImage"
+        - exists:
+            field: "data_win_eventdata_targetImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_startFunction:
+                          value: "EtwpNotificationThread"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_sourceImage:
+                          value: "*unknown process*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_sourceImage:
+                                value: "C:\\Program Files\\VMware\\VMware Tools\\vmtoolsd.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_startFunction:
+                                value: "GetCommandLineW"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_targetImage:
+                                      value: "C:\\Windows\\System32\\notepad.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_targetImage:
+                                      value: "C:\\Windows\\System32\\spoolsv.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_sourceImage:
+                                value: "C:\\Program Files\\Xerox\\XeroxPrintExperience\\CommonFiles\\XeroxPrintJobEventManagerService.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_startFunction:
+                                value: "LoadLibraryW"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_targetImage:
+                                value: "C:\\Windows\\System32\\spoolsv.exe"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetImage
+    - data_win_eventdata_sourceImage
+    - data_win_eventdata_startFunction
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 8 (CreateRemoteThread) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_targetImage matches '*\calc.exe';
+  data_win_eventdata_targetImage matches '*\calculator.exe';
+  data_win_eventdata_targetImage matches '*\mspaint.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://web.archive.org/web/20220319032520/https://blog.redbluepurple.io/offensive-research/bypassing-injection-detection
+  - https://attack.mitre.org/techniques/T1055/003/
+
+response:
+  message: >
+    Remote Thread Creation In Uncommon Target Image detected on host
+    $agent_name$. Matched data_win_eventdata_targetImage:
+    $data_win_eventdata_targetImage$. Matched data_win_eventdata_sourceImage:
+    $data_win_eventdata_sourceImage$. MITRE ATT&CK: T1055.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetImage
+      type: process
+    - field: data_win_eventdata_sourceImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055.003
+  custom_tags:
+    - thread
+    - uncommon
+    - target
+    - create_remote_thread
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"8" AND (data_win_eventdata_targetImage:/.*\\[Cc][Aa][Ll][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Cc][Aa][Ll][Cc][Uu][Ll][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Mm][Ss][Pp][Aa][Ii][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Pp][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Ss][Ee][Tt][Hh][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Ss][Pp][Oo][Oo][Ll][Ss][Vv]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Ww][Oo][Rr][Dd][Pp][Aa][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/.*\\[Ww][Rr][Ii][Tt][Ee]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_sourceImage AND _exists_:data_win_eventdata_targetImage AND NOT (data_win_eventdata_sourceImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Ss][Rr][Ss][Ss]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_sourceImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Oo][Pp][Ee][Nn][Ww][Ii][Tt][Hh]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_sourceImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Aa][Tt][Bb][Rr][Oo][Kk][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Ee][Tt][Hh][Cc]\.[Ee][Xx][Ee]/)) AND _exists_:data_win_eventdata_startFunction AND _exists_:data_win_eventdata_sourceImage AND _exists_:data_win_eventdata_targetImage AND NOT (data_win_eventdata_startFunction:/[Ee][Tt][Ww][Pp][Nn][Oo][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Tt][Hh][Rr][Ee][Aa][Dd]/ OR data_win_eventdata_sourceImage:/.*[Uu][Nn][Kk][Nn][Oo][Ww][Nn] [Pp][Rr][Oo][Cc][Ee][Ss][Ss].*/ OR (data_win_eventdata_sourceImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Vv][Mm][Ww][Aa][Rr][Ee]\\[Vv][Mm][Ww][Aa][Rr][Ee] [Tt][Oo][Oo][Ll][Ss]\\[Vv][Mm][Tt][Oo][Oo][Ll][Ss][Dd]\.[Ee][Xx][Ee]/ AND data_win_eventdata_startFunction:/[Gg][Ee][Tt][Cc][Oo][Mm][Mm][Aa][Nn][Dd][Ll][Ii][Nn][Ee][Ww]/ AND (data_win_eventdata_targetImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Pp][Oo][Oo][Ll][Ss][Vv]\.[Ee][Xx][Ee]/)) OR (data_win_eventdata_sourceImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Xx][Ee][Rr][Oo][Xx]\\[Xx][Ee][Rr][Oo][Xx][Pp][Rr][Ii][Nn][Tt][Ee][Xx][Pp][Ee][Rr][Ii][Ee][Nn][Cc][Ee]\\[Cc][Oo][Mm][Mm][Oo][Nn][Ff][Ii][Ll][Ee][Ss]\\[Xx][Ee][Rr][Oo][Xx][Pp][Rr][Ii][Nn][Tt][Jj][Oo][Bb][Ee][Vv][Ee][Nn][Tt][Mm][Aa][Nn][Aa][Gg][Ee][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_startFunction:/[Ll][Oo][Aa][Dd][Ll][Ii][Bb][Rr][Aa][Rr][Yy][Ww]/ AND data_win_eventdata_targetImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Pp][Oo][Oo][Ll][Ss][Vv]\.[Ee][Xx][Ee]/))

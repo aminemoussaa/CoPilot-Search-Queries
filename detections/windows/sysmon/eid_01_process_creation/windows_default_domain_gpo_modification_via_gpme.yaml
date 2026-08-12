@@ -1,0 +1,170 @@
+name: Windows Default Domain GPO Modification via GPME
+id: dcff7e85-d01f-4eb5-badd-84e2e6be8294
+version: 1
+schema_version: "1.0"
+date: "2025-11-22"
+author: TropChaud
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: dcff7e85-d01f-4eb5-badd-84e2e6be8294
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of the Group Policy Management Editor (GPME) to modify Default
+  Domain or Default Domain Controllers Group Policy Objects (GPOs). Adversaries
+  may leverage GPME to make stealthy changes in these default GPOs to deploy
+  malicious GPOs configurations across the domain without raising suspicion.
+  MITRE ATT&CK: T1484.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\mmc.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "MMC.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*gpme.msc*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*gpobject:*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*31B2F340-016D-11D2-945F-00C04FB984F9*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*6AC1786C-016F-11D2-945F-00C04FB984F9*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\mmc.exe';
+  data_win_eventdata_originalFileName equals 'MMC.exe';
+  data_win_eventdata_commandLine matches '*gpme.msc*', among other conditions.
+
+known_false_positives: >
+  Legitimate use of GPME to modify GPOs. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.trendmicro.com/en_us/research/25/i/unmasking-the-gentlemen-ransomware.html
+  - https://adsecurity.org/?p=3377
+  - https://sdmsoftware.com/general-stuff/launching-the-new-gp-management-editor-from-the-command-line/
+  - https://www.pentestpartners.com/security-blog/living-off-the-land-gpo-style/
+  - https://attack.mitre.org/techniques/T1484/001/
+
+response:
+  message: >
+    Windows Default Domain GPO Modification via GPME detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1484.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1484.001
+  custom_tags:
+    - default
+    - domain
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Mm][Mm][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Mm][Mm][Cc]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Gg][Pp][Mm][Ee]\.[Mm][Ss][Cc].*/ AND data_win_eventdata_commandLine:/.*[Gg][Pp][Oo][Bb][Jj][Ee][Cc][Tt]:.*/ AND (data_win_eventdata_commandLine:/.*31[Bb]2[Ff]340-016[Dd]-11[Dd]2-945[Ff]-00[Cc]04[Ff][Bb]984[Ff]9.*/ OR data_win_eventdata_commandLine:/.*6[Aa][Cc]1786[Cc]-016[Ff]-11[Dd]2-945[Ff]-00[Cc]04[Ff][Bb]984[Ff]9.*/)

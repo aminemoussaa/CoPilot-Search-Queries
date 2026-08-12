@@ -1,0 +1,160 @@
+name: Powershell Directory Enumeration
+id: 162e69a7-7981-4344-84a9-0f1c9a217a52
+version: 1
+schema_version: "1.0"
+date: "2022-03-17"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 162e69a7-7981-4344-84a9-0f1c9a217a52
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects technique used by MAZE ransomware to enumerate directories using
+  Powershell. MITRE ATT&CK: T1083.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*foreach*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Get-ChildItem*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*-Path *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*-ErrorAction *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*SilentlyContinue*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Out-File *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*-append*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*foreach*';
+  data_win_eventdata_scriptBlockText matches '*Get-ChildItem*';
+  data_win_eventdata_scriptBlockText matches '*-Path *', among other conditions.
+
+known_false_positives: >
+  Legitimate PowerShell scripts. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1083/T1083.md
+  - https://www.mandiant.com/resources/tactics-techniques-procedures-associated-with-maze-ransomware-incidents
+  - https://attack.mitre.org/techniques/T1083/
+
+response:
+  message: >
+    Powershell Directory Enumeration detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1083
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1083
+  custom_tags:
+    - powershell
+    - directory
+    - enumeration
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Ff][Oo][Rr][Ee][Aa][Cc][Hh].*/ AND data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Cc][Hh][Ii][Ll][Dd][Ii][Tt][Ee][Mm].*/ AND data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] .*/ AND data_win_eventdata_scriptBlockText:/.*-[Ee][Rr][Rr][Oo][Rr][Aa][Cc][Tt][Ii][Oo][Nn] .*/ AND data_win_eventdata_scriptBlockText:/.*[Ss][Ii][Ll][Ee][Nn][Tt][Ll][Yy][Cc][Oo][Nn][Tt][Ii][Nn][Uu][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Ff][Ii][Ll][Ee] .*/ AND data_win_eventdata_scriptBlockText:/.*-[Aa][Pp][Pp][Ee][Nn][Dd].*/

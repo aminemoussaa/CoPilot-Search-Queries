@@ -1,0 +1,164 @@
+name: HackTool - Empire PowerShell Launch Parameters
+id: 79f4ede3-402e-41c8-bc3e-ebbf5f162581
+version: 1
+schema_version: "1.0"
+date: "2023-02-21"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 79f4ede3-402e-41c8-bc3e-ebbf5f162581
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious powershell command line parameters used in Empire. MITRE
+  ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoP -sta -NonI -W Hidden -Enc *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noP -sta -w 1 -enc *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoP -NonI -W Hidden -enc *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -noP -sta -w 1 -enc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -enc  SQB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -nop -exec bypass -EncodedCommand *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*
+  -NoP -sta -NonI -W Hidden -Enc *'; data_win_eventdata_commandLine matches '*
+  -noP -sta -w 1 -enc *'; data_win_eventdata_commandLine matches '* -NoP -NonI
+  -W Hidden -enc *', among other conditions.
+
+known_false_positives: >
+  Other tools that incidentally use the same command line parameters. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://github.com/EmpireProject/Empire/blob/c2ba61ca8d2031dad0cfc1d5770ba723e8b710db/lib/common/helpers.py#L165
+  - https://github.com/EmpireProject/Empire/blob/e37fb2eef8ff8f5a0a689f1589f424906fe13055/lib/modules/powershell/persistence/powerbreach/deaduser.py#L191
+  - https://github.com/EmpireProject/Empire/blob/e37fb2eef8ff8f5a0a689f1589f424906fe13055/lib/modules/powershell/persistence/powerbreach/resolver.py#L178
+  - https://github.com/EmpireProject/Empire/blob/e37fb2eef8ff8f5a0a689f1589f424906fe13055/data/module_source/privesc/Invoke-EventVwrBypass.ps1#L64
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    HackTool - Empire PowerShell Launch Parameters detected on host
+    $agent_name$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - hacktool
+    - empire
+    - powershell
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp] -[Ss][Tt][Aa] -[Nn][Oo][Nn][Ii] -[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] -[Ee][Nn][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp] -[Ss][Tt][Aa] -[Ww] 1 -[Ee][Nn][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp] -[Nn][Oo][Nn][Ii] -[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] -[Ee][Nn][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp] -[Ss][Tt][Aa] -[Ww] 1 -[Ee][Nn][Cc].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc]  [Ss][Qq][Bb].*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp] -[Ee][Xx][Ee][Cc] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn][Dd] .*/)

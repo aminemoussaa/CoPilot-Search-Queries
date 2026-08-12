@@ -1,0 +1,165 @@
+name: Execute Code with Pester.bat as Parent
+id: 18988e1b-9087-4f8a-82fe-0414dce49878
+version: 1
+schema_version: "1.0"
+date: "2022-08-20"
+author: frack113, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 18988e1b-9087-4f8a-82fe-0414dce49878
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects code execution via Pester.bat (Pester - Powershell Modulte for
+  testing). MITRE ATT&CK: T1059.001, T1216.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*\\\\WindowsPowerShell\\\\Modules\\\\Pester\\\\*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*{ Invoke-Pester -EnableExit ;*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*{ Get-Help \"*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\powershell.exe'; data_win_eventdata_parentImage matches '*\pwsh.exe';
+  data_win_eventdata_parentCommandLine matches
+  '*\WindowsPowerShell\Modules\Pester\*', among other conditions.
+
+known_false_positives: >
+  Legitimate use of Pester for writing tests for Powershell scripts and modules.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://twitter.com/Oddvarmoe/status/993383596244258816
+  - https://twitter.com/_st0pp3r_/status/1560072680887525378
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1216/
+
+response:
+  message: >
+    Execute Code with Pester.bat as Parent detected on host $agent_name$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    Matched data_win_eventdata_parentCommandLine:
+    $data_win_eventdata_parentCommandLine$. MITRE ATT&CK: T1059.001, T1216
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_parentCommandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1216
+  custom_tags:
+    - execute
+    - pester
+    - parent
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND data_win_eventdata_parentCommandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Mm][Oo][Dd][Uu][Ll][Ee][Ss]\\[Pp][Ee][Ss][Tt][Ee][Rr]\\.*/ AND (data_win_eventdata_parentCommandLine:/.*\{ [Ii][Nn][Vv][Oo][Kk][Ee]-[Pp][Ee][Ss][Tt][Ee][Rr] -[Ee][Nn][Aa][Bb][Ll][Ee][Ee][Xx][Ii][Tt] ;.*/ OR data_win_eventdata_parentCommandLine:/.*\{ [Gg][Ee][Tt]-[Hh][Ee][Ll][Pp] \".*/)

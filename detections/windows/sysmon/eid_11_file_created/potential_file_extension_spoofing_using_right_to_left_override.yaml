@@ -1,0 +1,228 @@
+name: Potential File Extension Spoofing Using Right-to-Left Override
+id: 979baf41-ca44-4540-9d0c-4fcef3b5a3a4
+version: 1
+schema_version: "1.0"
+date: "2026-03-20"
+author: Jonathan Peters (Nextron Systems), Florian Roth (Nextron Systems), Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 979baf41-ca44-4540-9d0c-4fcef3b5a3a4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious filenames that contain a right-to-left override character
+  and a potentially spoofed file extensions. MITRE ATT&CK: T1036.002.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\u202e*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*[U+202E]*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename: "*‮*"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*3pm.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*4pm.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*cod.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*fdp.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ftr.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*gepj.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*gnp.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*gpj.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ism.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*lmth.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*nls.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*piz.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*slx.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*tdo.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*vsc.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*vwm.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*xcod.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*xslx.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*xtpp.*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\u202e*'; data_win_eventdata_targetFilename matches '*[U+202E]*';
+  data_win_eventdata_targetFilename matches '*‮*', among other conditions.
+
+known_false_positives: >
+  Filenames that contains scriptures such as arabic or hebrew might make use of
+  this character. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://redcanary.com/blog/right-to-left-override/
+  - https://www.malwarebytes.com/blog/news/2014/01/the-rtlo-method
+  - https://tria.ge/241015-l98snsyeje/behavioral2
+  - https://www.unicode.org/versions/Unicode5.2.0/ch02.pdf
+  - https://attack.mitre.org/techniques/T1036/002/
+
+response:
+  message: >
+    Potential File Extension Spoofing Using Right-to-Left Override detected on
+    host $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1036.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036.002
+  custom_tags:
+    - extension
+    - spoofing
+    - right
+    - file_event
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*\\[Uu]202[Ee].*/ OR data_win_eventdata_targetFilename:/.*\[[Uu]\+202[Ee]\].*/ OR data_win_eventdata_targetFilename:/.*‮.*/) AND (data_win_eventdata_targetFilename:/.*3[Pp][Mm]\..*/ OR data_win_eventdata_targetFilename:/.*4[Pp][Mm]\..*/ OR data_win_eventdata_targetFilename:/.*[Cc][Oo][Dd]\..*/ OR data_win_eventdata_targetFilename:/.*[Ff][Dd][Pp]\..*/ OR data_win_eventdata_targetFilename:/.*[Ff][Tt][Rr]\..*/ OR data_win_eventdata_targetFilename:/.*[Gg][Ee][Pp][Jj]\..*/ OR data_win_eventdata_targetFilename:/.*[Gg][Nn][Pp]\..*/ OR data_win_eventdata_targetFilename:/.*[Gg][Pp][Jj]\..*/ OR data_win_eventdata_targetFilename:/.*[Ii][Ss][Mm]\..*/ OR data_win_eventdata_targetFilename:/.*[Ll][Mm][Tt][Hh]\..*/ OR data_win_eventdata_targetFilename:/.*[Nn][Ll][Ss]\..*/ OR data_win_eventdata_targetFilename:/.*[Pp][Ii][Zz]\..*/ OR data_win_eventdata_targetFilename:/.*[Ss][Ll][Xx]\..*/ OR data_win_eventdata_targetFilename:/.*[Tt][Dd][Oo]\..*/ OR data_win_eventdata_targetFilename:/.*[Vv][Ss][Cc]\..*/ OR data_win_eventdata_targetFilename:/.*[Vv][Ww][Mm]\..*/ OR data_win_eventdata_targetFilename:/.*[Xx][Cc][Oo][Dd]\..*/ OR data_win_eventdata_targetFilename:/.*[Xx][Ss][Ll][Xx]\..*/ OR data_win_eventdata_targetFilename:/.*[Xx][Tt][Pp][Pp]\..*/)

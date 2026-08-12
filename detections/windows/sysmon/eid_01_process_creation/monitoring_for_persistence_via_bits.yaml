@@ -1,0 +1,201 @@
+name: Monitoring For Persistence Via BITS
+id: b9cbbc17-d00d-4e3d-a827-b06d03d2380d
+version: 1
+schema_version: "1.0"
+date: "2024-01-25"
+author: Sreeman
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b9cbbc17-d00d-4e3d-a827-b06d03d2380d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  BITS will allow you to schedule a command to execute after a successful
+  download to notify you that the job is finished. When the job runs on the
+  system the command specified in the BITS job will be executed. This can be
+  abused by actors to create a backdoor within the system and for persistence.
+  It will be chained in a BITS job to schedule the download of
+  malware/additional binaries and execute the program after being downloaded.
+  MITRE ATT&CK: T1197.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\bitsadmin.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "bitsadmin.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/SetNotifyCmdLine*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*%COMSPEC%*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*cmd.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*regsvr32.exe*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/Addfile*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*http:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*https:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*ftp:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*ftps:*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\bitsadmin.exe'; data_win_eventdata_originalFileName equals 'bitsadmin.exe';
+  data_win_eventdata_commandLine matches '*/SetNotifyCmdLine*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.fireeye.com/blog/threat-research/2020/10/kegtap-and-singlemalt-with-a-ransomware-chaser.html
+  - http://0xthem.blogspot.com/2014/03/t-emporal-persistence-with-and-schtasks.html
+  - https://isc.sans.edu/diary/Wipe+the+drive+Stealthy+Malware+Persistence+Mechanism+-+Part+1/15394
+  - https://attack.mitre.org/techniques/T1197/
+
+response:
+  message: >
+    Monitoring For Persistence Via BITS detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1197
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1197
+  custom_tags:
+    - monitoring
+    - persistence
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Bb][Ii][Tt][Ss][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Bb][Ii][Tt][Ss][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee]/) AND ((data_win_eventdata_commandLine:/.*\/[Ss][Ee][Tt][Nn][Oo][Tt][Ii][Ff][Yy][Cc][Mm][Dd][Ll][Ii][Nn][Ee].*/ AND (data_win_eventdata_commandLine:/.*%[Cc][Oo][Mm][Ss][Pp][Ee][Cc]%.*/ OR data_win_eventdata_commandLine:/.*[Cc][Mm][Dd]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Gg][Ss][Vv][Rr]32\.[Ee][Xx][Ee].*/)) OR (data_win_eventdata_commandLine:/.*\/[Aa][Dd][Dd][Ff][Ii][Ll][Ee].*/ AND (data_win_eventdata_commandLine:/.*[Hh][Tt][Tt][Pp]:.*/ OR data_win_eventdata_commandLine:/.*[Hh][Tt][Tt][Pp][Ss]:.*/ OR data_win_eventdata_commandLine:/.*[Ff][Tt][Pp]:.*/ OR data_win_eventdata_commandLine:/.*[Ff][Tt][Pp][Ss]:.*/)))

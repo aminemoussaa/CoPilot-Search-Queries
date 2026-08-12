@@ -1,0 +1,146 @@
+name: PUA - 3Proxy Execution
+id: f38a82d2-fba3-4781-b549-525efbec8506
+version: 1
+schema_version: "1.0"
+date: "2023-02-21"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f38a82d2-fba3-4781-b549-525efbec8506
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of 3proxy, a tiny free proxy server. MITRE ATT&CK: T1572.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\3proxy.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "3proxy - tiny proxy server"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.exe -i127.0.0.1 -p*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_description
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\3proxy.exe'; data_win_eventdata_description equals '3proxy - tiny proxy
+  server'; data_win_eventdata_commandLine matches '*.exe -i127.0.0.1 -p*'.
+
+known_false_positives: >
+  Administrative activity. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/3proxy/3proxy
+  - https://blog.talosintelligence.com/2022/09/lazarus-three-rats.html
+  - https://attack.mitre.org/techniques/T1572/
+
+response:
+  message: >
+    PUA - 3Proxy Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_description: $data_win_eventdata_description$. MITRE
+    ATT&CK: T1572
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_description
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1572
+  custom_tags:
+    - 3proxy
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\3[Pp][Rr][Oo][Xx][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_description:/3[Pp][Rr][Oo][Xx][Yy] - [Tt][Ii][Nn][Yy] [Pp][Rr][Oo][Xx][Yy] [Ss][Ee][Rr][Vv][Ee][Rr]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] -[Ii]127\.0\.0\.1 -[Pp].*/)

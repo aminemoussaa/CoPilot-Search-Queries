@@ -1,0 +1,195 @@
+name: PUA - Potential PE Metadata Tamper Using Rcedit
+id: 0c92f2e6-f08f-4b73-9216-ecb0ca634689
+version: 1
+schema_version: "1.0"
+date: "2023-03-05"
+author: Micah Babinski
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0c92f2e6-f08f-4b73-9216-ecb0ca634689
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of rcedit to potentially alter executable PE metadata
+  properties, which could conceal efforts to rename system utilities for defense
+  evasion. MITRE ATT&CK: T1036.003, T1036, T1027.005, T1027.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\rcedit-x64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\rcedit-x86.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "Edit resources of exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_product:
+                    value: "rcedit"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*--set-*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OriginalFileName*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CompanyName*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*FileDescription*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ProductName*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ProductVersion*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*LegalCopyright*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_description
+    - data_win_eventdata_product
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\rcedit-x64.exe'; data_win_eventdata_image matches '*\rcedit-x86.exe';
+  data_win_eventdata_description equals 'Edit resources of exe', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate use of the tool by administrators or users to update metadata of a
+  binary. Baseline expected activity in your environment and tune this detection
+  before relying on it for automated response.
+
+references:
+  - https://security.stackexchange.com/questions/210843/is-it-possible-to-change-original-filename-of-an-exe
+  - https://www.virustotal.com/gui/file/02e8e8c5d430d8b768980f517b62d7792d690982b9ba0f7e04163cbc1a6e7915
+  - https://github.com/electron/rcedit
+  - https://attack.mitre.org/techniques/T1036/003/
+  - https://attack.mitre.org/techniques/T1036/
+  - https://attack.mitre.org/techniques/T1027/005/
+  - https://attack.mitre.org/techniques/T1027/
+
+response:
+  message: >
+    PUA - Potential PE Metadata Tamper Using Rcedit detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_description: $data_win_eventdata_description$.
+    MITRE ATT&CK: T1036.003, T1036, T1027.005, T1027
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_description
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036.003
+    - T1036
+    - T1027.005
+    - T1027
+  custom_tags:
+    - metadata
+    - tamper
+    - rcedit
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Rr][Cc][Ee][Dd][Ii][Tt]-[Xx]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Rr][Cc][Ee][Dd][Ii][Tt]-[Xx]86\.[Ee][Xx][Ee]/ OR data_win_eventdata_description:/[Ee][Dd][Ii][Tt] [Rr][Ee][Ss][Oo][Uu][Rr][Cc][Ee][Ss] [Oo][Ff] [Ee][Xx][Ee]/ OR data_win_eventdata_product:/[Rr][Cc][Ee][Dd][Ii][Tt]/) AND data_win_eventdata_commandLine:/.*--[Ss][Ee][Tt]-.*/ AND (data_win_eventdata_commandLine:/.*[Oo][Rr][Ii][Gg][Ii][Nn][Aa][Ll][Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Mm][Pp][Aa][Nn][Yy][Nn][Aa][Mm][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Ll][Ee][Dd][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Pp][Rr][Oo][Dd][Uu][Cc][Tt][Nn][Aa][Mm][Ee].*/ OR data_win_eventdata_commandLine:/.*[Pp][Rr][Oo][Dd][Uu][Cc][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ll][Ee][Gg][Aa][Ll][Cc][Oo][Pp][Yy][Rr][Ii][Gg][Hh][Tt].*/)

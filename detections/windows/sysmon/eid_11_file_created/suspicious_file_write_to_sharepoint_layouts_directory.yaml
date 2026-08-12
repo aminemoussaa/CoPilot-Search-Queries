@@ -1,0 +1,254 @@
+name: Suspicious File Write to SharePoint Layouts Directory
+id: 1f0489be-b496-4ddf-b3a9-5900f2044e9c
+version: 1
+schema_version: "1.0"
+date: "2025-07-24"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1f0489be-b496-4ddf-b3a9-5900f2044e9c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious file writes to SharePoint layouts directory which could
+  indicate webshell activity or post-exploitation. This behavior has been
+  observed in the exploitation of SharePoint vulnerabilities such as
+  CVE-2025-49704, CVE-2025-49706 or CVE-2025-53770. MITRE ATT&CK: T1190,
+  T1505.003.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\cmd.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell_ise.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\w3wp.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\\\Program Files\\\\Common Files\\\\Microsoft Shared\\\\Web Server Extensions\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\\\Program Files (x86)\\\\Common Files\\\\Microsoft Shared\\\\Web Server Extensions\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\15\\\\TEMPLATE\\\\LAYOUTS\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\16\\\\TEMPLATE\\\\LAYOUTS\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.asax"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ascx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ashx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.asmx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.asp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.aspx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.bat"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.cmd"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.cer"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.config"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.hta"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.jsp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.jspx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.php"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ps1"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbs"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches '*\cmd.exe';
+  data_win_eventdata_image matches '*\powershell_ise.exe';
+  data_win_eventdata_image matches '*\powershell.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://unit42.paloaltonetworks.com/microsoft-sharepoint-cve-2025-49704-cve-2025-49706-cve-2025-53770/
+  - https://www.microsoft.com/en-us/security/blog/2025/07/22/disrupting-active-exploitation-of-on-premises-sharepoint-vulnerabilities/
+  - https://attack.mitre.org/techniques/T1190/
+  - https://attack.mitre.org/techniques/T1505/003/
+
+response:
+  message: >
+    Suspicious File Write to SharePoint Layouts Directory detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. MITRE ATT&CK: T1190, T1505.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1190
+    - T1505.003
+  custom_tags:
+    - write
+    - sharepoint
+    - layouts
+    - file_event
+    - sysmon
+    - initial_access
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww]3[Ww][Pp]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Ww][Ee][Bb] [Ss][Ee][Rr][Vv][Ee][Rr] [Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\.*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Ww][Ee][Bb] [Ss][Ee][Rr][Vv][Ee][Rr] [Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\.*/) AND (data_win_eventdata_targetFilename:/.*\\15\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee]\\[Ll][Aa][Yy][Oo][Uu][Tt][Ss]\\.*/ OR data_win_eventdata_targetFilename:/.*\\16\\[Tt][Ee][Mm][Pp][Ll][Aa][Tt][Ee]\\[Ll][Aa][Yy][Oo][Uu][Tt][Ss]\\.*/) AND (data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Aa][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Cc][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Hh][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Mm][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Pp]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Pp][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Bb][Aa][Tt]/ OR data_win_eventdata_targetFilename:/.*\.[Cc][Mm][Dd]/ OR data_win_eventdata_targetFilename:/.*\.[Cc][Ee][Rr]/ OR data_win_eventdata_targetFilename:/.*\.[Cc][Oo][Nn][Ff][Ii][Gg]/ OR data_win_eventdata_targetFilename:/.*\.[Hh][Tt][Aa]/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Ss]/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Ss][Pp]/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Ss][Pp][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Hh][Pp]/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Ss]1/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ss]/)

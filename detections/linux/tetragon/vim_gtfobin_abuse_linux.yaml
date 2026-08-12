@@ -1,0 +1,222 @@
+name: Vim GTFOBin Abuse - Linux
+id: 7ab8f73a-fcff-428b-84aa-6a5ff7877dea
+version: 1
+schema_version: "1.0"
+date: "2026-06-05"
+author: Nasreddine Bencherchali (Nextron Systems), Luc Génaux
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7ab8f73a-fcff-428b-84aa-6a5ff7877dea
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of "vim" and it's siblings commands to execute a shell or
+  proxy commands. Such behavior may be associated with privilege escalation,
+  unauthorized command execution, or to break out from restricted environments.
+  MITRE ATT&CK: T1059, T1083.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/rvim"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/vi"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/vim"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/vimdiff"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* --cmd *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* -c*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments: "*:!/*"
+              - wildcard:
+                  data_process_exec_process_arguments: "*:!$*"
+              - wildcard:
+                  data_process_exec_process_arguments: "*:!..*"
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*:lua *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*:py *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*:shell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/bash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/dash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/fish*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/sh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/csh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/ksh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/zsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/tmux*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/rvim';
+  data_process_exec_process_binary matches '*/vi';
+  data_process_exec_process_binary matches '*/vim', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://gtfobins.github.io/gtfobins/vi/
+  - https://gtfobins.github.io/gtfobins/vim/
+  - https://gtfobins.github.io/gtfobins/rvim/
+  - https://gtfobins.github.io/gtfobins/vimdiff/
+  - https://attack.mitre.org/techniques/T1059/
+  - https://attack.mitre.org/techniques/T1083/
+
+response:
+  message: >
+    Vim GTFOBin Abuse - Linux detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1059, T1083
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+    - T1083
+  custom_tags:
+    - gtfobin
+    - abuse
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_binary:/.*\/[Rr][Vv][Ii][Mm]/ OR data_process_exec_process_binary:/.*\/[Vv][Ii]/ OR data_process_exec_process_binary:/.*\/[Vv][Ii][Mm]/ OR data_process_exec_process_binary:/.*\/[Vv][Ii][Mm][Dd][Ii][Ff][Ff]/) AND (data_process_exec_process_arguments:/.* --[Cc][Mm][Dd] .*/ OR data_process_exec_process_arguments:/.* -[Cc].*/) AND (data_process_exec_process_arguments:/.*:!\/.*/ OR data_process_exec_process_arguments:/.*:!\$.*/ OR data_process_exec_process_arguments:/.*:!\.\..*/ OR data_process_exec_process_arguments:/.*:[Ll][Uu][Aa] .*/ OR data_process_exec_process_arguments:/.*:[Pp][Yy] .*/ OR data_process_exec_process_arguments:/.*:[Ss][Hh][Ee][Ll][Ll].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Bb][Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Dd][Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Ff][Ii][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Cc][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Kk][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Zz][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Tt][Mm][Uu][Xx].*/)

@@ -1,0 +1,189 @@
+name: Operation Wocao Activity
+id: 1cfac73c-be78-4f9a-9b08-5bde0c3953ab
+version: 1
+schema_version: "1.0"
+date: "2022-10-09"
+author: Florian Roth (Nextron Systems), frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1cfac73c-be78-4f9a-9b08-5bde0c3953ab
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects activity mentioned in Operation Wocao report. MITRE ATT&CK: T1012,
+  T1036.004, T1027, T1053.005, T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*checkadmin.exe 127.0.0.1 -all*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*netsh advfirewall firewall add rule name=powershell dir=in*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cmd /c powershell.exe -ep bypass -file c:\\\\s.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/tn win32times /f*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*create win32times binPath=*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\c$\\\\windows\\\\system32\\\\devmgr.dll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -exec bypass -enc JgAg*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*type *keepass\\\\KeePass.config.xml*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*iie.exe iie.txt*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*reg query HKEY_CURRENT_USER\\\\Software\\\\*\\\\PuTTY\\\\Sessions\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*checkadmin.exe 127.0.0.1 -all*'; data_win_eventdata_commandLine matches
+  '*netsh advfirewall firewall add rule name=powershell dir=in*';
+  data_win_eventdata_commandLine matches '*cmd /c powershell.exe -ep bypass
+  -file c:\s.ps1*', among other conditions.
+
+known_false_positives: >
+  Administrators that use checkadmin.exe tool to enumerate local administrators.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://www.fox-it.com/en/news/whitepapers/operation-wocao-shining-a-light-on-one-of-chinas-hidden-hacking-groups/
+  - https://twitter.com/SBousseaden/status/1207671369963646976
+  - https://attack.mitre.org/techniques/T1012/
+  - https://attack.mitre.org/techniques/T1036/004/
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Operation Wocao Activity detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1012,
+    T1036.004, T1027, T1053.005, T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1012
+    - T1036.004
+    - T1027
+    - T1053.005
+    - T1059.001
+  custom_tags:
+    - operation
+    - wocao
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - discovery
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Cc][Hh][Ee][Cc][Kk][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee] 127\.0\.0\.1 -[Aa][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*[Nn][Ee][Tt][Ss][Hh] [Aa][Dd][Vv][Ff][Ii][Rr][Ee][Ww][Aa][Ll][Ll] [Ff][Ii][Rr][Ee][Ww][Aa][Ll][Ll] [Aa][Dd][Dd] [Rr][Uu][Ll][Ee] [Nn][Aa][Mm][Ee]=[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll] [Dd][Ii][Rr]=[Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*[Cc][Mm][Dd] \/[Cc] [Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee] -[Ee][Pp] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ff][Ii][Ll][Ee] [Cc]:\\[Ss]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\/[Tt][Nn] [Ww][Ii][Nn]32[Tt][Ii][Mm][Ee][Ss] \/[Ff].*/ OR data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee] [Ww][Ii][Nn]32[Tt][Ii][Mm][Ee][Ss] [Bb][Ii][Nn][Pp][Aa][Tt][Hh]=.*/ OR data_win_eventdata_commandLine:/.*\\[Cc]\$\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Ee][Vv][Mm][Gg][Rr]\.[Dd][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ee][Nn][Cc] [Jj][Gg][Aa][Gg].*/ OR data_win_eventdata_commandLine:/.*[Tt][Yy][Pp][Ee] .*[Kk][Ee][Ee][Pp][Aa][Ss][Ss]\\[Kk][Ee][Ee][Pp][Aa][Ss][Ss]\.[Cc][Oo][Nn][Ff][Ii][Gg]\.[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*[Ii][Ii][Ee]\.[Ee][Xx][Ee] [Ii][Ii][Ee]\.[Tt][Xx][Tt].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Gg] [Qq][Uu][Ee][Rr][Yy] [Hh][Kk][Ee][Yy]_[Cc][Uu][Rr][Rr][Ee][Nn][Tt]_[Uu][Ss][Ee][Rr]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\.*\\[Pp][Uu][Tt][Tt][Yy]\\[Ss][Ee][Ss][Ss][Ii][Oo][Nn][Ss]\\.*/)

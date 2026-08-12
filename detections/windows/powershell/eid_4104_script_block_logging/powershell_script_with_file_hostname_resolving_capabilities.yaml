@@ -1,0 +1,151 @@
+name: PowerShell Script With File Hostname Resolving Capabilities
+id: fbc5e92f-3044-4e73-a5c6-1c4359b539de
+version: 1
+schema_version: "1.0"
+date: "2023-05-05"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fbc5e92f-3044-4e73-a5c6-1c4359b539de
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects PowerShell scripts that have capabilities to read files, loop through
+  them and resolve DNS host entries. MITRE ATT&CK: T1020.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Get-content *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*foreach*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*[System.Net.Dns]::GetHostEntry*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Out-File*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Get-content *';
+  data_win_eventdata_scriptBlockText matches '*foreach*';
+  data_win_eventdata_scriptBlockText matches '*[System.Net.Dns]::GetHostEntry*',
+  among other conditions.
+
+known_false_positives: >
+  The same functionality can be implemented by admin scripts, correlate with
+  name and creator. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.fortypoundhead.com/showcontent.asp?artid=24022
+  - https://labs.withsecure.com/publications/fin7-target-veeam-servers
+  - https://attack.mitre.org/techniques/T1020/
+
+response:
+  message: >
+    PowerShell Script With File Hostname Resolving Capabilities detected on host
+    $agent_name$. Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1020
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1020
+  custom_tags:
+    - powershell
+    - hostname
+    - resolving
+    - exfiltration
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Cc][Oo][Nn][Tt][Ee][Nn][Tt] .*/ AND data_win_eventdata_scriptBlockText:/.*[Ff][Oo][Rr][Ee][Aa][Cc][Hh].*/ AND data_win_eventdata_scriptBlockText:/.*\[[Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Dd][Nn][Ss]\]::[Gg][Ee][Tt][Hh][Oo][Ss][Tt][Ee][Nn][Tt][Rr][Yy].*/ AND data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Ff][Ii][Ll][Ee].*/

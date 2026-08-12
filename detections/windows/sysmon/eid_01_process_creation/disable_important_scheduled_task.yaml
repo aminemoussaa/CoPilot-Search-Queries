@@ -1,0 +1,205 @@
+name: Disable Important Scheduled Task
+id: 9ac94dc8-9042-493c-ba45-3b5e7c86b980
+version: 1
+schema_version: "1.0"
+date: "2026-03-11"
+author: frack113, Nasreddine Bencherchali (Nextron Systems), X__Junior
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9ac94dc8-9042-493c-ba45-3b5e7c86b980
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when adversaries stop services or processes by disabling their
+  respective scheduled tasks in order to conduct data destructive activities.
+  MITRE ATT&CK: T1489.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\schtasks.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "schtasks.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-disable*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/disable*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–disable*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—disable*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―disable*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\BitLocker*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\ExploitGuard*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\ExploitGuard\\\\ExploitGuard MDM policy Refresh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\SystemRestore\\\\SR*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\UpdateOrchestrator\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\Windows Defender\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\WindowsBackup\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\WindowsUpdate\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\schtasks.exe'; data_win_eventdata_originalFileName equals 'schtasks.exe';
+  data_win_eventdata_commandLine matches '*-disable*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1490/T1490.md#atomic-test-8---windows---disable-the-sr-scheduled-task
+  - https://twitter.com/MichalKoczwara/status/1553634816016498688
+  - https://thedfirreport.com/2021/10/18/icedid-to-xinglocker-ransomware-in-24-hours/
+  - https://attack.mitre.org/techniques/T1489/
+
+response:
+  message: >
+    Disable Important Scheduled Task detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1489
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1489
+  custom_tags:
+    - disable
+    - important
+    - scheduled
+    - process_creation
+    - sysmon
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*-[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*\/[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*–[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*—[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*―[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/) AND (data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Bb][Ii][Tt][Ll][Oo][Cc][Kk][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ee][Xx][Pp][Ll][Oo][Ii][Tt][Gg][Uu][Aa][Rr][Dd].*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ee][Xx][Pp][Ll][Oo][Ii][Tt][Gg][Uu][Aa][Rr][Dd]\\[Ee][Xx][Pp][Ll][Oo][Ii][Tt][Gg][Uu][Aa][Rr][Dd] [Mm][Dd][Mm] [Pp][Oo][Ll][Ii][Cc][Yy] [Rr][Ee][Ff][Rr][Ee][Ss][Hh].*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm][Rr][Ee][Ss][Tt][Oo][Rr][Ee]\\[Ss][Rr].*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Uu][Pp][Dd][Aa][Tt][Ee][Oo][Rr][Cc][Hh][Ee][Ss][Tt][Rr][Aa][Tt][Oo][Rr]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Bb][Aa][Cc][Kk][Uu][Pp]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Uu][Pp][Dd][Aa][Tt][Ee]\\.*/)

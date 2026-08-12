@@ -1,0 +1,234 @@
+name: Enumeration for 3rd Party Creds From CLI
+id: 87a476dc-0079-4583-a985-dee7a20a03de
+version: 1
+schema_version: "1.0"
+date: "2025-05-22"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 87a476dc-0079-4583-a985-dee7a20a03de
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects processes that query known 3rd party registry keys that holds
+  credentials via commandline. MITRE ATT&CK: T1552.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\Aerofox\\\\Foxmail\\\\V3.1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\Aerofox\\\\FoxmailPreview*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\DownloadManager\\\\Passwords*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\FTPWare\\\\COREFTP\\\\Sites*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\IncrediMail\\\\Identities*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\Martin Prikryl\\\\WinSCP 2\\\\Sessions*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\Mobatek\\\\MobaXterm\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\OpenSSH\\\\Agent\\\\Keys*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\OpenVPN-GUI\\\\configs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\ORL\\\\WinVNC3\\\\Password*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\Qualcomm\\\\Eudora\\\\CommandLine*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\RealVNC\\\\WinVNC4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\RimArts\\\\B2\\\\Settings*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\SimonTatham\\\\PuTTY\\\\Sessions*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\SimonTatham\\\\PuTTY\\\\SshHostKeys\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\Sota\\\\FFFTP*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\TightVNC\\\\Server*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Software\\\\WOW6432Node\\\\Radmin\\\\v3.0\\\\Server\\\\Parameters\\\\Radmin*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*reg.exe"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*export*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*save*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*\Software\Aerofox\Foxmail\V3.1*'; data_win_eventdata_commandLine matches
+  '*\Software\Aerofox\FoxmailPreview*'; data_win_eventdata_commandLine matches
+  '*\Software\DownloadManager\Passwords*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://isc.sans.edu/diary/More+Data+Exfiltration/25698
+  - https://github.com/synacktiv/Radmin3-Password-Cracker/blob/acfc87393e4b7c06353973a14a6c7126a51f36ac/regkey.txt
+  - https://github.com/HyperSine/how-does-MobaXterm-encrypt-password
+  - https://book.hacktricks.xyz/windows-hardening/windows-local-privilege-escalation#inside-the-registry
+  - https://attack.mitre.org/techniques/T1552/002/
+
+response:
+  message: >
+    Enumeration for 3rd Party Creds From CLI detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1552.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1552.002
+  custom_tags:
+    - enumeration
+    - party
+    - creds
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Ee][Rr][Oo][Ff][Oo][Xx]\\[Ff][Oo][Xx][Mm][Aa][Ii][Ll]\\[Vv]3\.1.*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Ee][Rr][Oo][Ff][Oo][Xx]\\[Ff][Oo][Xx][Mm][Aa][Ii][Ll][Pp][Rr][Ee][Vv][Ii][Ee][Ww].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Mm][Aa][Nn][Aa][Gg][Ee][Rr]\\[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ff][Tt][Pp][Ww][Aa][Rr][Ee]\\[Cc][Oo][Rr][Ee][Ff][Tt][Pp]\\[Ss][Ii][Tt][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ii][Nn][Cc][Rr][Ee][Dd][Ii][Mm][Aa][Ii][Ll]\\[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Ii][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Aa][Rr][Tt][Ii][Nn] [Pp][Rr][Ii][Kk][Rr][Yy][Ll]\\[Ww][Ii][Nn][Ss][Cc][Pp] 2\\[Ss][Ee][Ss][Ss][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Oo][Bb][Aa][Tt][Ee][Kk]\\[Mm][Oo][Bb][Aa][Xx][Tt][Ee][Rr][Mm]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Oo][Pp][Ee][Nn][Ss][Ss][Hh]\\[Aa][Gg][Ee][Nn][Tt]\\[Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Oo][Pp][Ee][Nn][Vv][Pp][Nn]-[Gg][Uu][Ii]\\[Cc][Oo][Nn][Ff][Ii][Gg][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Oo][Rr][Ll]\\[Ww][Ii][Nn][Vv][Nn][Cc]3\\[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Qq][Uu][Aa][Ll][Cc][Oo][Mm][Mm]\\[Ee][Uu][Dd][Oo][Rr][Aa]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd][Ll][Ii][Nn][Ee].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Rr][Ee][Aa][Ll][Vv][Nn][Cc]\\[Ww][Ii][Nn][Vv][Nn][Cc]4.*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Rr][Ii][Mm][Aa][Rr][Tt][Ss]\\[Bb]2\\[Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ss][Ii][Mm][Oo][Nn][Tt][Aa][Tt][Hh][Aa][Mm]\\[Pp][Uu][Tt][Tt][Yy]\\[Ss][Ee][Ss][Ss][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ss][Ii][Mm][Oo][Nn][Tt][Aa][Tt][Hh][Aa][Mm]\\[Pp][Uu][Tt][Tt][Yy]\\[Ss][Ss][Hh][Hh][Oo][Ss][Tt][Kk][Ee][Yy][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ss][Oo][Tt][Aa]\\[Ff][Ff][Ff][Tt][Pp].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Tt][Ii][Gg][Hh][Tt][Vv][Nn][Cc]\\[Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ww][Oo][Ww]6432[Nn][Oo][Dd][Ee]\\[Rr][Aa][Dd][Mm][Ii][Nn]\\[Vv]3\.0\\[Ss][Ee][Rr][Vv][Ee][Rr]\\[Pp][Aa][Rr][Aa][Mm][Ee][Tt][Ee][Rr][Ss]\\[Rr][Aa][Dd][Mm][Ii][Nn].*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_image:/.*[Rr][Ee][Gg]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.*[Ee][Xx][Pp][Oo][Rr][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ss][Aa][Vv][Ee].*/))

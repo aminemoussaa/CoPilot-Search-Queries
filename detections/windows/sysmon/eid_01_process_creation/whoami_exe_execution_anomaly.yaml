@@ -1,0 +1,185 @@
+name: Whoami.EXE Execution Anomaly
+id: 8de1cbe8-d6f5-496d-8237-5f44a721c7a0
+version: 1
+schema_version: "1.0"
+date: "2025-03-06"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8de1cbe8-d6f5-496d-8237-5f44a721c7a0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of whoami.exe with suspicious parent processes. MITRE
+  ATT&CK: T1033.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\whoami.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "whoami.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\cmd.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\powershell_ise.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\powershell.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\pwsh.exe"
+                          case_insensitive: true
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_parentImage"
+                    - term:
+                        data_win_eventdata_parentImage: ""
+                    - term:
+                        data_win_eventdata_parentImage: "-"
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*:\\\\Program Files\\\\Microsoft Monitoring Agent\\\\Agent\\\\MonitoringHost.exe"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\whoami.exe'; data_win_eventdata_originalFileName equals 'whoami.exe';
+  data_win_eventdata_parentImage matches '*\cmd.exe', among other conditions.
+
+known_false_positives: >
+  Admin activity. Scripts and administrative tools used in the monitored
+  environment. Monitoring activity. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://brica.de/alerts/alert/public/1247926/agent-tesla-keylogger-delivered-inside-a-power-iso-daa-archive/
+  - https://app.any.run/tasks/7eaba74e-c1ea-400f-9c17-5e30eee89906/
+  - https://www.youtube.com/watch?v=DsJ9ByX84o4&t=6s
+  - https://attack.mitre.org/techniques/T1033/
+
+response:
+  message: >
+    Whoami.EXE Execution Anomaly detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1033
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1033
+  custom_tags:
+    - whoami
+    - anomaly
+    - process_creation
+    - sysmon
+    - discovery
+    - car_2016_03_001
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww][Hh][Oo][Aa][Mm][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Hh][Oo][Aa][Mm][Ii]\.[Ee][Xx][Ee]/) AND NOT (data_win_eventdata_parentImage:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR NOT _exists_:data_win_eventdata_parentImage OR data_win_eventdata_parentImage:"" OR data_win_eventdata_parentImage:"-") AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg] [Aa][Gg][Ee][Nn][Tt]\\[Aa][Gg][Ee][Nn][Tt]\\[Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/)

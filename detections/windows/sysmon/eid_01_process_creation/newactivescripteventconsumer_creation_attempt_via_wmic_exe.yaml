@@ -1,0 +1,159 @@
+name: NewActiveScriptEventConsumer Creation Attempt via Wmic.EXE
+id: ebef4391-1a81-4761-a40a-1db446c0e625
+version: 1
+schema_version: "1.0"
+date: "2026-06-19"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ebef4391-1a81-4761-a40a-1db446c0e625
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the attempt to create an ActiveScriptEventConsumer via WMIC.EXE. An
+  ActiveScriptEventConsumer is a built-in Windows Management Instrumentation
+  (WMI) class that automatically executes a predefined script (in VBScript or
+  JScript) whenever a specific system event occurs. Adversaries often abuse
+  ActiveScriptEventConsumer to maintain persistence on a compromised host by
+  executing a malicious script whenever a specific event occurs. MITRE ATT&CK:
+  T1546.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "wmic.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\WMIC.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*ActiveScriptEventConsumer*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* CREATE *"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'wmic.exe'; data_win_eventdata_image matches '*\WMIC.exe';
+  data_win_eventdata_commandLine matches '*ActiveScriptEventConsumer*', among
+  other conditions.
+
+known_false_positives: >
+  Legitimate software creating script event consumers. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://twitter.com/johnlatwc/status/1408062131321270282?s=12
+  - https://www.fireeye.com/content/dam/fireeye-www/global/en/current-threats/pdfs/wp-windows-management-instrumentation.pdf
+  - https://attack.mitre.org/techniques/T1546/003/
+
+response:
+  message: >
+    NewActiveScriptEventConsumer Creation Attempt via Wmic.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1546.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1546.003
+  custom_tags:
+    - newactivescripteventconsumer
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Vv][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Ee][Vv][Ee][Nn][Tt][Cc][Oo][Nn][Ss][Uu][Mm][Ee][Rr].*/ AND data_win_eventdata_commandLine:/.* [Cc][Rr][Ee][Aa][Tt][Ee] .*/

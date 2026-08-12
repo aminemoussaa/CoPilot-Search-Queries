@@ -1,0 +1,216 @@
+name: Uncommon Outbound Kerberos Connection - Security
+id: eca91c7c-9214-47b9-b4c5-cb1d7e4f2350
+version: 1
+schema_version: "1.0"
+date: "2024-03-15"
+author: Ilyas Ochkov, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: eca91c7c-9214-47b9-b4c5-cb1d7e4f2350
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects uncommon outbound network activity via Kerberos default port
+  indicating possible lateral movement or first stage PrivEsc via delegation.
+  MITRE ATT&CK: T1558.003.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5156"
+        - term:
+            data_win_eventdata_destPort: "88"
+        - exists:
+            field: "data_win_eventdata_application"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_application:
+                                value: "\\\\device\\\\harddiskvolume*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_application:
+                                value: "C:*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_application:
+                          value: "*\\\\Windows\\\\System32\\\\lsass.exe"
+                          case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_application"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "\\\\device\\\\harddiskvolume*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "C:*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "*\\\\Program Files (x86)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "*\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "\\\\device\\\\harddiskvolume*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "C:*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "*\\\\Program Files (x86)\\\\Mozilla Firefox\\\\firefox.exe"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_application:
+                                      value: "*\\\\Program Files\\\\Mozilla Firefox\\\\firefox.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_application:
+                          value: "*\\\\tomcat\\\\bin\\\\tomcat8.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_destPort
+    - data_win_eventdata_application
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5156'; data_win_eventdata_destPort equals
+  '88'; data_win_eventdata_application matches '\device\harddiskvolume*', among
+  other conditions.
+
+known_false_positives: >
+  Web Browsers and third party application might generate similar activity. An
+  initial baseline is required. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/GhostPack/Rubeus
+  - https://attack.mitre.org/techniques/T1558/003/
+
+response:
+  message: >
+    Uncommon Outbound Kerberos Connection - Security detected on host
+    $agent_name$. Matched data_win_eventdata_destPort:
+    $data_win_eventdata_destPort$. Matched data_win_eventdata_application:
+    $data_win_eventdata_application$. MITRE ATT&CK: T1558.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_destPort
+      type: other
+    - field: data_win_eventdata_application
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1558.003
+  custom_tags:
+    - uncommon
+    - outbound
+    - kerberos
+    - windows_security
+    - lateral_movement
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5156" AND data_win_eventdata_destPort:"88" AND _exists_:data_win_eventdata_application AND NOT ((data_win_eventdata_application:/\\[Dd][Ee][Vv][Ii][Cc][Ee]\\[Hh][Aa][Rr][Dd][Dd][Ii][Ss][Kk][Vv][Oo][Ll][Uu][Mm][Ee].*/ OR data_win_eventdata_application:/[Cc]:.*/) AND data_win_eventdata_application:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ll][Ss][Aa][Ss][Ss]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_application AND NOT (((data_win_eventdata_application:/\\[Dd][Ee][Vv][Ii][Cc][Ee]\\[Hh][Aa][Rr][Dd][Dd][Ii][Ss][Kk][Vv][Oo][Ll][Uu][Mm][Ee].*/ OR data_win_eventdata_application:/[Cc]:.*/) AND (data_win_eventdata_application:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Gg][Oo][Oo][Gg][Ll][Ee]\\[Cc][Hh][Rr][Oo][Mm][Ee]\\[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn]\\[Cc][Hh][Rr][Oo][Mm][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Gg][Oo][Oo][Gg][Ll][Ee]\\[Cc][Hh][Rr][Oo][Mm][Ee]\\[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn]\\[Cc][Hh][Rr][Oo][Mm][Ee]\.[Ee][Xx][Ee]/)) OR ((data_win_eventdata_application:/\\[Dd][Ee][Vv][Ii][Cc][Ee]\\[Hh][Aa][Rr][Dd][Dd][Ii][Ss][Kk][Vv][Oo][Ll][Uu][Mm][Ee].*/ OR data_win_eventdata_application:/[Cc]:.*/) AND (data_win_eventdata_application:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Oo][Zz][Ii][Ll][Ll][Aa] [Ff][Ii][Rr][Ee][Ff][Oo][Xx]\\[Ff][Ii][Rr][Ee][Ff][Oo][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Oo][Zz][Ii][Ll][Ll][Aa] [Ff][Ii][Rr][Ee][Ff][Oo][Xx]\\[Ff][Ii][Rr][Ee][Ff][Oo][Xx]\.[Ee][Xx][Ee]/)) OR data_win_eventdata_application:/.*\\[Tt][Oo][Mm][Cc][Aa][Tt]\\[Bb][Ii][Nn]\\[Tt][Oo][Mm][Cc][Aa][Tt]8\.[Ee][Xx][Ee]/)

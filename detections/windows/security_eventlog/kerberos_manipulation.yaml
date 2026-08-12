@@ -1,0 +1,260 @@
+name: Kerberos Manipulation
+id: f7644214-0eb0-4ace-9455-331ec4c09253
+version: 1
+schema_version: "1.0"
+date: "2024-01-16"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f7644214-0eb0-4ace-9455-331ec4c09253
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects failed Kerberos TGT issue operation. This can be a sign of
+  manipulations of TGT messages by an attacker. MITRE ATT&CK: T1212.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "675"
+              - term:
+                  data_win_system_eventID: "4768"
+              - term:
+                  data_win_system_eventID: "4769"
+              - term:
+                  data_win_system_eventID: "4771"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x9"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0xA"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0xB"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0xF"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x10"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x11"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x13"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x14"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x1A"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x1F"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x21"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x22"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x23"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x24"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x26"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x27"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x28"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x29"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x2C"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x2D"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x2E"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x2F"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x31"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x32"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x3E"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x3F"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x40"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x41"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x43"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_status:
+                    value: "0x44"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_status
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '675'; data_win_system_eventID equals '4768';
+  data_win_system_eventID equals '4769', among other conditions.
+
+known_false_positives: >
+  Faulty legacy applications. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4771
+  - https://attack.mitre.org/techniques/T1212/
+
+response:
+  message: >
+    Kerberos Manipulation detected on host $agent_name$. Matched
+    data_win_eventdata_status: $data_win_eventdata_status$. Matched
+    data_win_eventdata_subjectUserName: $data_win_eventdata_subjectUserName$.
+    MITRE ATT&CK: T1212
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_status
+      type: other
+    - field: data_win_eventdata_subjectUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1212
+  custom_tags:
+    - kerberos
+    - manipulation
+    - windows_security
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"675" OR data_win_system_eventID:"4768" OR data_win_system_eventID:"4769" OR data_win_system_eventID:"4771") AND (data_win_eventdata_status:/0[Xx]9/ OR data_win_eventdata_status:/0[Xx][Aa]/ OR data_win_eventdata_status:/0[Xx][Bb]/ OR data_win_eventdata_status:/0[Xx][Ff]/ OR data_win_eventdata_status:/0[Xx]10/ OR data_win_eventdata_status:/0[Xx]11/ OR data_win_eventdata_status:/0[Xx]13/ OR data_win_eventdata_status:/0[Xx]14/ OR data_win_eventdata_status:/0[Xx]1[Aa]/ OR data_win_eventdata_status:/0[Xx]1[Ff]/ OR data_win_eventdata_status:/0[Xx]21/ OR data_win_eventdata_status:/0[Xx]22/ OR data_win_eventdata_status:/0[Xx]23/ OR data_win_eventdata_status:/0[Xx]24/ OR data_win_eventdata_status:/0[Xx]26/ OR data_win_eventdata_status:/0[Xx]27/ OR data_win_eventdata_status:/0[Xx]28/ OR data_win_eventdata_status:/0[Xx]29/ OR data_win_eventdata_status:/0[Xx]2[Cc]/ OR data_win_eventdata_status:/0[Xx]2[Dd]/ OR data_win_eventdata_status:/0[Xx]2[Ee]/ OR data_win_eventdata_status:/0[Xx]2[Ff]/ OR data_win_eventdata_status:/0[Xx]31/ OR data_win_eventdata_status:/0[Xx]32/ OR data_win_eventdata_status:/0[Xx]3[Ee]/ OR data_win_eventdata_status:/0[Xx]3[Ff]/ OR data_win_eventdata_status:/0[Xx]40/ OR data_win_eventdata_status:/0[Xx]41/ OR data_win_eventdata_status:/0[Xx]43/ OR data_win_eventdata_status:/0[Xx]44/)

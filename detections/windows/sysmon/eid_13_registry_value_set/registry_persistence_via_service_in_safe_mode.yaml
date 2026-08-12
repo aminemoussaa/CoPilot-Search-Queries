@@ -1,0 +1,222 @@
+name: Registry Persistence via Service in Safe Mode
+id: 1547e27c-3974-43e2-a7d7-7f484fb928ec
+version: 1
+schema_version: "1.0"
+date: "2025-10-22"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1547e27c-3974-43e2-a7d7-7f484fb928ec
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the modification of the registry to allow a driver or service to
+  persist in Safe Mode. MITRE ATT&CK: T1564.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\SafeBoot\\\\Minimal\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\SafeBoot\\\\Network\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\(Default)"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_details:
+              value: "Service"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\WINDOWS\\system32\\msiexec.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Control\\\\SafeBoot\\\\Minimal\\\\SAVService\\\\(Default)"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Control\\\\SafeBoot\\\\Network\\\\SAVService\\\\(Default)"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\MBAMInstallerService.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\MBAMService\\\\(Default)"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_details:
+                                value: "Service"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Hexnode\\Hexnode Agent\\Current\\HexnodeAgent.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Control\\\\SafeBoot\\\\Minimal\\\\Hexnode Updater\\\\(Default)"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Control\\\\SafeBoot\\\\Network\\\\Hexnode Updater\\\\(Default)"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Control\\\\SafeBoot\\\\Minimal\\\\Hexnode Agent\\\\(Default)"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Control\\\\SafeBoot\\\\Network\\\\Hexnode Agent\\\\(Default)"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - term:
+                              data_win_eventdata_details:
+                                value: "Service"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Control\SafeBoot\Minimal\*'; data_win_eventdata_targetObject matches
+  '*\Control\SafeBoot\Network\*'; data_win_eventdata_targetObject matches
+  '*\(Default)', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-33---windows-add-registry-value-to-load-service-in-safe-mode-without-network
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1112/T1112.md#atomic-test-34---windows-add-registry-value-to-load-service-in-safe-mode-with-network
+  - https://attack.mitre.org/techniques/T1564/001/
+
+response:
+  message: >
+    Registry Persistence via Service in Safe Mode detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_details: $data_win_eventdata_details$. MITRE
+    ATT&CK: T1564.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1564.001
+  custom_tags:
+    - registry
+    - persistence
+    - service
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Mm][Ii][Nn][Ii][Mm][Aa][Ll]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Nn][Ee][Tt][Ww][Oo][Rr][Kk]\\.*/) AND data_win_eventdata_targetObject:/.*\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ AND data_win_eventdata_details:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND _exists_:data_win_eventdata_details AND NOT ((data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Mm][Ii][Nn][Ii][Mm][Aa][Ll]\\[Ss][Aa][Vv][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Nn][Ee][Tt][Ww][Oo][Rr][Kk]\\[Ss][Aa][Vv][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/)) OR (data_win_eventdata_image:/.*\\[Mm][Bb][Aa][Mm][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Mm][Bb][Aa][Mm][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ AND data_win_eventdata_details:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/) OR (data_win_eventdata_image:/[Cc]:\\[Hh][Ee][Xx][Nn][Oo][Dd][Ee]\\[Hh][Ee][Xx][Nn][Oo][Dd][Ee] [Aa][Gg][Ee][Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt]\\[Hh][Ee][Xx][Nn][Oo][Dd][Ee][Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Mm][Ii][Nn][Ii][Mm][Aa][Ll]\\[Hh][Ee][Xx][Nn][Oo][Dd][Ee] [Uu][Pp][Dd][Aa][Tt][Ee][Rr]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Nn][Ee][Tt][Ww][Oo][Rr][Kk]\\[Hh][Ee][Xx][Nn][Oo][Dd][Ee] [Uu][Pp][Dd][Aa][Tt][Ee][Rr]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Mm][Ii][Nn][Ii][Mm][Aa][Ll]\\[Hh][Ee][Xx][Nn][Oo][Dd][Ee] [Aa][Gg][Ee][Nn][Tt]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Nn][Ee][Tt][Ww][Oo][Rr][Kk]\\[Hh][Ee][Xx][Nn][Oo][Dd][Ee] [Aa][Gg][Ee][Nn][Tt]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/) AND data_win_eventdata_details:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/))

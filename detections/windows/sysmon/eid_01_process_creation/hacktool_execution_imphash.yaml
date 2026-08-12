@@ -1,0 +1,494 @@
+name: Hacktool Execution - Imphash
+id: 24e3e58a-646b-4b50-adef-02ef935b9fc8
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 24e3e58a-646b-4b50-adef-02ef935b9fc8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of different Windows based hacktools via their import
+  hash (imphash) even if the files have been renamed. MITRE ATT&CK: T1588.002,
+  T1003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=BCCA3C247B619DCD13C8CDFF5F123932*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3A19059BD7688CB88E70005F18EFC439*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=bf6223a49e45d99094406777eb6004ba*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=23867A89C2B8FC733BE6CF5EF902F2D1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=A37FF327F8D48E8A4D2F757E1B6E70BC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=F9A28C458284584A93B14216308D31BD*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=6118619783FC175BC7EBECFF0769B46E*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=959A83047E80AB68B368FDB3F4C6E4EA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=563233BFA169ACC7892451F71AD5850A*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=87575CB7A0E0700EB37F2E3668671A08*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=13F08707F759AF6003837A150A371BA1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=1781F06048A7E58B323F0B9259BE798B*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=233F85F2D4BC9D6521A6CAAE11A1E7F5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=24AF2584CBF4D60BBE5C6D1B31B3BE6D*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=632969DDF6DBF4E0F53424B75E4B91F2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=713C29B396B907ED71A72482759ED757*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=749A7BB1F0B4C4455949C0B2BF7F9E9F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=8628B2608957A6B0C6330AC3DE28CE2E*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=8B114550386E31895DFAB371E741123D*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=94CB940A1A6B65BED4D5A8F849CE9793*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=9D68781980370E00E0BD939EE5E6C141*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=B18A1401FF8F444056D29450FBC0A6CE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=CB567F9498452721D77A451374955F5F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=730073214094CD328547BF1F72289752*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=17B461A082950FC6332228572138B80C*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=DC25EE78E2EF4D36FAA0BADF1E7461C9*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=819B19D53CA6736448F9325A85736792*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=829DA329CE140D873B4A8BDE2CBFAA7E*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=C547F2E66061A8DFFB6F5A3FF63C0A74*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0588081AB0E63BA785938467E1B10CCA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0D9EC08BAC6C07D9987DFD0F1506587C*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=BC129092B71C89B4D4C8CDF8EA590B29*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=4DA924CF622D039D58BCE71CDF05D242*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=E7A3A5C377E2D29324093377D7DB1C66*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=9A9DBEC5C62F0380B4FA5FD31DEFFEDF*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=AF8A3976AD71E5D5FDFB67DDB8DADFCE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0C477898BBF137BBD6F2A54E3B805FF4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0CA9F02B537BCEA20D4EA5EB1A9FE338*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3AB3655E5A14D4EEFC547F4781BF7F9E*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=E6F9D5152DA699934B30DAAB206471F6*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3AD59991CCF1D67339B319B15A41B35D*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=FFDD59E0318B85A3E480874D9796D872*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0CF479628D7CC1EA25EC7998A92F5051*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=07A2D4DCBD6CB2C6A45E6B101F0B6D51*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=D6D0F80386E1380D05CB78E871BC72B1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=38D9E015591BBFD4929E0D0F47FA0055*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0E2216679CA6E1094D63322E3412D650*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=ADA161BF41B8E5E9132858CB54CAB5FB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=2A1BC4913CD5ECB0434DF07CB675B798*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=11083E75553BAAE21DC89CE8F9A195E4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=A23D29C9E566F2FA8FFBB79267F5DF80*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=4A07F944A83E8A7C2525EFA35DD30E2F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=767637C23BB42CD5D7397CF58B0BE688*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=14C4E4C72BA075E9069EE67F39188AD8*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3C782813D4AFCE07BBFC5A9772ACDBDC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=7D010C6BB6A3726F327F7E239166D127*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=89159BA4DD04E4CE5559F132A9964EB3*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=6F33F4A5FC42B8CEC7314947BD13F30F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=5834ED4291BDEB928270428EBBAF7604*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=5A8A8A43F25485E7EE1B201EDCBC7A38*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=DC7D30B90B2D8ABF664FBED2B1B59894*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=41923EA1F824FE63EA5BEB84DB7A3E74*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3DE09703C8E79ED2CA3F01074719906B*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=A53A02B997935FD8EEDCB5F7ABAB9B9F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=E96A73C7BF33A464C510EDE582318BF2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=32089B8851BBF8BC2D014E9F37288C83*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=09D278F9DE118EF09163C6140255C690*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=03866661686829d806989e2fc5a72606*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=e57401fbdadcd4571ff385ab82bd5d6d*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=84B763C45C0E4A3E7CA5548C710DB4EE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=19584675D94829987952432E018D5056*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=330768A4F172E10ACB6287B87289D83B*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=885C99CCFBE77D1CBFCB9C4E7C1A3313*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=22A22BC9E4E0D2F189F1EA01748816AC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=7FA30E6BB7E8E8A69155636E50BF1B28*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=96DF3A3731912449521F6F8D183279B1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=7E6CF3FF4576581271AC8A313B2AAB46*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=51791678F351C03A0EB4E2A7B05C6E17*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=25CE42B079282632708FC846129E98A5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=021BCCA20BA3381B11BDDE26B4E62F20*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=59223B5F52D8799D38E0754855CBDF42*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=81E75D8F1D276C156653D3D8813E4A43*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=17244E8B6B8227E57FE709CCAD421420*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=5B76DA3ACDEDC8A5CDF23A798B5936B4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=CB2B65BB77D995CC1C0E5DF1C860133C*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=40445337761D80CF465136FAFB1F63E6*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=8A790F401B29FA87BC1E56F7272B3AA6*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=B50199E952C875241B9CE06C971CE3C1*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_hashes
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_hashes matches
+  '*IMPHASH=BCCA3C247B619DCD13C8CDFF5F123932*'; data_win_eventdata_hashes
+  matches '*IMPHASH=3A19059BD7688CB88E70005F18EFC439*';
+  data_win_eventdata_hashes matches
+  '*IMPHASH=bf6223a49e45d99094406777eb6004ba*', among other conditions.
+
+known_false_positives: >
+  Legitimate use of one of these tools. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - Internal Research
+  - https://attack.mitre.org/techniques/T1588/002/
+  - https://attack.mitre.org/techniques/T1003/
+
+response:
+  message: >
+    Hacktool Execution - Imphash detected on host $agent_name$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1588.002, T1003
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_hashes
+      type: file_hash
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1588.002
+    - T1003
+  custom_tags:
+    - hacktool
+    - imphash
+    - process_creation
+    - sysmon
+    - credential_access
+    - resource_development
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb][Cc][Cc][Aa]3[Cc]247[Bb]619[Dd][Cc][Dd]13[Cc]8[Cc][Dd][Ff][Ff]5[Ff]123932.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Aa]19059[Bb][Dd]7688[Cc][Bb]88[Ee]70005[Ff]18[Ee][Ff][Cc]439.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb][Ff]6223[Aa]49[Ee]45[Dd]99094406777[Ee][Bb]6004[Bb][Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=23867[Aa]89[Cc]2[Bb]8[Ff][Cc]733[Bb][Ee]6[Cc][Ff]5[Ee][Ff]902[Ff]2[Dd]1.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa]37[Ff][Ff]327[Ff]8[Dd]48[Ee]8[Aa]4[Dd]2[Ff]757[Ee]1[Bb]6[Ee]70[Bb][Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ff]9[Aa]28[Cc]458284584[Aa]93[Bb]14216308[Dd]31[Bb][Dd].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=6118619783[Ff][Cc]175[Bb][Cc]7[Ee][Bb][Ee][Cc][Ff][Ff]0769[Bb]46[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=959[Aa]83047[Ee]80[Aa][Bb]68[Bb]368[Ff][Dd][Bb]3[Ff]4[Cc]6[Ee]4[Ee][Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=563233[Bb][Ff][Aa]169[Aa][Cc][Cc]7892451[Ff]71[Aa][Dd]5850[Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=87575[Cc][Bb]7[Aa]0[Ee]0700[Ee][Bb]37[Ff]2[Ee]3668671[Aa]08.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=13[Ff]08707[Ff]759[Aa][Ff]6003837[Aa]150[Aa]371[Bb][Aa]1.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=1781[Ff]06048[Aa]7[Ee]58[Bb]323[Ff]0[Bb]9259[Bb][Ee]798[Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=233[Ff]85[Ff]2[Dd]4[Bb][Cc]9[Dd]6521[Aa]6[Cc][Aa][Aa][Ee]11[Aa]1[Ee]7[Ff]5.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=24[Aa][Ff]2584[Cc][Bb][Ff]4[Dd]60[Bb][Bb][Ee]5[Cc]6[Dd]1[Bb]31[Bb]3[Bb][Ee]6[Dd].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=632969[Dd][Dd][Ff]6[Dd][Bb][Ff]4[Ee]0[Ff]53424[Bb]75[Ee]4[Bb]91[Ff]2.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=713[Cc]29[Bb]396[Bb]907[Ee][Dd]71[Aa]72482759[Ee][Dd]757.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=749[Aa]7[Bb][Bb]1[Ff]0[Bb]4[Cc]4455949[Cc]0[Bb]2[Bb][Ff]7[Ff]9[Ee]9[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=8628[Bb]2608957[Aa]6[Bb]0[Cc]6330[Aa][Cc]3[Dd][Ee]28[Cc][Ee]2[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=8[Bb]114550386[Ee]31895[Dd][Ff][Aa][Bb]371[Ee]741123[Dd].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=94[Cc][Bb]940[Aa]1[Aa]6[Bb]65[Bb][Ee][Dd]4[Dd]5[Aa]8[Ff]849[Cc][Ee]9793.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=9[Dd]68781980370[Ee]00[Ee]0[Bb][Dd]939[Ee][Ee]5[Ee]6[Cc]141.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb]18[Aa]1401[Ff][Ff]8[Ff]444056[Dd]29450[Ff][Bb][Cc]0[Aa]6[Cc][Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Cc][Bb]567[Ff]9498452721[Dd]77[Aa]451374955[Ff]5[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=730073214094[Cc][Dd]328547[Bb][Ff]1[Ff]72289752.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=17[Bb]461[Aa]082950[Ff][Cc]6332228572138[Bb]80[Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Dd][Cc]25[Ee][Ee]78[Ee]2[Ee][Ff]4[Dd]36[Ff][Aa][Aa]0[Bb][Aa][Dd][Ff]1[Ee]7461[Cc]9.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=819[Bb]19[Dd]53[Cc][Aa]6736448[Ff]9325[Aa]85736792.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=829[Dd][Aa]329[Cc][Ee]140[Dd]873[Bb]4[Aa]8[Bb][Dd][Ee]2[Cc][Bb][Ff][Aa][Aa]7[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Cc]547[Ff]2[Ee]66061[Aa]8[Dd][Ff][Ff][Bb]6[Ff]5[Aa]3[Ff][Ff]63[Cc]0[Aa]74.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0588081[Aa][Bb]0[Ee]63[Bb][Aa]785938467[Ee]1[Bb]10[Cc][Cc][Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0[Dd]9[Ee][Cc]08[Bb][Aa][Cc]6[Cc]07[Dd]9987[Dd][Ff][Dd]0[Ff]1506587[Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb][Cc]129092[Bb]71[Cc]89[Bb]4[Dd]4[Cc]8[Cc][Dd][Ff]8[Ee][Aa]590[Bb]29.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=4[Dd][Aa]924[Cc][Ff]622[Dd]039[Dd]58[Bb][Cc][Ee]71[Cc][Dd][Ff]05[Dd]242.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ee]7[Aa]3[Aa]5[Cc]377[Ee]2[Dd]29324093377[Dd]7[Dd][Bb]1[Cc]66.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=9[Aa]9[Dd][Bb][Ee][Cc]5[Cc]62[Ff]0380[Bb]4[Ff][Aa]5[Ff][Dd]31[Dd][Ee][Ff][Ff][Ee][Dd][Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa][Ff]8[Aa]3976[Aa][Dd]71[Ee]5[Dd]5[Ff][Dd][Ff][Bb]67[Dd][Dd][Bb]8[Dd][Aa][Dd][Ff][Cc][Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0[Cc]477898[Bb][Bb][Ff]137[Bb][Bb][Dd]6[Ff]2[Aa]54[Ee]3[Bb]805[Ff][Ff]4.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0[Cc][Aa]9[Ff]02[Bb]537[Bb][Cc][Ee][Aa]20[Dd]4[Ee][Aa]5[Ee][Bb]1[Aa]9[Ff][Ee]338.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Aa][Bb]3655[Ee]5[Aa]14[Dd]4[Ee][Ee][Ff][Cc]547[Ff]4781[Bb][Ff]7[Ff]9[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ee]6[Ff]9[Dd]5152[Dd][Aa]699934[Bb]30[Dd][Aa][Aa][Bb]206471[Ff]6.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Aa][Dd]59991[Cc][Cc][Ff]1[Dd]67339[Bb]319[Bb]15[Aa]41[Bb]35[Dd].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ff][Ff][Dd][Dd]59[Ee]0318[Bb]85[Aa]3[Ee]480874[Dd]9796[Dd]872.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0[Cc][Ff]479628[Dd]7[Cc][Cc]1[Ee][Aa]25[Ee][Cc]7998[Aa]92[Ff]5051.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=07[Aa]2[Dd]4[Dd][Cc][Bb][Dd]6[Cc][Bb]2[Cc]6[Aa]45[Ee]6[Bb]101[Ff]0[Bb]6[Dd]51.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Dd]6[Dd]0[Ff]80386[Ee]1380[Dd]05[Cc][Bb]78[Ee]871[Bb][Cc]72[Bb]1.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=38[Dd]9[Ee]015591[Bb][Bb][Ff][Dd]4929[Ee]0[Dd]0[Ff]47[Ff][Aa]0055.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0[Ee]2216679[Cc][Aa]6[Ee]1094[Dd]63322[Ee]3412[Dd]650.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa][Dd][Aa]161[Bb][Ff]41[Bb]8[Ee]5[Ee]9132858[Cc][Bb]54[Cc][Aa][Bb]5[Ff][Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=2[Aa]1[Bb][Cc]4913[Cc][Dd]5[Ee][Cc][Bb]0434[Dd][Ff]07[Cc][Bb]675[Bb]798.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=11083[Ee]75553[Bb][Aa][Aa][Ee]21[Dd][Cc]89[Cc][Ee]8[Ff]9[Aa]195[Ee]4.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa]23[Dd]29[Cc]9[Ee]566[Ff]2[Ff][Aa]8[Ff][Ff][Bb][Bb]79267[Ff]5[Dd][Ff]80.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=4[Aa]07[Ff]944[Aa]83[Ee]8[Aa]7[Cc]2525[Ee][Ff][Aa]35[Dd][Dd]30[Ee]2[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=767637[Cc]23[Bb][Bb]42[Cc][Dd]5[Dd]7397[Cc][Ff]58[Bb]0[Bb][Ee]688.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=14[Cc]4[Ee]4[Cc]72[Bb][Aa]075[Ee]9069[Ee][Ee]67[Ff]39188[Aa][Dd]8.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Cc]782813[Dd]4[Aa][Ff][Cc][Ee]07[Bb][Bb][Ff][Cc]5[Aa]9772[Aa][Cc][Dd][Bb][Dd][Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=7[Dd]010[Cc]6[Bb][Bb]6[Aa]3726[Ff]327[Ff]7[Ee]239166[Dd]127.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=89159[Bb][Aa]4[Dd][Dd]04[Ee]4[Cc][Ee]5559[Ff]132[Aa]9964[Ee][Bb]3.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=6[Ff]33[Ff]4[Aa]5[Ff][Cc]42[Bb]8[Cc][Ee][Cc]7314947[Bb][Dd]13[Ff]30[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=5834[Ee][Dd]4291[Bb][Dd][Ee][Bb]928270428[Ee][Bb][Bb][Aa][Ff]7604.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=5[Aa]8[Aa]8[Aa]43[Ff]25485[Ee]7[Ee][Ee]1[Bb]201[Ee][Dd][Cc][Bb][Cc]7[Aa]38.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Dd][Cc]7[Dd]30[Bb]90[Bb]2[Dd]8[Aa][Bb][Ff]664[Ff][Bb][Ee][Dd]2[Bb]1[Bb]59894.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=41923[Ee][Aa]1[Ff]824[Ff][Ee]63[Ee][Aa]5[Bb][Ee][Bb]84[Dd][Bb]7[Aa]3[Ee]74.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Dd][Ee]09703[Cc]8[Ee]79[Ee][Dd]2[Cc][Aa]3[Ff]01074719906[Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa]53[Aa]02[Bb]997935[Ff][Dd]8[Ee][Ee][Dd][Cc][Bb]5[Ff]7[Aa][Bb][Aa][Bb]9[Bb]9[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ee]96[Aa]73[Cc]7[Bb][Ff]33[Aa]464[Cc]510[Ee][Dd][Ee]582318[Bb][Ff]2.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=32089[Bb]8851[Bb][Bb][Ff]8[Bb][Cc]2[Dd]014[Ee]9[Ff]37288[Cc]83.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=09[Dd]278[Ff]9[Dd][Ee]118[Ee][Ff]09163[Cc]6140255[Cc]690.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=03866661686829[Dd]806989[Ee]2[Ff][Cc]5[Aa]72606.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ee]57401[Ff][Bb][Dd][Aa][Dd][Cc][Dd]4571[Ff][Ff]385[Aa][Bb]82[Bb][Dd]5[Dd]6[Dd].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=84[Bb]763[Cc]45[Cc]0[Ee]4[Aa]3[Ee]7[Cc][Aa]5548[Cc]710[Dd][Bb]4[Ee][Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=19584675[Dd]94829987952432[Ee]018[Dd]5056.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=330768[Aa]4[Ff]172[Ee]10[Aa][Cc][Bb]6287[Bb]87289[Dd]83[Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=885[Cc]99[Cc][Cc][Ff][Bb][Ee]77[Dd]1[Cc][Bb][Ff][Cc][Bb]9[Cc]4[Ee]7[Cc]1[Aa]3313.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=22[Aa]22[Bb][Cc]9[Ee]4[Ee]0[Dd]2[Ff]189[Ff]1[Ee][Aa]01748816[Aa][Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=7[Ff][Aa]30[Ee]6[Bb][Bb]7[Ee]8[Ee]8[Aa]69155636[Ee]50[Bb][Ff]1[Bb]28.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=96[Dd][Ff]3[Aa]3731912449521[Ff]6[Ff]8[Dd]183279[Bb]1.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=7[Ee]6[Cc][Ff]3[Ff][Ff]4576581271[Aa][Cc]8[Aa]313[Bb]2[Aa][Aa][Bb]46.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=51791678[Ff]351[Cc]03[Aa]0[Ee][Bb]4[Ee]2[Aa]7[Bb]05[Cc]6[Ee]17.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=25[Cc][Ee]42[Bb]079282632708[Ff][Cc]846129[Ee]98[Aa]5.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=021[Bb][Cc][Cc][Aa]20[Bb][Aa]3381[Bb]11[Bb][Dd][Dd][Ee]26[Bb]4[Ee]62[Ff]20.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=59223[Bb]5[Ff]52[Dd]8799[Dd]38[Ee]0754855[Cc][Bb][Dd][Ff]42.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=81[Ee]75[Dd]8[Ff]1[Dd]276[Cc]156653[Dd]3[Dd]8813[Ee]4[Aa]43.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=17244[Ee]8[Bb]6[Bb]8227[Ee]57[Ff][Ee]709[Cc][Cc][Aa][Dd]421420.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=5[Bb]76[Dd][Aa]3[Aa][Cc][Dd][Ee][Dd][Cc]8[Aa]5[Cc][Dd][Ff]23[Aa]798[Bb]5936[Bb]4.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Cc][Bb]2[Bb]65[Bb][Bb]77[Dd]995[Cc][Cc]1[Cc]0[Ee]5[Dd][Ff]1[Cc]860133[Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=40445337761[Dd]80[Cc][Ff]465136[Ff][Aa][Ff][Bb]1[Ff]63[Ee]6.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=8[Aa]790[Ff]401[Bb]29[Ff][Aa]87[Bb][Cc]1[Ee]56[Ff]7272[Bb]3[Aa][Aa]6.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb]50199[Ee]952[Cc]875241[Bb]9[Cc][Ee]06[Cc]971[Cc][Ee]3[Cc]1.*/)

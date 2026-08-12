@@ -1,0 +1,166 @@
+name: SQL Client Tools PowerShell Session Detection
+id: a746c9b8-a2fb-4ee5-a428-92bee9e99060
+version: 1
+schema_version: "1.0"
+date: "2022-02-25"
+author: Agro (@agro_sev) oscd.communitly
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a746c9b8-a2fb-4ee5-a428-92bee9e99060
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  This rule detects execution of a PowerShell code through the sqltoolsps.exe
+  utility, which is included in the standard set of utilities supplied with the
+  Microsoft SQL Server Management studio. Script blocks are not logged in this
+  case, so this utility helps to bypass protection mechanisms based on the
+  analysis of these logs. MITRE ATT&CK: T1059.001, T1127.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\sqltoolsps.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\sqltoolsps.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "\\sqltoolsps.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\smss.exe"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\sqltoolsps.exe'; data_win_eventdata_parentImage matches '*\sqltoolsps.exe';
+  data_win_eventdata_originalFileName equals '\sqltoolsps.exe', among other
+  conditions.
+
+known_false_positives: >
+  Direct PS command execution through SQLToolsPS.exe is uncommon, childprocess
+  sqltoolsps.exe spawned by smss.exe is a legitimate action. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://github.com/LOLBAS-Project/LOLBAS/blob/8283d8d91552213ded165fd36deb6cb9534cb443/yml/OtherMSBinaries/Sqltoolsps.yml
+  - https://twitter.com/pabraeken/status/993298228840992768
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1127/
+
+response:
+  message: >
+    SQL Client Tools PowerShell Session Detection detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. MITRE
+    ATT&CK: T1059.001, T1127
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1127
+  custom_tags:
+    - client
+    - tools
+    - powershell
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Qq][Ll][Tt][Oo][Oo][Ll][Ss][Pp][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ss][Qq][Ll][Tt][Oo][Oo][Ll][Ss][Pp][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/\\[Ss][Qq][Ll][Tt][Oo][Oo][Ll][Ss][Pp][Ss]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_parentImage:/.*\\[Ss][Mm][Ss][Ss]\.[Ee][Xx][Ee]/)

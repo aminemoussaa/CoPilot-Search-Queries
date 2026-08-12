@@ -1,0 +1,160 @@
+name: Potential Secure Deletion with SDelete
+id: 39a80702-d7ca-4a83-b776-525b1f86a36d
+version: 1
+schema_version: "1.0"
+date: "2024-12-13"
+author: Thomas Patzke
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 39a80702-d7ca-4a83-b776-525b1f86a36d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects files that have extensions commonly seen while SDelete is used to wipe
+  files. MITRE ATT&CK: T1070.004, T1027.005, T1485, T1553.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "4656"
+              - term:
+                  data_win_system_eventID: "4663"
+              - term:
+                  data_win_system_eventID: "4658"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_objectName:
+                    value: "*.AAA"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_objectName:
+                    value: "*.ZZZ"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_objectName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4656'; data_win_system_eventID equals '4663';
+  data_win_system_eventID equals '4658', among other conditions.
+
+known_false_positives: >
+  Legitimate usage of SDelete. Files that are interacted with that have these
+  extensions legitimately. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://jpcertcc.github.io/ToolAnalysisResultSheet/details/sdelete.htm
+  - https://www.jpcert.or.jp/english/pub/sr/ir_research.html
+  - https://learn.microsoft.com/en-gb/sysinternals/downloads/sdelete
+  - https://attack.mitre.org/techniques/T1070/004/
+  - https://attack.mitre.org/techniques/T1027/005/
+  - https://attack.mitre.org/techniques/T1485/
+  - https://attack.mitre.org/techniques/T1553/002/
+
+response:
+  message: >
+    Potential Secure Deletion with SDelete detected on host $agent_name$.
+    Matched data_win_eventdata_objectName: $data_win_eventdata_objectName$.
+    Matched data_win_eventdata_subjectUserName:
+    $data_win_eventdata_subjectUserName$. MITRE ATT&CK: T1070.004, T1027.005,
+    T1485, T1553.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_objectName
+      type: other
+    - field: data_win_eventdata_subjectUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1070.004
+    - T1027.005
+    - T1485
+    - T1553.002
+  custom_tags:
+    - secure
+    - deletion
+    - sdelete
+    - windows_security
+    - impact
+    - stealth
+    - defense_impairment
+    - s0195
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"4656" OR data_win_system_eventID:"4663" OR data_win_system_eventID:"4658") AND (data_win_eventdata_objectName:/.*\.[Aa][Aa][Aa]/ OR data_win_eventdata_objectName:/.*\.[Zz][Zz][Zz]/)

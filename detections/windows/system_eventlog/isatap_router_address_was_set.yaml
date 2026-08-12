@@ -1,0 +1,166 @@
+name: ISATAP Router Address Was Set
+id: d22df9cd-2aee-4089-93c7-9dc4eae77f2c
+version: 1
+schema_version: "1.0"
+date: "2025-10-19"
+author: hamid
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d22df9cd-2aee-4089-93c7-9dc4eae77f2c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the configuration of a new ISATAP router on a Windows host. While
+  ISATAP is a legitimate Microsoft technology for IPv6 transition, unexpected or
+  unauthorized ISATAP router configurations could indicate a potential IPv6 DNS
+  Takeover attack using tools like mitm6. In such attacks, adversaries advertise
+  themselves as DHCPv6 servers and set malicious ISATAP routers to intercept
+  traffic. This detection should be correlated with network baselines and known
+  legitimate ISATAP deployments in your environment. MITRE ATT&CK: T1557,
+  T1565.002.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4100"
+        - term:
+            data_win_system_providerName:
+              value: "Microsoft-Windows-Iphlpsvc"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_isatapRouter"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_isatapRouter: "127.0.0.1"
+                    - term:
+                        data_win_eventdata_isatapRouter: "::1"
+                  minimum_should_match: 1
+        - bool:
+            must_not:
+              - bool:
+                  must_not:
+                    - exists:
+                        field: "data_win_eventdata_isatapRouter"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_isatapRouter
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_eventID equals '4100';
+  data_win_system_providerName equals 'Microsoft-Windows-Iphlpsvc';
+  data_win_eventdata_isatapRouter equals '127.0.0.1', among other conditions.
+
+known_false_positives: >
+  Legitimate ISATAP router configuration in enterprise environments. IPv6
+  transition projects and network infrastructure changes. Network administrators
+  configuring dual-stack networking. Automatic ISATAP configuration in some
+  Windows deployments. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://www.blackhillsinfosec.com/mitm6-strikes-again-the-dark-side-of-ipv6/
+  - https://redfoxsec.com/blog/ipv6-dns-takeover/
+  - https://www.securityhq.com/blog/malicious-isatap-tunneling-unearthed-on-windows-server/
+  - https://medium.com/@ninnesoturan/detecting-ipv6-dns-takeover-a54a6a88be1f
+  - https://attack.mitre.org/techniques/T1557/
+  - https://attack.mitre.org/techniques/T1565/002/
+
+response:
+  message: >
+    ISATAP Router Address Was Set detected on host $agent_name$. Matched
+    data_win_system_providerName: $data_win_system_providerName$. Matched
+    data_win_eventdata_isatapRouter: $data_win_eventdata_isatapRouter$. MITRE
+    ATT&CK: T1557, T1565.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_isatapRouter
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1557
+    - T1565.002
+  custom_tags:
+    - isatap
+    - router
+    - address
+    - windows_system
+    - impact
+    - credential_access
+    - collection
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4100" AND data_win_system_providerName:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Ii][Pp][Hh][Ll][Pp][Ss][Vv][Cc]/ AND _exists_:data_win_eventdata_isatapRouter AND NOT (data_win_eventdata_isatapRouter:"127.0.0.1" OR data_win_eventdata_isatapRouter:"::1") AND NOT (NOT _exists_:data_win_eventdata_isatapRouter)

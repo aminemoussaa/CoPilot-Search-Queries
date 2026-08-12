@@ -1,0 +1,289 @@
+name: Uncommon  Assistive Technology Applications Execution Via AtBroker.EXE
+id: f24bcaea-0cd1-11eb-adc1-0242ac120002
+version: 1
+schema_version: "1.0"
+date: "2024-03-06"
+author: Mateusz Wydra, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f24bcaea-0cd1-11eb-adc1-0242ac120002
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the start of a non built-in assistive technology applications via
+  "Atbroker.EXE". MITRE ATT&CK: T1218.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\AtBroker.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "AtBroker.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*start*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*animations*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*audiodescription*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*caretbrowsing*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*caretwidth*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*colorfiltering*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*cursorindicator*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*cursorscheme*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*filterkeys*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*focusborderheight*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*focusborderwidth*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*highcontrast*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*keyboardcues*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*keyboardpref*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*livecaptions*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*magnifierpane*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*messageduration*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*minimumhitradius*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*mousekeys*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Narrator*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*osk*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*overlappedcontent*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*showsounds*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*soundsentry*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*speechreco*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*stickykeys*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*togglekeys*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*voiceaccess*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*windowarranging*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*windowtracking*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*windowtrackingtimeout*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*windowtrackingzorder*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Oracle_JavaAccessBridge*"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\AtBroker.exe'; data_win_eventdata_originalFileName equals 'AtBroker.exe';
+  data_win_eventdata_commandLine matches '*start*', among other conditions.
+
+known_false_positives: >
+  Legitimate, non-default assistive technology applications execution. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - http://www.hexacorn.com/blog/2016/07/22/beyond-good-ol-run-key-part-42/
+  - https://lolbas-project.github.io/lolbas/Binaries/Atbroker/
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Uncommon Assistive Technology Applications Execution Via AtBroker.EXE
+    detected on host $agent_name$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1218
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+  custom_tags:
+    - uncommon
+    - assistive
+    - technology
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Aa][Tt][Bb][Rr][Oo][Kk][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Aa][Tt][Bb][Rr][Oo][Kk][Ee][Rr]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Ss][Tt][Aa][Rr][Tt].*/ AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Aa][Nn][Ii][Mm][Aa][Tt][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_commandLine:/.*[Aa][Uu][Dd][Ii][Oo][Dd][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Rr][Ee][Tt][Bb][Rr][Oo][Ww][Ss][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Rr][Ee][Tt][Ww][Ii][Dd][Tt][Hh].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Ll][Oo][Rr][Ff][Ii][Ll][Tt][Ee][Rr][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Cc][Uu][Rr][Ss][Oo][Rr][Ii][Nn][Dd][Ii][Cc][Aa][Tt][Oo][Rr].*/ OR data_win_eventdata_commandLine:/.*[Cc][Uu][Rr][Ss][Oo][Rr][Ss][Cc][Hh][Ee][Mm][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Ll][Tt][Ee][Rr][Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Cc][Uu][Ss][Bb][Oo][Rr][Dd][Ee][Rr][Hh][Ee][Ii][Gg][Hh][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Cc][Uu][Ss][Bb][Oo][Rr][Dd][Ee][Rr][Ww][Ii][Dd][Tt][Hh].*/ OR data_win_eventdata_commandLine:/.*[Hh][Ii][Gg][Hh][Cc][Oo][Nn][Tt][Rr][Aa][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Kk][Ee][Yy][Bb][Oo][Aa][Rr][Dd][Cc][Uu][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*[Kk][Ee][Yy][Bb][Oo][Aa][Rr][Dd][Pp][Rr][Ee][Ff].*/ OR data_win_eventdata_commandLine:/.*[Ll][Ii][Vv][Ee][Cc][Aa][Pp][Tt][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_commandLine:/.*[Mm][Aa][Gg][Nn][Ii][Ff][Ii][Ee][Rr][Pp][Aa][Nn][Ee].*/ OR data_win_eventdata_commandLine:/.*[Mm][Ee][Ss][Ss][Aa][Gg][Ee][Dd][Uu][Rr][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Mm][Ii][Nn][Ii][Mm][Uu][Mm][Hh][Ii][Tt][Rr][Aa][Dd][Ii][Uu][Ss].*/ OR data_win_eventdata_commandLine:/.*[Mm][Oo][Uu][Ss][Ee][Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_commandLine:/.*[Nn][Aa][Rr][Rr][Aa][Tt][Oo][Rr].*/ OR data_win_eventdata_commandLine:/.*[Oo][Ss][Kk].*/ OR data_win_eventdata_commandLine:/.*[Oo][Vv][Ee][Rr][Ll][Aa][Pp][Pp][Ee][Dd][Cc][Oo][Nn][Tt][Ee][Nn][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ss][Hh][Oo][Ww][Ss][Oo][Uu][Nn][Dd][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ss][Oo][Uu][Nn][Dd][Ss][Ee][Nn][Tt][Rr][Yy].*/ OR data_win_eventdata_commandLine:/.*[Ss][Pp][Ee][Ee][Cc][Hh][Rr][Ee][Cc][Oo].*/ OR data_win_eventdata_commandLine:/.*[Ss][Tt][Ii][Cc][Kk][Yy][Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_commandLine:/.*[Tt][Oo][Gg][Gg][Ll][Ee][Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_commandLine:/.*[Vv][Oo][Ii][Cc][Ee][Aa][Cc][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ww][Ii][Nn][Dd][Oo][Ww][Aa][Rr][Rr][Aa][Nn][Gg][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Ww][Ii][Nn][Dd][Oo][Ww][Tt][Rr][Aa][Cc][Kk][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Ww][Ii][Nn][Dd][Oo][Ww][Tt][Rr][Aa][Cc][Kk][Ii][Nn][Gg][Tt][Ii][Mm][Ee][Oo][Uu][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ww][Ii][Nn][Dd][Oo][Ww][Tt][Rr][Aa][Cc][Kk][Ii][Nn][Gg][Zz][Oo][Rr][Dd][Ee][Rr].*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Oo][Rr][Aa][Cc][Ll][Ee]_[Jj][Aa][Vv][Aa][Aa][Cc][Cc][Ee][Ss][Ss][Bb][Rr][Ii][Dd][Gg][Ee].*/)

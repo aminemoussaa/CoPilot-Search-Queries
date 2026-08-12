@@ -1,0 +1,150 @@
+name: Disable Macro Runtime Scan Scope
+id: ab871450-37dc-4a3a-997f-6662aa8ae0f1
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ab871450-37dc-4a3a-997f-6662aa8ae0f1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects tampering with the MacroRuntimeScanScope registry key to disable
+  runtime scanning of enabled macros.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\SOFTWARE\\\\*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Microsoft\\\\Office\\\\*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Common\\\\Security*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\MacroRuntimeScanScope"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_details:
+              value: "DWORD (0x00000000)"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\*'; data_win_eventdata_targetObject matches
+  '*\Microsoft\Office\*'; data_win_eventdata_targetObject matches
+  '*\Common\Security*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/en-us/security/blog/2018/09/12/office-vba-amsi-parting-the-veil-on-malicious-macros/
+  - https://admx.help/?Category=Office2016&Policy=office16.Office.Microsoft.Policies.Windows::L_MacroRuntimeScanScope
+  - https://github.com/S3cur3Th1sSh1t/OffensiveVBA/blob/28cc6a2802d8176195ac19b3c8e9a749009a82a3/src/AMSIbypasses.vba
+
+response:
+  message: >
+    Disable Macro Runtime Scan Scope detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_details: $data_win_eventdata_details$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - disable
+    - macro
+    - runtime
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\.*/ AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ff][Ff][Ii][Cc][Ee]\\.*/ AND data_win_eventdata_targetObject:/.*\\[Cc][Oo][Mm][Mm][Oo][Nn]\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy].*/ AND data_win_eventdata_targetObject:/.*\\[Mm][Aa][Cc][Rr][Oo][Rr][Uu][Nn][Tt][Ii][Mm][Ee][Ss][Cc][Aa][Nn][Ss][Cc][Oo][Pp][Ee]/ AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000000\)/

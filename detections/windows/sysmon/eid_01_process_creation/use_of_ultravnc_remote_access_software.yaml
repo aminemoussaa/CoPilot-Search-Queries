@@ -1,0 +1,155 @@
+name: Use of UltraVNC Remote Access Software
+id: 145322e4-0fd3-486b-81ca-9addc75736d8
+version: 1
+schema_version: "1.0"
+date: "2022-10-02"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 145322e4-0fd3-486b-81ca-9addc75736d8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  An adversary may use legitimate desktop support and remote access software,to
+  establish an interactive command and control channel to target systems within
+  networks. MITRE ATT&CK: T1219.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_description:
+                    value: "VNCViewer"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_product:
+                    value: "UltraVNC VNCViewer"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_company:
+                    value: "UltraVNC"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "VNCViewer.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_description
+    - data_win_eventdata_product
+    - data_win_eventdata_company
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_description equals
+  'VNCViewer'; data_win_eventdata_product equals 'UltraVNC VNCViewer';
+  data_win_eventdata_company equals 'UltraVNC', among other conditions.
+
+known_false_positives: >
+  Legitimate use. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/9e5b12c4912c07562aec7500447b11fa3e17e254/atomics/T1219/T1219.md
+  - https://attack.mitre.org/techniques/T1219/002/
+
+response:
+  message: >
+    Use of UltraVNC Remote Access Software detected on host $agent_name$.
+    Matched data_win_eventdata_description: $data_win_eventdata_description$.
+    Matched data_win_eventdata_product: $data_win_eventdata_product$. MITRE
+    ATT&CK: T1219.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_description
+      type: other
+    - field: data_win_eventdata_product
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1219.002
+  custom_tags:
+    - ultravnc
+    - software
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_description:/[Vv][Nn][Cc][Vv][Ii][Ee][Ww][Ee][Rr]/ OR data_win_eventdata_product:/[Uu][Ll][Tt][Rr][Aa][Vv][Nn][Cc] [Vv][Nn][Cc][Vv][Ii][Ee][Ww][Ee][Rr]/ OR data_win_eventdata_company:/[Uu][Ll][Tt][Rr][Aa][Vv][Nn][Cc]/ OR data_win_eventdata_originalFileName:/[Vv][Nn][Cc][Vv][Ii][Ee][Ww][Ee][Rr]\.[Ee][Xx][Ee]/)

@@ -1,0 +1,191 @@
+name: PUA - TruffleHog Execution
+id: 44030449-b0df-4c94-aae1-502359ab28ee
+version: 1
+schema_version: "1.0"
+date: "2025-09-24"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 44030449-b0df-4c94-aae1-502359ab28ee
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of TruffleHog, a tool used to search for secrets in
+  different platforms like Git, Jira, Slack, SharePoint, etc. that could be used
+  maliciously. While it is a legitimate tool, intended for use in CI pipelines
+  and security assessments, It was observed in the Shai-Hulud malware campaign
+  targeting npm packages to steal sensitive information. MITRE ATT&CK: T1083,
+  T1552.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\trufflehog.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* docker --image *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* Git *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* GitHub *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* Jira *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* Slack *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* Confluence *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* SharePoint *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* s3 *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* gcs *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* --results=verified*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\trufflehog.exe'; data_win_eventdata_commandLine matches '* docker --image
+  *'; data_win_eventdata_commandLine matches '* Git *', among other conditions.
+
+known_false_positives: >
+  Legitimate use of TruffleHog by security teams or developers. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://github.com/trufflesecurity/trufflehog
+  - https://www.getsafety.com/blog-posts/shai-hulud-npm-attack
+  - https://attack.mitre.org/techniques/T1083/
+  - https://attack.mitre.org/techniques/T1552/001/
+
+response:
+  message: >
+    PUA - TruffleHog Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1083, T1552.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1083
+    - T1552.001
+  custom_tags:
+    - trufflehog
+    - process_creation
+    - sysmon
+    - discovery
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Tt][Rr][Uu][Ff][Ff][Ll][Ee][Hh][Oo][Gg]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_commandLine:/.* [Dd][Oo][Cc][Kk][Ee][Rr] --[Ii][Mm][Aa][Gg][Ee] .*/ OR data_win_eventdata_commandLine:/.* [Gg][Ii][Tt] .*/ OR data_win_eventdata_commandLine:/.* [Gg][Ii][Tt][Hh][Uu][Bb] .*/ OR data_win_eventdata_commandLine:/.* [Jj][Ii][Rr][Aa] .*/ OR data_win_eventdata_commandLine:/.* [Ss][Ll][Aa][Cc][Kk] .*/ OR data_win_eventdata_commandLine:/.* [Cc][Oo][Nn][Ff][Ll][Uu][Ee][Nn][Cc][Ee] .*/ OR data_win_eventdata_commandLine:/.* [Ss][Hh][Aa][Rr][Ee][Pp][Oo][Ii][Nn][Tt] .*/ OR data_win_eventdata_commandLine:/.* [Ss]3 .*/ OR data_win_eventdata_commandLine:/.* [Gg][Cc][Ss] .*/) AND data_win_eventdata_commandLine:/.* --[Rr][Ee][Ss][Uu][Ll][Tt][Ss]=[Vv][Ee][Rr][Ii][Ff][Ii][Ee][Dd].*/))

@@ -1,0 +1,181 @@
+name: Deletion of Volume Shadow Copies via WMI with PowerShell
+id: 21ff4ca9-f13a-41ad-b828-0077b2af2e40
+version: 1
+schema_version: "1.0"
+date: "2022-12-30"
+author: Tim Rauch, Elastic (idea)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 21ff4ca9-f13a-41ad-b828-0077b2af2e40
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects deletion of Windows Volume Shadow Copies with PowerShell code and
+  Get-WMIObject. This technique is used by numerous ransomware families such as
+  Sodinokibi/REvil. MITRE ATT&CK: T1490.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-WmiObject*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*gwmi*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-CimInstance*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*gcim*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*Win32_ShadowCopy*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.Delete()*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Remove-WmiObject*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*rwmi*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Remove-CimInstance*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*rcim*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*Get-WmiObject*'; data_win_eventdata_commandLine matches '*gwmi*';
+  data_win_eventdata_commandLine matches '*Get-CimInstance*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1490/T1490.md#atomic-test-5---windows---delete-volume-shadow-copies-via-wmi-with-powershell
+  - https://www.elastic.co/guide/en/security/current/volume-shadow-copy-deletion-via-powershell.html
+  - https://attack.mitre.org/techniques/T1490/
+
+response:
+  message: >
+    Deletion of Volume Shadow Copies via WMI with PowerShell detected on host
+    $agent_name$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1490
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1490
+  custom_tags:
+    - deletion
+    - volume
+    - shadow
+    - process_creation
+    - sysmon
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ww][Mm][Ii][Oo][Bb][Jj][Ee][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ww][Mm][Ii].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Cc][Ii][Mm][Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Cc][Ii][Mm].*/) AND data_win_eventdata_commandLine:/.*[Ww][Ii][Nn]32_[Ss][Hh][Aa][Dd][Oo][Ww][Cc][Oo][Pp][Yy].*/ AND (data_win_eventdata_commandLine:/.*\.[Dd][Ee][Ll][Ee][Tt][Ee]\(\).*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Ww][Mm][Ii][Oo][Bb][Jj][Ee][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ww][Mm][Ii].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Cc][Ii][Mm][Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_commandLine:/.*[Rr][Cc][Ii][Mm].*/)

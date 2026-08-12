@@ -1,0 +1,149 @@
+name: Windows Defender Exclusion Registry Key - Write Access Requested
+id: e9c8808f-4cfb-4ba9-97d4-e5f3beaa244d
+version: 1
+schema_version: "1.0"
+date: "2023-11-11"
+author: "@BarryShooshooga, Nasreddine Bencherchali (Nextron Systems)"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e9c8808f-4cfb-4ba9-97d4-e5f3beaa244d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects write access requests to the Windows Defender exclusions registry
+  keys. This could be an indication of an attacker trying to request a handle or
+  access the object to write new exclusions in order to bypass security. MITRE
+  ATT&CK: T1685.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_accessList: "*%%4417*"
+              - wildcard:
+                  data_win_eventdata_accessList: "*%%4418*"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "4656"
+              - term:
+                  data_win_system_eventID: "4663"
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_objectName:
+              value: "*\\\\Microsoft\\\\Windows Defender\\\\Exclusions\\\\*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_accessList
+    - data_win_eventdata_objectName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_eventdata_accessList matches '*%%4417*';
+  data_win_eventdata_accessList matches '*%%4418*'; data_win_system_eventID
+  equals '4656', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.bleepingcomputer.com/news/security/gootkit-malware-bypasses-windows-defender-by-setting-path-exclusions/
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Windows Defender Exclusion Registry Key - Write Access Requested detected on
+    host $agent_name$. Matched data_win_eventdata_accessList:
+    $data_win_eventdata_accessList$. Matched data_win_eventdata_objectName:
+    $data_win_eventdata_objectName$. MITRE ATT&CK: T1685
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_accessList
+      type: other
+    - field: data_win_eventdata_objectName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - defender
+    - exclusion
+    - registry
+    - windows_security
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_eventdata_accessList:/.*%%4417.*/ OR data_win_eventdata_accessList:/.*%%4418.*/) AND (data_win_system_eventID:"4656" OR data_win_system_eventID:"4663") AND data_win_eventdata_objectName:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Ee][Xx][Cc][Ll][Uu][Ss][Ii][Oo][Nn][Ss]\\.*/

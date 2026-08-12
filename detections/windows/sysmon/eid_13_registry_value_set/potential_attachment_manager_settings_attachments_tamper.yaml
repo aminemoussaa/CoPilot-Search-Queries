@@ -1,0 +1,168 @@
+name: Potential Attachment Manager Settings Attachments Tamper
+id: ee77a5db-b0f3-4be2-bfd4-b58be1c6b15a
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ee77a5db-b0f3-4be2-bfd4-b58be1c6b15a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects tampering with attachment manager settings policies attachments (See
+  reference for more information).
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Policies\\\\Attachments\\\\*"
+              case_insensitive: true
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\HideZoneInfoOnProperties"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_details:
+                          value: "DWORD (0x00000001)"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\SaveZoneInformation"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_details:
+                          value: "DWORD (0x00000002)"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\ScanWithAntiVirus"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_details:
+                          value: "DWORD (0x00000001)"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Attachments\*';
+  data_win_eventdata_targetObject matches '*\HideZoneInfoOnProperties';
+  data_win_eventdata_details equals 'DWORD (0x00000001)', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://support.microsoft.com/en-us/topic/information-about-the-attachment-manager-in-microsoft-windows-c48a4dcd-8de5-2af5-ee9b-cd795ae42738
+  - https://www.virustotal.com/gui/file/2bcd5702a7565952c44075ac6fb946c7780526640d1264f692c7664c02c68465
+
+response:
+  message: >
+    Potential Attachment Manager Settings Attachments Tamper detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - attachment
+    - manager
+    - settings
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Aa][Tt][Tt][Aa][Cc][Hh][Mm][Ee][Nn][Tt][Ss]\\.*/ AND ((data_win_eventdata_targetObject:/.*\\[Hh][Ii][Dd][Ee][Zz][Oo][Nn][Ee][Ii][Nn][Ff][Oo][Oo][Nn][Pp][Rr][Oo][Pp][Ee][Rr][Tt][Ii][Ee][Ss]/ AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000001\)/) OR (data_win_eventdata_targetObject:/.*\\[Ss][Aa][Vv][Ee][Zz][Oo][Nn][Ee][Ii][Nn][Ff][Oo][Rr][Mm][Aa][Tt][Ii][Oo][Nn]/ AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000002\)/) OR (data_win_eventdata_targetObject:/.*\\[Ss][Cc][Aa][Nn][Ww][Ii][Tt][Hh][Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]/ AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000001\)/))

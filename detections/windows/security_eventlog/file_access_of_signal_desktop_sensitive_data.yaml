@@ -1,0 +1,175 @@
+name: File Access Of Signal Desktop Sensitive Data
+id: 5d6c375a-18ae-4952-b4f6-8b803f6c8555
+version: 1
+schema_version: "1.0"
+date: "2025-10-19"
+author: Andreas Braathen (mnemonic.io)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5d6c375a-18ae-4952-b4f6-8b803f6c8555
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects access to Signal Desktop's sensitive data files: db.sqlite and
+  config.json. The db.sqlite file in Signal Desktop stores all locally saved
+  messages in an encrypted SQLite database, while the config.json contains the
+  decryption key needed to access that data. Since the key is stored in plain
+  text, a threat actor who gains access to both files can decrypt and read
+  sensitive messages without needing the users credentials. Currently the rule
+  only covers the default Signal installation path in AppData\Roaming. Signal
+  Portable installations may use different paths based on user configuration.
+  Additional paths can be added to the selection as needed. MITRE ATT&CK: T1003.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4663"
+        - term:
+            data_win_eventdata_objectType:
+              value: "File"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_objectName:
+              value: "*\\\\AppData\\\\Roaming\\\\Signal\\\\*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_objectName:
+                    value: "*\\\\config.json"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_objectName:
+                    value: "*\\\\db.sqlite"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_processName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*\\\\signal-portable.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*\\\\signal.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_objectType
+    - data_win_eventdata_objectName
+    - data_win_eventdata_processName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4663'; data_win_eventdata_objectType equals
+  'File'; data_win_eventdata_objectName matches '*\AppData\Roaming\Signal\*',
+  among other conditions.
+
+known_false_positives: >
+  Unlikely, but possible from AV or backup software accessing the files.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://cloud.google.com/blog/topics/threat-intelligence/russia-targeting-signal-messenger/
+  - https://vmois.dev/query-signal-desktop-messages-sqlite/
+  - https://attack.mitre.org/techniques/T1003/
+
+response:
+  message: >
+    File Access Of Signal Desktop Sensitive Data detected on host $agent_name$.
+    Matched data_win_eventdata_objectType: $data_win_eventdata_objectType$.
+    Matched data_win_eventdata_objectName: $data_win_eventdata_objectName$.
+    MITRE ATT&CK: T1003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_objectType
+      type: other
+    - field: data_win_eventdata_objectName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003
+  custom_tags:
+    - signal
+    - desktop
+    - sensitive
+    - windows_security
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4663" AND data_win_eventdata_objectType:/[Ff][Ii][Ll][Ee]/ AND data_win_eventdata_objectName:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\[Ss][Ii][Gg][Nn][Aa][Ll]\\.*/ AND (data_win_eventdata_objectName:/.*\\[Cc][Oo][Nn][Ff][Ii][Gg]\.[Jj][Ss][Oo][Nn]/ OR data_win_eventdata_objectName:/.*\\[Dd][Bb]\.[Ss][Qq][Ll][Ii][Tt][Ee]/) AND _exists_:data_win_eventdata_processName AND NOT (data_win_eventdata_processName:/.*\\[Ss][Ii][Gg][Nn][Aa][Ll]-[Pp][Oo][Rr][Tt][Aa][Bb][Ll][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_processName:/.*\\[Ss][Ii][Gg][Nn][Aa][Ll]\.[Ee][Xx][Ee]/)

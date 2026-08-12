@@ -1,0 +1,232 @@
+name: Suspicious Package Installed - Linux
+id: 700fb7e8-2981-401c-8430-be58e189e741
+version: 1
+schema_version: "1.0"
+date: "2026-01-01"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 700fb7e8-2981-401c-8430-be58e189e741
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects installation of suspicious packages using system installation
+  utilities. MITRE ATT&CK: T1553.004.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/apt"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/apt-get"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*install*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/yum"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*localinstall*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*install*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/rpm"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*-i*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/dpkg"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*--install*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*-i*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*nmap*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* nc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*netcat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*wireshark*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*tshark*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*openconnect*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*proxychains*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*socat*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/apt';
+  data_process_exec_process_binary matches '*/apt-get';
+  data_process_exec_process_arguments matches '*install*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate administration activities. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://gist.githubusercontent.com/MichaelKoczwara/12faba9c061c12b5814b711166de8c2f/raw/e2068486692897b620c25fde1ea258c8218fe3d3/history.txt
+  - https://attack.mitre.org/techniques/T1553/004/
+
+response:
+  message: >
+    Suspicious Package Installed - Linux detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1553.004
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1553.004
+  custom_tags:
+    - package
+    - installed
+    - linux
+    - tetragon
+    - process_creation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (((data_process_exec_process_binary:/.*\/[Aa][Pp][Tt]/ OR data_process_exec_process_binary:/.*\/[Aa][Pp][Tt]-[Gg][Ee][Tt]/) AND data_process_exec_process_arguments:/.*[Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/) OR (data_process_exec_process_binary:/.*\/[Yy][Uu][Mm]/ AND (data_process_exec_process_arguments:/.*[Ll][Oo][Cc][Aa][Ll][Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/ OR data_process_exec_process_arguments:/.*[Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/)) OR (data_process_exec_process_binary:/.*\/[Rr][Pp][Mm]/ AND data_process_exec_process_arguments:/.*-[Ii].*/) OR (data_process_exec_process_binary:/.*\/[Dd][Pp][Kk][Gg]/ AND (data_process_exec_process_arguments:/.*--[Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/ OR data_process_exec_process_arguments:/.*-[Ii].*/))) AND (data_process_exec_process_arguments:/.*[Nn][Mm][Aa][Pp].*/ OR data_process_exec_process_arguments:/.* [Nn][Cc].*/ OR data_process_exec_process_arguments:/.*[Nn][Ee][Tt][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Ww][Ii][Rr][Ee][Ss][Hh][Aa][Rr][Kk].*/ OR data_process_exec_process_arguments:/.*[Tt][Ss][Hh][Aa][Rr][Kk].*/ OR data_process_exec_process_arguments:/.*[Oo][Pp][Ee][Nn][Cc][Oo][Nn][Nn][Ee][Cc][Tt].*/ OR data_process_exec_process_arguments:/.*[Pp][Rr][Oo][Xx][Yy][Cc][Hh][Aa][Ii][Nn][Ss].*/ OR data_process_exec_process_arguments:/.*[Ss][Oo][Cc][Aa][Tt].*/)

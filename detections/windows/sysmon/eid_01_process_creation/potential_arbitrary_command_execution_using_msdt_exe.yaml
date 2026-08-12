@@ -1,0 +1,182 @@
+name: Potential Arbitrary Command Execution Using Msdt.EXE
+id: 258fc8ce-8352-443a-9120-8a11e4857fa5
+version: 1
+schema_version: "1.0"
+date: "2024-03-13"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 258fc8ce-8352-443a-9120-8a11e4857fa5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects processes leveraging the "ms-msdt" handler or the "msdt.exe" binary to
+  execute arbitrary commands as seen in the follina (CVE-2022-30190)
+  vulnerability. MITRE ATT&CK: T1202.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\msdt.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "msdt.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*IT_BrowseForFile=*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* PCWDiagnostic*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -af *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /af *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –af *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —af *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―af *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\msdt.exe'; data_win_eventdata_originalFileName equals 'msdt.exe';
+  data_win_eventdata_commandLine matches '*IT_BrowseForFile=*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/nao_sec/status/1530196847679401984
+  - https://app.any.run/tasks/713f05d2-fe78-4b9d-a744-f7c133e3fafb/
+  - https://twitter.com/_JohnHammond/status/1531672601067675648
+  - https://attack.mitre.org/techniques/T1202/
+
+response:
+  message: >
+    Potential Arbitrary Command Execution Using Msdt.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1202
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1202
+  custom_tags:
+    - arbitrary
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Mm][Ss][Dd][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Mm][Ss][Dd][Tt]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Ii][Tt]_[Bb][Rr][Oo][Ww][Ss][Ee][Ff][Oo][Rr][Ff][Ii][Ll][Ee]=.*/ OR (data_win_eventdata_commandLine:/.* [Pp][Cc][Ww][Dd][Ii][Aa][Gg][Nn][Oo][Ss][Tt][Ii][Cc].*/ AND (data_win_eventdata_commandLine:/.* -[Aa][Ff] .*/ OR data_win_eventdata_commandLine:/.* \/[Aa][Ff] .*/ OR data_win_eventdata_commandLine:/.* –[Aa][Ff] .*/ OR data_win_eventdata_commandLine:/.* —[Aa][Ff] .*/ OR data_win_eventdata_commandLine:/.* ―[Aa][Ff] .*/)))

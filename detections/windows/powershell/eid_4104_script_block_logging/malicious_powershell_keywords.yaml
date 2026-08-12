@@ -1,0 +1,211 @@
+name: Malicious PowerShell Keywords
+id: f62176f3-8128-4faa-bf6c-83261322e5eb
+version: 1
+schema_version: "1.0"
+date: "2023-06-20"
+author: Sean Metcalf (source), Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f62176f3-8128-4faa-bf6c-83261322e5eb
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects keywords from well-known PowerShell exploitation frameworks. MITRE
+  ATT&CK: T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*AdjustTokenPrivileges*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*IMAGE_NT_OPTIONAL_HDR64_MAGIC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Metasploit*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Microsoft.Win32.UnsafeNativeMethods*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Mimikatz*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*MiniDumpWriteDump*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*PAGE_EXECUTE_READ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ReadProcessMemory.Invoke*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*SE_PRIVILEGE_ENABLED*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*SECURITY_DELEGATION*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_ADJUST_PRIVILEGES*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_ALL_ACCESS*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_ASSIGN_PRIMARY*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_DUPLICATE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_ELEVATION*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_IMPERSONATE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_INFORMATION_CLASS*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_PRIVILEGES*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TOKEN_QUERY*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*AdjustTokenPrivileges*';
+  data_win_eventdata_scriptBlockText matches '*IMAGE_NT_OPTIONAL_HDR64_MAGIC*';
+  data_win_eventdata_scriptBlockText matches '*Metasploit*', among other
+  conditions.
+
+known_false_positives: >
+  Depending on the scripts, this rule might require some initial tuning to fit
+  the environment. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://adsecurity.org/?p=2921
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Malicious PowerShell Keywords detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - powershell
+    - keywords
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Aa][Dd][Jj][Uu][Ss][Tt][Tt][Oo][Kk][Ee][Nn][Pp][Rr][Ii][Vv][Ii][Ll][Ee][Gg][Ee][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Mm][Aa][Gg][Ee]_[Nn][Tt]_[Oo][Pp][Tt][Ii][Oo][Nn][Aa][Ll]_[Hh][Dd][Rr]64_[Mm][Aa][Gg][Ii][Cc].*/ OR data_win_eventdata_scriptBlockText:/.*[Mm][Ee][Tt][Aa][Ss][Pp][Ll][Oo][Ii][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ww][Ii][Nn]32\.[Uu][Nn][Ss][Aa][Ff][Ee][Nn][Aa][Tt][Ii][Vv][Ee][Mm][Ee][Tt][Hh][Oo][Dd][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz].*/ OR data_win_eventdata_scriptBlockText:/.*[Mm][Ii][Nn][Ii][Dd][Uu][Mm][Pp][Ww][Rr][Ii][Tt][Ee][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_scriptBlockText:/.*[Pp][Aa][Gg][Ee]_[Ee][Xx][Ee][Cc][Uu][Tt][Ee]_[Rr][Ee][Aa][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Aa][Dd][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Mm][Ee][Mm][Oo][Rr][Yy]\.[Ii][Nn][Vv][Oo][Kk][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee]_[Pp][Rr][Ii][Vv][Ii][Ll][Ee][Gg][Ee]_[Ee][Nn][Aa][Bb][Ll][Ee][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy]_[Dd][Ee][Ll][Ee][Gg][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Aa][Dd][Jj][Uu][Ss][Tt]_[Pp][Rr][Ii][Vv][Ii][Ll][Ee][Gg][Ee][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Aa][Ll][Ll]_[Aa][Cc][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Aa][Ss][Ss][Ii][Gg][Nn]_[Pp][Rr][Ii][Mm][Aa][Rr][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Dd][Uu][Pp][Ll][Ii][Cc][Aa][Tt][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Ee][Ll][Ee][Vv][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Ii][Nn][Ff][Oo][Rr][Mm][Aa][Tt][Ii][Oo][Nn]_[Cc][Ll][Aa][Ss][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Pp][Rr][Ii][Vv][Ii][Ll][Ee][Gg][Ee][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Oo][Kk][Ee][Nn]_[Qq][Uu][Ee][Rr][Yy].*/)

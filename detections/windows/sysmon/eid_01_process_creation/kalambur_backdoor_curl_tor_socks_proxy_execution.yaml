@@ -1,0 +1,164 @@
+name: Kalambur Backdoor Curl TOR SOCKS Proxy Execution
+id: e99375eb-3ee0-407a-9f90-79569cc6a01c
+version: 1
+schema_version: "1.0"
+date: "2025-02-11"
+author: Arda Buyukkaya (EclecticIQ)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e99375eb-3ee0-407a-9f90-79569cc6a01c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of the "curl.exe" command, referencing "SOCKS" and
+  ".onion" domains, which could be indicative of Kalambur backdoor activity.
+  MITRE ATT&CK: T1090, T1573, T1071.001, T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\curl.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*socks5h://*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*socks5://*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*socks4a://*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*.onion*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\curl.exe'; data_win_eventdata_commandLine matches '*socks5h://*';
+  data_win_eventdata_commandLine matches '*socks5://*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blog.eclecticiq.com/sandworm-apt-targets-ukrainian-users-with-trojanized-microsoft-kms-activation-tools-in-cyber-espionage-campaigns
+  - https://attack.mitre.org/techniques/T1090/
+  - https://attack.mitre.org/techniques/T1573/
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Kalambur Backdoor Curl TOR SOCKS Proxy Execution detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1090, T1573, T1071.001, T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1090
+    - T1573
+    - T1071.001
+    - T1059.001
+  custom_tags:
+    - kalambur
+    - backdoor
+    - socks
+    - process_creation
+    - sysmon
+    - execution
+    - command_and_control
+    - s0183
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_image:/.*\\[Cc][Uu][Rr][Ll]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.*[Ss][Oo][Cc][Kk][Ss]5[Hh]:\/\/.*/ OR data_win_eventdata_commandLine:/.*[Ss][Oo][Cc][Kk][Ss]5:\/\/.*/ OR data_win_eventdata_commandLine:/.*[Ss][Oo][Cc][Kk][Ss]4[Aa]:\/\/.*/) AND data_win_eventdata_commandLine:/.*\.[Oo][Nn][Ii][Oo][Nn].*/

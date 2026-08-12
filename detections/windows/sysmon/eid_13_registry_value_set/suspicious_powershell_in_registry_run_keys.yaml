@@ -1,0 +1,243 @@
+name: Suspicious PowerShell In Registry Run Keys
+id: 8d85cf08-bf97-4260-ba49-986a2a65129c
+version: 1
+schema_version: "1.0"
+date: "2025-07-18"
+author: frack113, Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8d85cf08-bf97-4260-ba49-986a2a65129c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential PowerShell commands or code within registry run keys. MITRE
+  ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\WOW6432Node\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Policies\\\\Explorer\\\\Run*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*powershell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*pwsh *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*FromBase64String*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*.DownloadFile(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*.DownloadString(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "* -w hidden *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "* -w 1 *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*-windowstyle hidden*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*-window hidden*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "* -nop *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "* -encodedcommand *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*-ExecutionPolicy Bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*Invoke-Expression*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*IEX (*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*Invoke-Command*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*ICM -*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*Invoke-WebRequest*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*IWR *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*Invoke-RestMethod*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*IRM *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "* -noni *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "* -noninteractive *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Software\Microsoft\Windows\CurrentVersion\Run*';
+  data_win_eventdata_targetObject matches
+  '*\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Run*';
+  data_win_eventdata_targetObject matches
+  '*\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run*', among
+  other conditions.
+
+known_false_positives: >
+  Legitimate admin or third party scripts. Baseline according to your
+  environment. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/frack113/atomic-red-team/blob/a9051c38de8a5320b31c7039efcbd3b56cf2d65a/atomics/T1547.001/T1547.001.md#atomic-test-9---systembc-malware-as-a-service-registry
+  - https://www.trendmicro.com/en_us/research/22/j/lv-ransomware-exploits-proxyshell-in-attack.html
+  - https://github.com/HackTricks-wiki/hacktricks/blob/e4c7b21b8f36c97c35b7c622732b38a189ce18f7/src/windows-hardening/windows-local-privilege-escalation/privilege-escalation-with-autorun-binaries.md
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Suspicious PowerShell In Registry Run Keys detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_details: $data_win_eventdata_details$. MITRE
+    ATT&CK: T1547.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - powershell
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ww][Oo][Ww]6432[Nn][Oo][Dd][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\\[Rr][Uu][Nn].*/) AND (data_win_eventdata_details:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_details:/.*[Pp][Ww][Ss][Hh] .*/ OR data_win_eventdata_details:/.*[Ff][Rr][Oo][Mm][Bb][Aa][Ss][Ee]64[Ss][Tt][Rr][Ii][Nn][Gg].*/ OR data_win_eventdata_details:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ff][Ii][Ll][Ee]\(.*/ OR data_win_eventdata_details:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg]\(.*/ OR data_win_eventdata_details:/.* -[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] .*/ OR data_win_eventdata_details:/.* -[Ww] 1 .*/ OR data_win_eventdata_details:/.*-[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll][Ee] [Hh][Ii][Dd][Dd][Ee][Nn].*/ OR data_win_eventdata_details:/.*-[Ww][Ii][Nn][Dd][Oo][Ww] [Hh][Ii][Dd][Dd][Ee][Nn].*/ OR data_win_eventdata_details:/.* -[Nn][Oo][Pp] .*/ OR data_win_eventdata_details:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn][Dd] .*/ OR data_win_eventdata_details:/.*-[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy] [Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_details:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ee][Xx][Pp][Rr][Ee][Ss][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_details:/.*[Ii][Ee][Xx] \(.*/ OR data_win_eventdata_details:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Cc][Oo][Mm][Mm][Aa][Nn][Dd].*/ OR data_win_eventdata_details:/.*[Ii][Cc][Mm] -.*/ OR data_win_eventdata_details:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ww][Ee][Bb][Rr][Ee][Qq][Uu][Ee][Ss][Tt].*/ OR data_win_eventdata_details:/.*[Ii][Ww][Rr] .*/ OR data_win_eventdata_details:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Rr][Ee][Ss][Tt][Mm][Ee][Tt][Hh][Oo][Dd].*/ OR data_win_eventdata_details:/.*[Ii][Rr][Mm] .*/ OR data_win_eventdata_details:/.* -[Nn][Oo][Nn][Ii] .*/ OR data_win_eventdata_details:/.* -[Nn][Oo][Nn][Ii][Nn][Tt][Ee][Rr][Aa][Cc][Tt][Ii][Vv][Ee] .*/)

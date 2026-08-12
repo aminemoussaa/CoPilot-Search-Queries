@@ -1,0 +1,187 @@
+name: Renamed PAExec Execution
+id: c4e49831-1496-40cf-8ce1-b53f942b02f9
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems), Jason Lynch
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c4e49831-1496-40cf-8ce1-b53f942b02f9
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of renamed version of PAExec. Often used by attackers. MITRE
+  ATT&CK: T1202.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_description:
+                    value: "PAExec Application"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PAExec.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_product:
+                    value: "*PAExec*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=11D40A7B7876288F919AB819CC2D9802*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=6444f8a34e99b8f7d9647de66aabe516*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=dfd6aa3f7b2b1035b76b718f1ddc689f*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=1a6cca4d5460b1710a12dea39e4a592c*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\paexec.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Windows\\\\PAExec-*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_description
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_product
+    - data_win_eventdata_hashes
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_description equals 'PAExec
+  Application'; data_win_eventdata_originalFileName equals 'PAExec.exe';
+  data_win_eventdata_product matches '*PAExec*', among other conditions.
+
+known_false_positives: >
+  Weird admins that rename their tools. Software companies that bundle PAExec
+  with their software and rename it, so that it is less embarrassing. When
+  executed with the "-s" flag. PAExec will copy itself to the "C:\Windows\"
+  directory with a different name. Usually like this
+  "PAExec-[XXXXX]-[ComputerName]". Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.poweradmin.com/paexec/
+  - https://summit.fireeye.com/content/dam/fireeye-www/summit/cds-2018/presentations/cds18-technical-s05-att&cking-fin7.pdf
+  - https://attack.mitre.org/techniques/T1202/
+
+response:
+  message: >
+    Renamed PAExec Execution detected on host $agent_name$. Matched
+    data_win_eventdata_description: $data_win_eventdata_description$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1202
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_description
+      type: other
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1202
+  custom_tags:
+    - renamed
+    - paexec
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_description:/[Pp][Aa][Ee][Xx][Ee][Cc] [Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_originalFileName:/[Pp][Aa][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_product:/.*[Pp][Aa][Ee][Xx][Ee][Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=11[Dd]40[Aa]7[Bb]7876288[Ff]919[Aa][Bb]819[Cc][Cc]2[Dd]9802.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=6444[Ff]8[Aa]34[Ee]99[Bb]8[Ff]7[Dd]9647[Dd][Ee]66[Aa][Aa][Bb][Ee]516.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Dd][Ff][Dd]6[Aa][Aa]3[Ff]7[Bb]2[Bb]1035[Bb]76[Bb]718[Ff]1[Dd][Dd][Cc]689[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=1[Aa]6[Cc][Cc][Aa]4[Dd]5460[Bb]1710[Aa]12[Dd][Ee][Aa]39[Ee]4[Aa]592[Cc].*/) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Pp][Aa][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Pp][Aa][Ee][Xx][Ee][Cc]-.*/)

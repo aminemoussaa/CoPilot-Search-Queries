@@ -1,0 +1,139 @@
+name: PSExec and WMI Process Creations Block
+id: 97b9ce1e-c5ab-11ea-87d0-0242ac130003
+version: 1
+schema_version: "1.0"
+date: "2022-12-25"
+author: Bhabesh Raj
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 97b9ce1e-c5ab-11ea-87d0-0242ac130003
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects blocking of process creations originating from PSExec and WMI
+  commands. MITRE ATT&CK: T1047, T1569.002.
+
+data_source:
+  - Windows Defender Operational Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "1121"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_processName:
+                    value: "*\\\\wmiprvse.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_processName:
+                    value: "*\\\\psexesvc.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_processName
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_eventID equals '1121';
+  data_win_eventdata_processName matches '*\wmiprvse.exe';
+  data_win_eventdata_processName matches '*\psexesvc.exe'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/defender-endpoint/attack-surface-reduction-rules-reference?view=o365-worldwide#block-process-creations-originating-from-psexec-and-wmi-commands
+  - https://twitter.com/duff22b/status/1280166329660497920
+  - https://attack.mitre.org/techniques/T1047/
+  - https://attack.mitre.org/techniques/T1569/002/
+
+response:
+  message: >
+    PSExec and WMI Process Creations Block detected on host $agent_name$.
+    Matched data_win_eventdata_processName: $data_win_eventdata_processName$.
+    MITRE ATT&CK: T1047, T1569.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_processName
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1047
+    - T1569.002
+  custom_tags:
+    - psexec
+    - creations
+    - block
+    - defender
+    - execution
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1121" AND (data_win_eventdata_processName:/.*\\[Ww][Mm][Ii][Pp][Rr][Vv][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_processName:/.*\\[Pp][Ss][Ee][Xx][Ee][Ss][Vv][Cc]\.[Ee][Xx][Ee]/)

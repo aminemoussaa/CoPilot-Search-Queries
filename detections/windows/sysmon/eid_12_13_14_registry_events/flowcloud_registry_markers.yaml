@@ -1,0 +1,161 @@
+name: FlowCloud Registry Markers
+id: 5118765f-6657-4ddb-a487-d7bd673abbf1
+version: 1
+schema_version: "1.0"
+date: "2024-03-20"
+author: NVISO
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5118765f-6657-4ddb-a487-d7bd673abbf1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects FlowCloud malware registry markers from threat group TA410. The
+  malware stores its configuration in the registry alongside drivers utilized by
+  the malware's keylogger components. MITRE ATT&CK: T1112.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\HARDWARE\\\\{2DB80286-1784-48b5-A751-B6ED1F490303}*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\HARDWARE\\\\{804423C2-F490-4ac3-BFA5-13DEDE63A71A}*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\HARDWARE\\\\{A5124AF5-DF23-49bf-B0ED-A18ED3DEA027}*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SYSTEM\\\\Setup\\\\PrintResponsor\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\HARDWARE\{2DB80286-1784-48b5-A751-B6ED1F490303}*';
+  data_win_eventdata_targetObject matches
+  '*\HARDWARE\{804423C2-F490-4ac3-BFA5-13DEDE63A71A}*';
+  data_win_eventdata_targetObject matches
+  '*\HARDWARE\{A5124AF5-DF23-49bf-B0ED-A18ED3DEA027}*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.proofpoint.com/us/blog/threat-insight/ta410-group-behind-lookback-attacks-against-us-utilities-sector-returns-new
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    FlowCloud Registry Markers detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1112
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+  custom_tags:
+    - flowcloud
+    - registry
+    - markers
+    - sysmon
+    - persistence
+    - defense_impairment
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND (data_win_eventdata_targetObject:/.*\\[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]\\\{2[Dd][Bb]80286-1784-48[Bb]5-[Aa]751-[Bb]6[Ee][Dd]1[Ff]490303\}.*/ OR data_win_eventdata_targetObject:/.*\\[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]\\\{804423[Cc]2-[Ff]490-4[Aa][Cc]3-[Bb][Ff][Aa]5-13[Dd][Ee][Dd][Ee]63[Aa]71[Aa]\}.*/ OR data_win_eventdata_targetObject:/.*\\[Hh][Aa][Rr][Dd][Ww][Aa][Rr][Ee]\\\{[Aa]5124[Aa][Ff]5-[Dd][Ff]23-49[Bb][Ff]-[Bb]0[Ee][Dd]-[Aa]18[Ee][Dd]3[Dd][Ee][Aa]027\}.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm]\\[Ss][Ee][Tt][Uu][Pp]\\[Pp][Rr][Ii][Nn][Tt][Rr][Ee][Ss][Pp][Oo][Nn][Ss][Oo][Rr]\\.*/)

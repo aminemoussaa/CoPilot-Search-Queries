@@ -1,0 +1,170 @@
+name: Potential Product Class Reconnaissance Via Wmic.EXE
+id: e568650b-5dcd-4658-8f34-ded0b1e13992
+version: 1
+schema_version: "1.0"
+date: "2025-03-17"
+author: Michael Haag, Florian Roth (Nextron Systems), juju4, oscd.community, Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e568650b-5dcd-4658-8f34-ded0b1e13992
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of WMIC in order to get a list of firewall, antivirus
+  and antispywware products. Adversaries often enumerate security products
+  installed on a system to identify security controls and potential ways to
+  evade detection or disable protection mechanisms. This information helps them
+  plan their next attack steps and choose appropriate techniques to bypass
+  security measures. MITRE ATT&CK: T1047, T1082.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wmic.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "wmic.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*AntiVirusProduct*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*AntiSpywareProduct*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*FirewallProduct*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\wmic.exe'; data_win_eventdata_originalFileName equals 'wmic.exe';
+  data_win_eventdata_commandLine matches '*AntiVirusProduct*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate use of wmic.exe for reconnaissance of firewall, antivirus and
+  antispywware products. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://github.com/albertzsigovits/malware-notes/blob/c820c7fea76cf76a861b28ebc77e06100e20ec29/Ransomware/Maze.md
+  - https://www.hybrid-analysis.com/sample/4be06ecd234e2110bd615649fe4a6fa95403979acf889d7e45a78985eb50acf9?environmentId=1
+  - https://www.trendmicro.com/en_us/research/25/c/socgholishs-intrusion-techniques-facilitate-distribution-of-rans.html
+  - https://attack.mitre.org/techniques/T1047/
+  - https://attack.mitre.org/techniques/T1082/
+
+response:
+  message: >
+    Potential Product Class Reconnaissance Via Wmic.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1047, T1082
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1047
+    - T1082
+  custom_tags:
+    - product
+    - class
+    - reconnaissance
+    - process_creation
+    - sysmon
+    - execution
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss][Pp][Rr][Oo][Dd][Uu][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Aa][Nn][Tt][Ii][Ss][Pp][Yy][Ww][Aa][Rr][Ee][Pp][Rr][Oo][Dd][Uu][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Rr][Ee][Ww][Aa][Ll][Ll][Pp][Rr][Oo][Dd][Uu][Cc][Tt].*/)

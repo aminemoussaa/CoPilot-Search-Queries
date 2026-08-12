@@ -1,0 +1,190 @@
+name: WannaCry Ransomware Activity
+id: 41d40bff-377a-43e2-8e1b-2e543069e079
+version: 1
+schema_version: "1.0"
+date: "2025-10-18"
+author: Florian Roth (Nextron Systems), Tom U. @c_APT_ure (collection), oscd.community, Jonhnathan Ribeiro
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 41d40bff-377a-43e2-8e1b-2e543069e079
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects WannaCry ransomware activity. MITRE ATT&CK: T1210, T1083, T1222.001,
+  T1486, T1490.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\tasksche.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\mssecsvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\taskdl.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\taskhsvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\taskse.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\111.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\lhdfrgui.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\linuxnew.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wannacry.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*WanaDecryptor*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*@Please_Read_Me@.txt*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\tasksche.exe'; data_win_eventdata_image matches '*\mssecsvc.exe';
+  data_win_eventdata_image matches '*\taskdl.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.hybrid-analysis.com/sample/ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa?environmentId=100
+  - https://x.com/nas_bench/status/1868639048484425963
+  - https://attack.mitre.org/techniques/T1210/
+  - https://attack.mitre.org/techniques/T1083/
+  - https://attack.mitre.org/techniques/T1222/001/
+  - https://attack.mitre.org/techniques/T1486/
+  - https://attack.mitre.org/techniques/T1490/
+
+response:
+  message: >
+    WannaCry Ransomware Activity detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1210, T1083, T1222.001, T1486, T1490
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1210
+    - T1083
+    - T1222.001
+    - T1486
+    - T1490
+  custom_tags:
+    - wannacry
+    - ransomware
+    - process_creation
+    - sysmon
+    - lateral_movement
+    - defense_impairment
+    - discovery
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Tt][Aa][Ss][Kk][Ss][Cc][Hh][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Ss][Ss][Ee][Cc][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Tt][Aa][Ss][Kk][Dd][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Tt][Aa][Ss][Kk][Hh][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Tt][Aa][Ss][Kk][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\111\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ll][Hh][Dd][Ff][Rr][Gg][Uu][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ll][Ii][Nn][Uu][Xx][Nn][Ee][Ww]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Aa][Nn][Nn][Aa][Cc][Rr][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Ww][Aa][Nn][Aa][Dd][Ee][Cc][Rr][Yy][Pp][Tt][Oo][Rr].*/ OR data_win_eventdata_commandLine:/.*\@[Pp][Ll][Ee][Aa][Ss][Ee]_[Rr][Ee][Aa][Dd]_[Mm][Ee]\@\.[Tt][Xx][Tt].*/)

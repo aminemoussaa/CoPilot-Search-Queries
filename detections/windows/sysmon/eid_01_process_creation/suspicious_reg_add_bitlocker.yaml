@@ -1,0 +1,185 @@
+name: Suspicious Reg Add BitLocker
+id: 0e0255bf-2548-47b8-9582-c0955c9283f5
+version: 1
+schema_version: "1.0"
+date: "2022-09-09"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0e0255bf-2548-47b8-9582-c0955c9283f5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious addition to BitLocker related registry keys via the reg.exe
+  utility. MITRE ATT&CK: T1486.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*REG*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*ADD*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\FVE*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*/v*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*/f*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*EnableBDEWithNoTPM*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*UseAdvancedStartup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*UseTPM*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*UseTPMKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*UseTPMKeyPIN*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*RecoveryKeyMessageSource*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*UseTPMPIN*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*RecoveryKeyMessage*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*REG*'; data_win_eventdata_commandLine matches '*ADD*';
+  data_win_eventdata_commandLine matches '*\SOFTWARE\Policies\Microsoft\FVE*',
+  among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://thedfirreport.com/2021/11/15/exchange-exploit-leads-to-domain-wide-ransomware/
+  - https://attack.mitre.org/techniques/T1486/
+
+response:
+  message: >
+    Suspicious Reg Add BitLocker detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1486
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1486
+  custom_tags:
+    - bitlocker
+    - process_creation
+    - sysmon
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_commandLine:/.*[Rr][Ee][Gg].*/ AND data_win_eventdata_commandLine:/.*[Aa][Dd][Dd].*/ AND data_win_eventdata_commandLine:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ff][Vv][Ee].*/ AND data_win_eventdata_commandLine:/.*\/[Vv].*/ AND data_win_eventdata_commandLine:/.*\/[Ff].*/ AND (data_win_eventdata_commandLine:/.*[Ee][Nn][Aa][Bb][Ll][Ee][Bb][Dd][Ee][Ww][Ii][Tt][Hh][Nn][Oo][Tt][Pp][Mm].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Ee][Aa][Dd][Vv][Aa][Nn][Cc][Ee][Dd][Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Ee][Tt][Pp][Mm].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Ee][Tt][Pp][Mm][Kk][Ee][Yy].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Ee][Tt][Pp][Mm][Kk][Ee][Yy][Pp][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Cc][Oo][Vv][Ee][Rr][Yy][Kk][Ee][Yy][Mm][Ee][Ss][Ss][Aa][Gg][Ee][Ss][Oo][Uu][Rr][Cc][Ee].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Ee][Tt][Pp][Mm][Pp][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Cc][Oo][Vv][Ee][Rr][Yy][Kk][Ee][Yy][Mm][Ee][Ss][Ss][Aa][Gg][Ee].*/)

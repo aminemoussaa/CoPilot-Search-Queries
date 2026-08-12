@@ -1,0 +1,203 @@
+name: Suspicious File Created by ArcSOC.exe
+id: e890acee-d488-420e-8f20-d9b19b3c3d43
+version: 1
+schema_version: "1.0"
+date: "2025-11-25"
+author: Micah Babinski
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e890acee-d488-420e-8f20-d9b19b3c3d43
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects instances where the ArcGIS Server process ArcSOC.exe, which hosts REST
+  services running on an ArcGIS server, creates a file with suspicious file
+  type, indicating that it may be an executable, script file, or otherwise
+  unusual. MITRE ATT&CK: T1127, T1105, T1133.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\ArcSOC.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ahk"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.aspx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.au3"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.bat"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.cmd"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.hta"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ps1"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.py"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbs"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.wsf"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\ArcSOC.exe'; data_win_eventdata_targetFilename matches '*.ahk';
+  data_win_eventdata_targetFilename matches '*.aspx', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://reliaquest.com/blog/threat-spotlight-inside-flax-typhoons-arcgis-compromise/
+  - https://enterprise.arcgis.com/en/server/12.0/administer/windows/inside-an-arcgis-server-site.htm
+  - https://attack.mitre.org/techniques/T1127/
+  - https://attack.mitre.org/techniques/T1105/
+  - https://attack.mitre.org/techniques/T1133/
+
+response:
+  message: >
+    Suspicious File Created by ArcSOC.exe detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    MITRE ATT&CK: T1127, T1105, T1133
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1127
+    - T1105
+    - T1133
+  custom_tags:
+    - arcsoc
+    - file_event
+    - sysmon
+    - command_and_control
+    - persistence
+    - initial_access
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_image:/.*\\[Aa][Rr][Cc][Ss][Oo][Cc]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_targetFilename:/.*\.[Aa][Hh][Kk]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Pp][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Uu]3/ OR data_win_eventdata_targetFilename:/.*\.[Bb][Aa][Tt]/ OR data_win_eventdata_targetFilename:/.*\.[Cc][Mm][Dd]/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Ll][Ll]/ OR data_win_eventdata_targetFilename:/.*\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetFilename:/.*\.[Hh][Tt][Aa]/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Ss]/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Ss]1/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Yy]/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ee]/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ss]/ OR data_win_eventdata_targetFilename:/.*\.[Ww][Ss][Ff]/)

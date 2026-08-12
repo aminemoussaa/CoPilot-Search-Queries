@@ -1,0 +1,283 @@
+name: Potential ClickFix Execution Pattern - Registry
+id: f5fe36cf-f1ec-4c23-903d-09a3110f6bbb
+version: 1
+schema_version: "1.0"
+date: "2025-11-19"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f5fe36cf-f1ec-4c23-903d-09a3110f6bbb
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential ClickFix malware execution patterns by monitoring registry
+  modifications in RunMRU keys containing HTTP/HTTPS links. ClickFix is known to
+  be distributed through phishing campaigns and uses techniques like clipboard
+  hijacking and fake CAPTCHA pages. Through the fakecaptcha pages, the adversary
+  tricks users into opening the Run dialog box and pasting clipboard-hijacked
+  content, such as one-liners that execute remotely hosted malicious files or
+  scripts. MITRE ATT&CK: T1204.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\RunMRU\\\\*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*http://*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*https://*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*account*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*anti-bot*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*botcheck*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*captcha*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*challenge*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*confirmation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*fraud*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*human*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*identification*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*identificator*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*identity*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*robot*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*validation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*verification*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*verify*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*%comspec%*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*bitsadmin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*certutil*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*cmd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*cscript*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*curl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*finger*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*mshta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*powershell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*pwsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*regsvr32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*rundll32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*schtasks*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*wget*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*wscript*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\RunMRU\*';
+  data_win_eventdata_details matches '*http://*'; data_win_eventdata_details
+  matches '*https://*', among other conditions.
+
+known_false_positives: >
+  Legitimate applications using RunMRU with HTTP links. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://github.com/JohnHammond/recaptcha-phish
+  - https://www.zscaler.com/blogs/security-research/deepseek-lure-using-captchas-spread-malware
+  - https://www.threatdown.com/blog/clipboard-hijacker-tries-to-install-a-trojan/
+  - https://app.any.run/tasks/5c16b4db-4b36-4039-a0ed-9b09abff8be2
+  - https://www.esentire.com/security-advisories/netsupport-rat-clickfix-distribution
+  - https://medium.com/@boutnaru/the-windows-foreniscs-journey-run-mru-run-dialog-box-most-recently-used-57375a02d724
+  - https://unit42.paloaltonetworks.com/preventing-clickfix-attack-vector/
+  - https://medium.com/@poudelswachchhanda123/preventing-lnk-and-fakecaptcha-threats-a-system-hardening-approach-2f7b7ed2e493
+  - https://www.scpx.com.au/2025/11/16/decades-old-finger-protocol-abused-in-clickfix-malware-attacks/
+  - https://attack.mitre.org/techniques/T1204/001/
+
+response:
+  message: >
+    Potential ClickFix Execution Pattern - Registry detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1204.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1204.001
+  custom_tags:
+    - clickfix
+    - pattern
+    - registry
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\\[Rr][Uu][Nn][Mm][Rr][Uu]\\.*/ AND (data_win_eventdata_details:/.*[Hh][Tt][Tt][Pp]:\/\/.*/ OR data_win_eventdata_details:/.*[Hh][Tt][Tt][Pp][Ss]:\/\/.*/) AND (data_win_eventdata_details:/.*[Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_details:/.*[Aa][Nn][Tt][Ii]-[Bb][Oo][Tt].*/ OR data_win_eventdata_details:/.*[Bb][Oo][Tt][Cc][Hh][Ee][Cc][Kk].*/ OR data_win_eventdata_details:/.*[Cc][Aa][Pp][Tt][Cc][Hh][Aa].*/ OR data_win_eventdata_details:/.*[Cc][Hh][Aa][Ll][Ll][Ee][Nn][Gg][Ee].*/ OR data_win_eventdata_details:/.*[Cc][Oo][Nn][Ff][Ii][Rr][Mm][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_details:/.*[Ff][Rr][Aa][Uu][Dd].*/ OR data_win_eventdata_details:/.*[Hh][Uu][Mm][Aa][Nn].*/ OR data_win_eventdata_details:/.*[Ii][Dd][Ee][Nn][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_details:/.*[Ii][Dd][Ee][Nn][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Oo][Rr].*/ OR data_win_eventdata_details:/.*[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy].*/ OR data_win_eventdata_details:/.*[Rr][Oo][Bb][Oo][Tt].*/ OR data_win_eventdata_details:/.*[Vv][Aa][Ll][Ii][Dd][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_details:/.*[Vv][Ee][Rr][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_details:/.*[Vv][Ee][Rr][Ii][Ff][Yy].*/ OR data_win_eventdata_details:/.*%[Cc][Oo][Mm][Ss][Pp][Ee][Cc]%.*/ OR data_win_eventdata_details:/.*[Bb][Ii][Tt][Ss][Aa][Dd][Mm][Ii][Nn].*/ OR data_win_eventdata_details:/.*[Cc][Ee][Rr][Tt][Uu][Tt][Ii][Ll].*/ OR data_win_eventdata_details:/.*[Cc][Mm][Dd].*/ OR data_win_eventdata_details:/.*[Cc][Ss][Cc][Rr][Ii][Pp][Tt].*/ OR data_win_eventdata_details:/.*[Cc][Uu][Rr][Ll].*/ OR data_win_eventdata_details:/.*[Ff][Ii][Nn][Gg][Ee][Rr].*/ OR data_win_eventdata_details:/.*[Mm][Ss][Hh][Tt][Aa].*/ OR data_win_eventdata_details:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_details:/.*[Pp][Ww][Ss][Hh].*/ OR data_win_eventdata_details:/.*[Rr][Ee][Gg][Ss][Vv][Rr]32.*/ OR data_win_eventdata_details:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32.*/ OR data_win_eventdata_details:/.*[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss].*/ OR data_win_eventdata_details:/.*[Ww][Gg][Ee][Tt].*/ OR data_win_eventdata_details:/.*[Ww][Ss][Cc][Rr][Ii][Pp][Tt].*/)

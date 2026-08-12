@@ -1,0 +1,162 @@
+name: Potential Invoke-Mimikatz PowerShell Script
+id: 189e3b02-82b2-4b90-9662-411eb64486d4
+version: 1
+schema_version: "1.0"
+date: "2022-09-28"
+author: Tim Rauch, Elastic (idea)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 189e3b02-82b2-4b90-9662-411eb64486d4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Invoke-Mimikatz PowerShell script and alike. Mimikatz is a credential
+  dumper capable of obtaining plaintext Windows account logins and passwords.
+  MITRE ATT&CK: T1003.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*DumpCreds*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*DumpCerts*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*sekurlsa::logonpasswords*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*crypto::certificates*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*CERT_SYSTEM_STORE_LOCAL_MACHINE*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*DumpCreds*';
+  data_win_eventdata_scriptBlockText matches '*DumpCerts*';
+  data_win_eventdata_scriptBlockText matches '*sekurlsa::logonpasswords*', among
+  other conditions.
+
+known_false_positives: >
+  Mimikatz can be useful for testing the security of networks. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://www.elastic.co/guide/en/security/current/potential-invoke-mimikatz-powershell-script.html#potential-invoke-mimikatz-powershell-script
+  - https://attack.mitre.org/techniques/T1003/
+
+response:
+  message: >
+    Potential Invoke-Mimikatz PowerShell Script detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003
+  custom_tags:
+    - invoke
+    - mimikatz
+    - powershell
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND ((data_win_eventdata_scriptBlockText:/.*[Dd][Uu][Mm][Pp][Cc][Rr][Ee][Dd][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*[Dd][Uu][Mm][Pp][Cc][Ee][Rr][Tt][Ss].*/) OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Kk][Uu][Rr][Ll][Ss][Aa]::[Ll][Oo][Gg][Oo][Nn][Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Ss].*/ OR (data_win_eventdata_scriptBlockText:/.*[Cc][Rr][Yy][Pp][Tt][Oo]::[Cc][Ee][Rr][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ee][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*[Cc][Ee][Rr][Tt]_[Ss][Yy][Ss][Tt][Ee][Mm]_[Ss][Tt][Oo][Rr][Ee]_[Ll][Oo][Cc][Aa][Ll]_[Mm][Aa][Cc][Hh][Ii][Nn][Ee].*/))

@@ -1,0 +1,166 @@
+name: Cloudflared Tunnel Execution
+id: 9a019ffc-3580-4c9d-8d87-079f7e8d3fd4
+version: 1
+schema_version: "1.0"
+date: "2023-12-20"
+author: Janantha Marasinghe, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9a019ffc-3580-4c9d-8d87-079f7e8d3fd4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of the "cloudflared" tool to connect back to a tunnel. This
+  was seen used by threat actors to maintain persistence and remote access to
+  compromised networks. MITRE ATT&CK: T1102, T1090, T1572.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* tunnel *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* run *"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-config *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-credentials-contents *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-credentials-file *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-token *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*
+  tunnel *'; data_win_eventdata_commandLine matches '* run *';
+  data_win_eventdata_commandLine matches '*-config *', among other conditions.
+
+known_false_positives: >
+  Legitimate usage of Cloudflared tunnel. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://blog.reconinfosec.com/emergence-of-akira-ransomware-group
+  - https://github.com/cloudflare/cloudflared
+  - https://developers.cloudflare.com/cloudflare-one/connections/connect-apps
+  - https://attack.mitre.org/techniques/T1102/
+  - https://attack.mitre.org/techniques/T1090/
+  - https://attack.mitre.org/techniques/T1572/
+
+response:
+  message: >
+    Cloudflared Tunnel Execution detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1102,
+    T1090, T1572
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1102
+    - T1090
+    - T1572
+  custom_tags:
+    - cloudflared
+    - tunnel
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_commandLine:/.* [Tt][Uu][Nn][Nn][Ee][Ll] .*/ AND data_win_eventdata_commandLine:/.* [Rr][Uu][Nn] .*/ AND (data_win_eventdata_commandLine:/.*-[Cc][Oo][Nn][Ff][Ii][Gg] .*/ OR data_win_eventdata_commandLine:/.*-[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][Ss]-[Cc][Oo][Nn][Tt][Ee][Nn][Tt][Ss] .*/ OR data_win_eventdata_commandLine:/.*-[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][Ss]-[Ff][Ii][Ll][Ee] .*/ OR data_win_eventdata_commandLine:/.*-[Tt][Oo][Kk][Ee][Nn] .*/)

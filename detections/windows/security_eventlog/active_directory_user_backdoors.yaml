@@ -1,0 +1,182 @@
+name: Active Directory User Backdoors
+id: 300bac00-e041-4ee2-9c36-e262656a6ecc
+version: 1
+schema_version: "1.0"
+date: "2024-02-26"
+author: "@neu5ron"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 300bac00-e041-4ee2-9c36-e262656a6ecc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects scenarios where one can control another users or computers account
+  without having to use their credentials. MITRE ATT&CK: T1098.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4738"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_allowedToDelegateTo: ""
+                                - term:
+                                    data_win_eventdata_allowedToDelegateTo: "-"
+                                - bool:
+                                    must_not:
+                                      - exists:
+                                          field: "data_win_eventdata_allowedToDelegateTo"
+                              minimum_should_match: 1
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "5136"
+                    - term:
+                        data_win_eventdata_attributeLDAPDisplayName:
+                          value: "msDS-AllowedToDelegateTo"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "5136"
+                    - term:
+                        data_win_eventdata_objectClass:
+                          value: "user"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_attributeLDAPDisplayName:
+                          value: "servicePrincipalName"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "5136"
+                    - term:
+                        data_win_eventdata_attributeLDAPDisplayName:
+                          value: "msDS-AllowedToActOnBehalfOfOtherIdentity"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_allowedToDelegateTo
+    - data_win_eventdata_attributeLDAPDisplayName
+    - data_win_eventdata_objectClass
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4738'; data_win_eventdata_allowedToDelegateTo
+  equals ''; data_win_eventdata_allowedToDelegateTo equals '-', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://msdn.microsoft.com/en-us/library/cc220234.aspx
+  - https://adsecurity.org/?p=3466
+  - https://blog.harmj0y.net/redteaming/another-word-on-delegation/
+  - https://attack.mitre.org/techniques/T1098/
+
+response:
+  message: >
+    Active Directory User Backdoors detected on host $agent_name$. Matched
+    data_win_eventdata_allowedToDelegateTo:
+    $data_win_eventdata_allowedToDelegateTo$. Matched
+    data_win_eventdata_attributeLDAPDisplayName:
+    $data_win_eventdata_attributeLDAPDisplayName$. MITRE ATT&CK: T1098
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_allowedToDelegateTo
+      type: other
+    - field: data_win_eventdata_attributeLDAPDisplayName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1098
+  custom_tags:
+    - active
+    - directory
+    - backdoors
+    - windows_security
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_win_system_eventID:"4738" AND NOT (data_win_eventdata_allowedToDelegateTo:"" OR data_win_eventdata_allowedToDelegateTo:"-" OR NOT _exists_:data_win_eventdata_allowedToDelegateTo)) OR (data_win_system_eventID:"5136" AND data_win_eventdata_attributeLDAPDisplayName:/[Mm][Ss][Dd][Ss]-[Aa][Ll][Ll][Oo][Ww][Ee][Dd][Tt][Oo][Dd][Ee][Ll][Ee][Gg][Aa][Tt][Ee][Tt][Oo]/) OR (data_win_system_eventID:"5136" AND data_win_eventdata_objectClass:/[Uu][Ss][Ee][Rr]/ AND data_win_eventdata_attributeLDAPDisplayName:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Pp][Rr][Ii][Nn][Cc][Ii][Pp][Aa][Ll][Nn][Aa][Mm][Ee]/) OR (data_win_system_eventID:"5136" AND data_win_eventdata_attributeLDAPDisplayName:/[Mm][Ss][Dd][Ss]-[Aa][Ll][Ll][Oo][Ww][Ee][Dd][Tt][Oo][Aa][Cc][Tt][Oo][Nn][Bb][Ee][Hh][Aa][Ll][Ff][Oo][Ff][Oo][Tt][Hh][Ee][Rr][Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy]/))

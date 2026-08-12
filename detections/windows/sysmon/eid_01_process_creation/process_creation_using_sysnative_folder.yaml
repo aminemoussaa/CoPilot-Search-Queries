@@ -1,0 +1,197 @@
+name: Process Creation Using Sysnative Folder
+id: 3c1b5fb0-c72f-45ba-abd1-4d4c353144ab
+version: 1
+schema_version: "1.0"
+date: "2025-10-08"
+author: Max Altgelt (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3c1b5fb0-c72f-45ba-abd1-4d4c353144ab
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects process creation events that use the Sysnative folder (common for
+  CobaltStrike spawns). MITRE ATT&CK: T1055.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*:\\\\Windows\\\\Sysnative\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*:\\\\Windows\\\\Sysnative\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*C:\\\\Windows\\\\Microsoft.NET\\\\Framework64\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*C:\\\\Windows\\\\Microsoft.NET\\\\FrameworkArm\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*C:\\\\Windows\\\\Microsoft.NET\\\\FrameworkArm64\\\\v*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\ngen.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*install*"
+                          case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\"C:\\\\Windows\\\\sysnative\\\\cmd.exe\"*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\xampp\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\catalina_start.bat*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*:\Windows\Sysnative\*'; data_win_eventdata_image matches
+  '*:\Windows\Sysnative\*'; data_win_eventdata_image matches
+  '*C:\Windows\Microsoft.NET\Framework64\v*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://thedfirreport.com/2021/08/29/cobalt-strike-a-defenders-guide/
+  - https://attack.mitre.org/techniques/T1055/
+
+response:
+  message: >
+    Process Creation Using Sysnative Folder detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1055
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055
+  custom_tags:
+    - sysnative
+    - folder
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Nn][Aa][Tt][Ii][Vv][Ee]\\.*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Nn][Aa][Tt][Ii][Vv][Ee]\\.*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND NOT ((data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]64\\[Vv].*/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]\\[Vv].*/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk][Aa][Rr][Mm]\\[Vv].*/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk][Aa][Rr][Mm]64\\[Vv].*/) AND data_win_eventdata_image:/.*\\[Nn][Gg][Ee][Nn]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*\"[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Nn][Aa][Tt][Ii][Vv][Ee]\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]\".*/ AND data_win_eventdata_commandLine:/.*\\[Xx][Aa][Mm][Pp][Pp]\\.*/ AND data_win_eventdata_commandLine:/.*\\[Cc][Aa][Tt][Aa][Ll][Ii][Nn][Aa]_[Ss][Tt][Aa][Rr][Tt]\.[Bb][Aa][Tt].*/)

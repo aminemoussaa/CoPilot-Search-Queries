@@ -1,0 +1,166 @@
+name: File Download Via Windows Defender MpCmpRun.EXE
+id: 46123129-1024-423e-9fae-43af4a0fa9a5
+version: 1
+schema_version: "1.0"
+date: "2023-11-09"
+author: Matthew Matchen
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 46123129-1024-423e-9fae-43af4a0fa9a5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of Windows Defender MpCmdRun.EXE to download files. MITRE
+  ATT&CK: T1218, T1105.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "MpCmdRun.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\MpCmdRun.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*MpCmdRun.exe*"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "Microsoft Malware Protection Command Line Utility"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*DownloadFile*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*url*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_description
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'MpCmdRun.exe'; data_win_eventdata_image matches '*\MpCmdRun.exe';
+  data_win_eventdata_commandLine matches '*MpCmdRun.exe*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://web.archive.org/web/20200903194959/https://twitter.com/djmtshepana/status/1301608169496612866
+  - https://lolbas-project.github.io/lolbas/Binaries/MpCmdRun/
+  - https://attack.mitre.org/techniques/T1218/
+  - https://attack.mitre.org/techniques/T1105/
+
+response:
+  message: >
+    File Download Via Windows Defender MpCmpRun.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1218, T1105
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+    - T1105
+  custom_tags:
+    - download
+    - defender
+    - mpcmprun
+    - process_creation
+    - sysmon
+    - stealth
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Mm][Pp][Cc][Mm][Dd][Rr][Uu][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Pp][Cc][Mm][Dd][Rr][Uu][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*[Mm][Pp][Cc][Mm][Dd][Rr][Uu][Nn]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_description:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Mm][Aa][Ll][Ww][Aa][Rr][Ee] [Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn] [Cc][Oo][Mm][Mm][Aa][Nn][Dd] [Ll][Ii][Nn][Ee] [Uu][Tt][Ii][Ll][Ii][Tt][Yy]/) AND data_win_eventdata_commandLine:/.*[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ff][Ii][Ll][Ee].*/ AND data_win_eventdata_commandLine:/.*[Uu][Rr][Ll].*/

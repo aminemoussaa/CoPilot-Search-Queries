@@ -1,0 +1,150 @@
+name: Network Connection Initiated To Visual Studio Code Tunnels Domain
+id: 4b657234-038e-4ad5-997c-4be42340bce4
+version: 1
+schema_version: "1.0"
+date: "2023-11-20"
+author: Kamran Saifullah
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4b657234-038e-4ad5-997c-4be42340bce4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects network connections to Visual Studio Code tunnel domains initiated by
+  a process on a system. Attackers can abuse that feature to establish a reverse
+  shell or persistence on a machine. MITRE ATT&CK: T1567, T1572.
+
+data_source:
+  - Sysmon EventID 3 - Network Connection
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "3"
+        
+        - term:
+            data_win_eventdata_initiated:
+              value: "true"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_destinationHostname:
+              value: "*.tunnels.api.visualstudio.com"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_initiated
+    - data_win_eventdata_destinationHostname
+    - data_win_eventdata_image
+    - data_win_eventdata_destinationIp
+    - data_win_eventdata_destinationPort
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 3 (network connection) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_initiated equals 'true';
+  data_win_eventdata_destinationHostname matches
+  '*.tunnels.api.visualstudio.com'.
+
+known_false_positives: >
+  Legitimate use of Visual Studio Code tunnel will also trigger this. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://ipfyx.fr/post/visual-studio-code-tunnel/
+  - https://badoption.eu/blog/2023/01/31/code_c2.html
+  - https://cydefops.com/vscode-data-exfiltration
+  - https://attack.mitre.org/techniques/T1567/
+  - https://attack.mitre.org/techniques/T1572/
+
+response:
+  message: >
+    Network Connection Initiated To Visual Studio Code Tunnels Domain detected
+    on host $agent_name$. Matched data_win_eventdata_initiated:
+    $data_win_eventdata_initiated$. Matched
+    data_win_eventdata_destinationHostname:
+    $data_win_eventdata_destinationHostname$. MITRE ATT&CK: T1567, T1572
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_initiated
+      type: other
+    - field: data_win_eventdata_destinationHostname
+      type: domain
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1567
+    - T1572
+  custom_tags:
+    - network
+    - connection
+    - initiated
+    - network_connection
+    - sysmon
+    - exfiltration
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"3" AND data_win_eventdata_initiated:/[Tt][Rr][Uu][Ee]/ AND data_win_eventdata_destinationHostname:/.*\.[Tt][Uu][Nn][Nn][Ee][Ll][Ss]\.[Aa][Pp][Ii]\.[Vv][Ii][Ss][Uu][Aa][Ll][Ss][Tt][Uu][Dd][Ii][Oo]\.[Cc][Oo][Mm]/

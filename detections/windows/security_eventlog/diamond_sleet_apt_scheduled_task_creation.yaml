@@ -1,0 +1,143 @@
+name: Diamond Sleet APT Scheduled Task Creation
+id: 3b8e5084-4de9-449a-a40d-0e11014f2e2d
+version: 1
+schema_version: "1.0"
+date: "2023-10-24"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3b8e5084-4de9-449a-a40d-0e11014f2e2d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects registry event related to the creation of a scheduled task used by
+  Diamond Sleet APT during exploitation of Team City CVE-2023-42793
+  vulnerability. MITRE ATT&CK: T1053.005.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4698"
+        - term:
+            data_win_eventdata_taskName:
+              value: "\\Windows TeamCity Settings User Interface"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_taskContent:
+              value: "*uTYNkfKxHiZrx3KJ*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_taskName
+    - data_win_eventdata_taskContent
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4698'; data_win_eventdata_taskName equals
+  '\Windows TeamCity Settings User Interface'; data_win_eventdata_taskContent
+  matches '*uTYNkfKxHiZrx3KJ*'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/en-us/security/blog/2023/10/18/multiple-north-korean-threat-actors-exploiting-the-teamcity-cve-2023-42793-vulnerability/
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Diamond Sleet APT Scheduled Task Creation detected on host $agent_name$.
+    Matched data_win_eventdata_taskName: $data_win_eventdata_taskName$. Matched
+    data_win_eventdata_taskContent: $data_win_eventdata_taskContent$. MITRE
+    ATT&CK: T1053.005
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_taskName
+      type: other
+    - field: data_win_eventdata_taskContent
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053.005
+  custom_tags:
+    - diamond
+    - sleet
+    - scheduled
+    - windows_security
+    - execution
+    - privilege_escalation
+    - persistence
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4698" AND data_win_eventdata_taskName:/\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Tt][Ee][Aa][Mm][Cc][Ii][Tt][Yy] [Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss] [Uu][Ss][Ee][Rr] [Ii][Nn][Tt][Ee][Rr][Ff][Aa][Cc][Ee]/ AND data_win_eventdata_taskContent:/.*[Uu][Tt][Yy][Nn][Kk][Ff][Kk][Xx][Hh][Ii][Zz][Rr][Xx]3[Kk][Jj].*/

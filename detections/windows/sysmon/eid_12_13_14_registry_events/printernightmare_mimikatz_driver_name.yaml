@@ -1,0 +1,195 @@
+name: PrinterNightmare Mimikatz Driver Name
+id: ba6b9e43-1d45-4d3c-a504-1043a64c8469
+version: 1
+schema_version: "1.0"
+date: "2023-06-12"
+author: Markus Neis, @markus_neis, Florian Roth
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ba6b9e43-1d45-4d3c-a504-1043a64c8469
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects static QMS 810 and mimikatz driver name used by Mimikatz as exploited
+  in CVE-2021-1675 and CVE-2021-34527. MITRE ATT&CK: T1204.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\Print\\\\Environments\\\\Windows x64\\\\Drivers\\\\Version-3\\\\QMS 810\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\Print\\\\Environments\\\\Windows x64\\\\Drivers\\\\Version-3\\\\mimikatz*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*legitprinter*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Control\\\\Print\\\\Environments\\\\Windows*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Control\\\\Print\\\\Environments*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\CurrentVersion\\\\Print\\\\Printers*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*Gentil Kiwi*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*mimikatz printer*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*Kiwi Legit Printer*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Control\Print\Environments\Windows x64\Drivers\Version-3\QMS 810\*';
+  data_win_eventdata_targetObject matches '*\Control\Print\Environments\Windows
+  x64\Drivers\Version-3\mimikatz*'; data_win_eventdata_targetObject matches
+  '*legitprinter*', among other conditions.
+
+known_false_positives: >
+  Legitimate installation of printer driver QMS 810, Texas Instruments
+  microLaser printer (unlikely). Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/gentilkiwi/mimikatz/commit/c21276072b3f2a47a21e215a46962a17d54b3760
+  - https://www.lexjansen.com/sesug/1993/SESUG93035.pdf
+  - https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rprn/4464eaf0-f34f-40d5-b970-736437a21913
+  - https://nvd.nist.gov/vuln/detail/cve-2021-1675
+  - https://nvd.nist.gov/vuln/detail/cve-2021-34527
+  - https://attack.mitre.org/techniques/T1204/
+
+response:
+  message: >
+    PrinterNightmare Mimikatz Driver Name detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1204
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1204
+  custom_tags:
+    - printernightmare
+    - mimikatz
+    - driver
+    - registry
+    - sysmon
+    - execution
+    - cve_2021_1675
+    - cve_2021_34527
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND (data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Pp][Rr][Ii][Nn][Tt]\\[Ee][Nn][Vv][Ii][Rr][Oo][Nn][Mm][Ee][Nn][Tt][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Xx]64\\[Dd][Rr][Ii][Vv][Ee][Rr][Ss]\\[Vv][Ee][Rr][Ss][Ii][Oo][Nn]-3\\[Qq][Mm][Ss] 810\\.*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Pp][Rr][Ii][Nn][Tt]\\[Ee][Nn][Vv][Ii][Rr][Oo][Nn][Mm][Ee][Nn][Tt][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Xx]64\\[Dd][Rr][Ii][Vv][Ee][Rr][Ss]\\[Vv][Ee][Rr][Ss][Ii][Oo][Nn]-3\\[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz].*/ OR (data_win_eventdata_targetObject:/.*[Ll][Ee][Gg][Ii][Tt][Pp][Rr][Ii][Nn][Tt][Ee][Rr].*/ AND data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Pp][Rr][Ii][Nn][Tt]\\[Ee][Nn][Vv][Ii][Rr][Oo][Nn][Mm][Ee][Nn][Tt][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/) OR ((data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Pp][Rr][Ii][Nn][Tt]\\[Ee][Nn][Vv][Ii][Rr][Oo][Nn][Mm][Ee][Nn][Tt][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Pp][Rr][Ii][Nn][Tt]\\[Pp][Rr][Ii][Nn][Tt][Ee][Rr][Ss].*/) AND (data_win_eventdata_targetObject:/.*[Gg][Ee][Nn][Tt][Ii][Ll] [Kk][Ii][Ww][Ii].*/ OR data_win_eventdata_targetObject:/.*[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz] [Pp][Rr][Ii][Nn][Tt][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*[Kk][Ii][Ww][Ii] [Ll][Ee][Gg][Ii][Tt] [Pp][Rr][Ii][Nn][Tt][Ee][Rr].*/)))

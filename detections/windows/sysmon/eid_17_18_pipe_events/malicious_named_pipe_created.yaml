@@ -1,0 +1,256 @@
+name: Malicious Named Pipe Created
+id: fe3ac066-98bb-432a-b1e7-a5229cb39d4a
+version: 1
+schema_version: "1.0"
+date: "2023-08-07"
+author: Florian Roth (Nextron Systems), blueteam0ps, elhoim
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fe3ac066-98bb-432a-b1e7-a5229cb39d4a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a named pipe seen used by known APTs or malware. MITRE
+  ATT&CK: T1055.
+
+data_source:
+  - Sysmon EventID 17/18 - Named Pipe
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "17"
+              - term:
+                  data_win_system_eventID: "18"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\46a676ab7f179e511e30dd2dc41bd388"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\583da945-62af-10e8-4902-a8f205c72b2e"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\6e7645c4-32c5-4fe3-aabf-e94c2f4370e7"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\9f81f59bc58452127884ce513865ed20"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\adschemerpc"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\ahexec"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\AnonymousPipe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\bc31a7"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\bc367"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\bizkaz"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\csexecsvc"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\dce_3d"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\e710f28d59aa529d6792ca6ff0ca1b34"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\gruntsvc"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\isapi_dg"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\isapi_dg2"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\isapi_http"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\jaccdpqnvbrrxlaf"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\lsassw"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\NamePipe_MoreWindows"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\pcheap_reuse"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\Posh*"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\rpchlp_3"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\sdlrpc"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\svcctl"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\testPipe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_pipeName:
+                    value: "\\winsession"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_pipeName
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon named pipe logging (EventIDs 17/18) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_pipeName equals '\46a676ab7f179e511e30dd2dc41bd388';
+  data_win_eventdata_pipeName equals '\583da945-62af-10e8-4902-a8f205c72b2e';
+  data_win_eventdata_pipeName equals '\6e7645c4-32c5-4fe3-aabf-e94c2f4370e7',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://securelist.com/wild-neutron-economic-espionage-threat-actor-returns-with-new-tricks/71275/
+  - https://securelist.com/faq-the-projectsauron-apt/75533/
+  - https://web.archive.org/web/20180725233601/https://www.pwc.co.uk/cyber-security/pdf/cloud-hopper-annex-b-final.pdf
+  - https://www.us-cert.gov/ncas/alerts/TA17-117A
+  - https://www.fireeye.com/blog/threat-research/2020/12/evasive-attacker-leverages-solarwinds-supply-chain-compromises-with-sunburst-backdoor.html
+  - https://thedfirreport.com/2020/06/21/snatch-ransomware/
+  - https://github.com/RiccardoAncarani/LiquidSnake
+  - https://www.accenture.com/us-en/blogs/cyber-defense/turla-belugasturgeon-compromises-government-entity
+  - https://us-cert.cisa.gov/ncas/analysis-reports/ar19-304a
+  - https://download.bitdefender.com/resources/files/News/CaseStudies/study/115/Bitdefender-Whitepaper-PAC-A4-en-EN1.pdf
+  - https://unit42.paloaltonetworks.com/emissary-panda-attacks-middle-east-government-sharepoint-servers/
+  - https://thedfirreport.com/2022/02/21/qbot-and-zerologon-lead-to-full-domain-compromise/
+  - https://attack.mitre.org/techniques/T1055/
+
+response:
+  message: >
+    Malicious Named Pipe Created detected on host $agent_name$. Matched
+    data_win_eventdata_pipeName: $data_win_eventdata_pipeName$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1055
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_pipeName
+      type: pipe
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055
+  custom_tags:
+    - named
+    - pipe_created
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"17" OR data_win_system_eventID:"18") AND (data_win_eventdata_pipeName:/\\46[Aa]676[Aa][Bb]7[Ff]179[Ee]511[Ee]30[Dd][Dd]2[Dd][Cc]41[Bb][Dd]388/ OR data_win_eventdata_pipeName:/\\583[Dd][Aa]945-62[Aa][Ff]-10[Ee]8-4902-[Aa]8[Ff]205[Cc]72[Bb]2[Ee]/ OR data_win_eventdata_pipeName:/\\6[Ee]7645[Cc]4-32[Cc]5-4[Ff][Ee]3-[Aa][Aa][Bb][Ff]-[Ee]94[Cc]2[Ff]4370[Ee]7/ OR data_win_eventdata_pipeName:/\\9[Ff]81[Ff]59[Bb][Cc]58452127884[Cc][Ee]513865[Ee][Dd]20/ OR data_win_eventdata_pipeName:/\\[Aa][Dd][Ss][Cc][Hh][Ee][Mm][Ee][Rr][Pp][Cc]/ OR data_win_eventdata_pipeName:/\\[Aa][Hh][Ee][Xx][Ee][Cc]/ OR data_win_eventdata_pipeName:/\\[Aa][Nn][Oo][Nn][Yy][Mm][Oo][Uu][Ss][Pp][Ii][Pp][Ee]/ OR data_win_eventdata_pipeName:/\\[Bb][Cc]31[Aa]7/ OR data_win_eventdata_pipeName:/\\[Bb][Cc]367/ OR data_win_eventdata_pipeName:/\\[Bb][Ii][Zz][Kk][Aa][Zz]/ OR data_win_eventdata_pipeName:/\\[Cc][Ss][Ee][Xx][Ee][Cc][Ss][Vv][Cc]/ OR data_win_eventdata_pipeName:/\\[Dd][Cc][Ee]_3[Dd]/ OR data_win_eventdata_pipeName:/\\[Ee]710[Ff]28[Dd]59[Aa][Aa]529[Dd]6792[Cc][Aa]6[Ff][Ff]0[Cc][Aa]1[Bb]34/ OR data_win_eventdata_pipeName:/\\[Gg][Rr][Uu][Nn][Tt][Ss][Vv][Cc]/ OR data_win_eventdata_pipeName:/\\[Ii][Ss][Aa][Pp][Ii]_[Dd][Gg]/ OR data_win_eventdata_pipeName:/\\[Ii][Ss][Aa][Pp][Ii]_[Dd][Gg]2/ OR data_win_eventdata_pipeName:/\\[Ii][Ss][Aa][Pp][Ii]_[Hh][Tt][Tt][Pp]/ OR data_win_eventdata_pipeName:/\\[Jj][Aa][Cc][Cc][Dd][Pp][Qq][Nn][Vv][Bb][Rr][Rr][Xx][Ll][Aa][Ff]/ OR data_win_eventdata_pipeName:/\\[Ll][Ss][Aa][Ss][Ss][Ww]/ OR data_win_eventdata_pipeName:/\\[Nn][Aa][Mm][Ee][Pp][Ii][Pp][Ee]_[Mm][Oo][Rr][Ee][Ww][Ii][Nn][Dd][Oo][Ww][Ss]/ OR data_win_eventdata_pipeName:/\\[Pp][Cc][Hh][Ee][Aa][Pp]_[Rr][Ee][Uu][Ss][Ee]/ OR data_win_eventdata_pipeName:/\\[Pp][Oo][Ss][Hh].*/ OR data_win_eventdata_pipeName:/\\[Rr][Pp][Cc][Hh][Ll][Pp]_3/ OR data_win_eventdata_pipeName:/\\[Ss][Dd][Ll][Rr][Pp][Cc]/ OR data_win_eventdata_pipeName:/\\[Ss][Vv][Cc][Cc][Tt][Ll]/ OR data_win_eventdata_pipeName:/\\[Tt][Ee][Ss][Tt][Pp][Ii][Pp][Ee]/ OR data_win_eventdata_pipeName:/\\[Ww][Ii][Nn][Ss][Ee][Ss][Ss][Ii][Oo][Nn]/)

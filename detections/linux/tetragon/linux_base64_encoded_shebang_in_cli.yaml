@@ -1,0 +1,159 @@
+name: Linux Base64 Encoded Shebang In CLI
+id: fe2f9663-41cb-47e2-b954-8a228f3b9dff
+version: 1
+schema_version: "1.0"
+date: "2022-09-15"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fe2f9663-41cb-47e2-b954-8a228f3b9dff
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the presence of a base64 version of the shebang in the commandline,
+  which could indicate a malicious payload about to be decoded. MITRE ATT&CK:
+  T1140.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*IyEvYmluL2Jhc2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*IyEvYmluL2Rhc2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*IyEvYmluL3pza*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*IyEvYmluL2Zpc2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*IyEvYmluL3No*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_arguments
+    - data_process_exec_process_binary
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_arguments matches '*IyEvYmluL2Jhc2*';
+  data_process_exec_process_arguments matches '*IyEvYmluL2Rhc2*';
+  data_process_exec_process_arguments matches '*IyEvYmluL3pza*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate administration activities. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.trendmicro.com/pl_pl/research/20/i/the-evolution-of-malicious-shell-scripts.html
+  - https://github.com/carlospolop/PEASS-ng/tree/master/linPEAS
+  - https://attack.mitre.org/techniques/T1140/
+
+response:
+  message: >
+    Linux Base64 Encoded Shebang In CLI detected on host $agent_name$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. MITRE ATT&CK: T1140
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_arguments
+      type: other
+    - field: data_process_exec_process_binary
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1140
+  custom_tags:
+    - base64
+    - encoded
+    - shebang
+    - linux
+    - tetragon
+    - process_creation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_arguments:/.*[Ii][Yy][Ee][Vv][Yy][Mm][Ll][Uu][Ll]2[Jj][Hh][Cc]2.*/ OR data_process_exec_process_arguments:/.*[Ii][Yy][Ee][Vv][Yy][Mm][Ll][Uu][Ll]2[Rr][Hh][Cc]2.*/ OR data_process_exec_process_arguments:/.*[Ii][Yy][Ee][Vv][Yy][Mm][Ll][Uu][Ll]3[Pp][Zz][Aa].*/ OR data_process_exec_process_arguments:/.*[Ii][Yy][Ee][Vv][Yy][Mm][Ll][Uu][Ll]2[Zz][Pp][Cc]2.*/ OR data_process_exec_process_arguments:/.*[Ii][Yy][Ee][Vv][Yy][Mm][Ll][Uu][Ll]3[Nn][Oo].*/)

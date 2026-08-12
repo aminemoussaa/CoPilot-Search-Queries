@@ -1,0 +1,137 @@
+name: Moriya Rootkit - System
+id: 25b9c01c-350d-4b95-bed1-836d04a4f324
+version: 1
+schema_version: "1.0"
+date: "2022-11-29"
+author: Bhabesh Raj
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 25b9c01c-350d-4b95-bed1-836d04a4f324
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of Moriya rootkit as described in the securelist's Operation
+  TunnelSnake report. MITRE ATT&CK: T1543.003.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "Service Control Manager"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "7045"
+        - term:
+            data_win_eventdata_serviceName:
+              value: "ZzNetSvc"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_serviceName
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals 'Service Control Manager';
+  data_win_system_eventID equals '7045'; data_win_eventdata_serviceName equals
+  'ZzNetSvc'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://securelist.com/operation-tunnelsnake-and-moriya-rootkit/101831
+  - https://attack.mitre.org/techniques/T1543/003/
+
+response:
+  message: >
+    Moriya Rootkit - System detected on host $agent_name$. Matched
+    data_win_system_providerName: $data_win_system_providerName$. Matched
+    data_win_eventdata_serviceName: $data_win_eventdata_serviceName$. MITRE
+    ATT&CK: T1543.003
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_serviceName
+      type: service
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+  custom_tags:
+    - moriya
+    - rootkit
+    - system
+    - windows_system
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Mm][Aa][Nn][Aa][Gg][Ee][Rr]/ AND data_win_system_eventID:"7045" AND data_win_eventdata_serviceName:/[Zz][Zz][Nn][Ee][Tt][Ss][Vv][Cc]/

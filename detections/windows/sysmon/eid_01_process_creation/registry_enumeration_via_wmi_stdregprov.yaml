@@ -1,0 +1,206 @@
+name: Registry Enumeration via WMI Stdregprov
+id: a0e417e2-2fa1-40da-b6d2-e094cd5e1191
+version: 1
+schema_version: "1.0"
+date: "2026-06-19"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a0e417e2-2fa1-40da-b6d2-e094cd5e1191
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the usage of wmic.exe to enumerate or read Windows registry via the
+  WMI StdRegProv class read methods (EnumKey, EnumValues, GetStringValue, etc.).
+  While registry reads are common, attackers may use this technique to perform
+  reconnaissance and discover sensitive configuration values, credentials, or
+  installed software. The use of WMI as an alternative to standard tools like
+  reg.exe can indicate an attempt to evade detection focused on traditional
+  registry query commands. MITRE ATT&CK: T1047, T1012.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wmic.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "wmic.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*stdregprov*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*call*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CheckAccess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*EnumKey*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*EnumValues*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetBinaryValue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetDWORDValue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetExpandedStringValue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetMultiStringValue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetQWORDValue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetSecurityDescriptor*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetStringValue*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\wmic.exe'; data_win_eventdata_originalFileName equals 'wmic.exe';
+  data_win_eventdata_commandLine matches '*stdregprov*', among other conditions.
+
+known_false_positives: >
+  Legitimate administrative activity. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://trustedsec.com/blog/command-line-underdog-wmic-in-action
+  - https://trustedsec.com/blog/wmi-for-script-kiddies
+  - https://learn.microsoft.com/en-us/previous-versions/windows/desktop/regprov/stdregprov
+  - https://attack.mitre.org/techniques/T1047/
+  - https://attack.mitre.org/techniques/T1012/
+
+response:
+  message: >
+    Registry Enumeration via WMI Stdregprov detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1047, T1012
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1047
+    - T1012
+  custom_tags:
+    - registry
+    - enumeration
+    - stdregprov
+    - process_creation
+    - sysmon
+    - execution
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Ss][Tt][Dd][Rr][Ee][Gg][Pp][Rr][Oo][Vv].*/ AND data_win_eventdata_commandLine:/.*[Cc][Aa][Ll][Ll].*/ AND (data_win_eventdata_commandLine:/.*[Cc][Hh][Ee][Cc][Kk][Aa][Cc][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ee][Nn][Uu][Mm][Kk][Ee][Yy].*/ OR data_win_eventdata_commandLine:/.*[Ee][Nn][Uu][Mm][Vv][Aa][Ll][Uu][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Bb][Ii][Nn][Aa][Rr][Yy][Vv][Aa][Ll][Uu][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Dd][Ww][Oo][Rr][Dd][Vv][Aa][Ll][Uu][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Ee][Xx][Pp][Aa][Nn][Dd][Ee][Dd][Ss][Tt][Rr][Ii][Nn][Gg][Vv][Aa][Ll][Uu][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Mm][Uu][Ll][Tt][Ii][Ss][Tt][Rr][Ii][Nn][Gg][Vv][Aa][Ll][Uu][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Qq][Ww][Oo][Rr][Dd][Vv][Aa][Ll][Uu][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Dd][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Oo][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Ss][Tt][Rr][Ii][Nn][Gg][Vv][Aa][Ll][Uu][Ee].*/)

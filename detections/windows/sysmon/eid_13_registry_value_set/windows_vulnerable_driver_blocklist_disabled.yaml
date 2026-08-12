@@ -1,0 +1,150 @@
+name: Windows Vulnerable Driver Blocklist Disabled
+id: d526c60a-e236-4011-b165-831ffa52ab70
+version: 1
+schema_version: "1.0"
+date: "2026-01-26"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d526c60a-e236-4011-b165-831ffa52ab70
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when the Windows Vulnerable Driver Blocklist is set to disabled. This
+  setting is crucial for preventing the loading of known vulnerable drivers, and
+  its modification may indicate an attempt to bypass security controls. It is
+  often targeted by threat actors to facilitate the installation of malicious or
+  vulnerable drivers, particularly in scenarios involving Endpoint Detection and
+  Response (EDR) bypass techniques. This rule applies to systems that support
+  the Vulnerable Driver Blocklist feature, including Windows 10 version 1903 and
+  later, and Windows Server 2022 and later. Note that this change will require a
+  reboot to take effect, and this rule only detects the registry modification
+  action. MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Control\\\\CI\\\\Config\\\\VulnerableDriverBlocklistEnable"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_details:
+              value: "DWORD (0x00000000)"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Control\CI\Config\VulnerableDriverBlocklistEnable';
+  data_win_eventdata_details equals 'DWORD (0x00000000)'.
+
+known_false_positives: >
+  Unlikely and should be investigated immediately. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/microsoft-recommended-driver-block-rules
+  - https://www.sophos.com/en-us/blog/sharpening-the-knife-gold-blades-strategic-evolution
+  - https://learn.microsoft.com/en-us/windows/security/application-security/application-control/app-control-for-business/design/microsoft-recommended-driver-block-rules
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Windows Vulnerable Driver Blocklist Disabled detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_details: $data_win_eventdata_details$. MITRE
+    ATT&CK: T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - vulnerable
+    - driver
+    - blocklist
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Cc][Ii]\\[Cc][Oo][Nn][Ff][Ii][Gg]\\[Vv][Uu][Ll][Nn][Ee][Rr][Aa][Bb][Ll][Ee][Dd][Rr][Ii][Vv][Ee][Rr][Bb][Ll][Oo][Cc][Kk][Ll][Ii][Ss][Tt][Ee][Nn][Aa][Bb][Ll][Ee]/ AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000000\)/

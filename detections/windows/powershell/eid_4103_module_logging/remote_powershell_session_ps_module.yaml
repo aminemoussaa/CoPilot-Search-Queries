@@ -1,0 +1,149 @@
+name: Remote PowerShell Session (PS Module)
+id: 96b9f619-aa91-478f-bacb-c3e50f8df575
+version: 1
+schema_version: "1.0"
+date: "2023-01-20"
+author: Roberto Rodriguez @Cyb3rWard0g, Tim Shelton
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 96b9f619-aa91-478f-bacb-c3e50f8df575
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects remote PowerShell sessions. MITRE ATT&CK: T1059.001, T1021.006.
+
+data_source:
+  - PowerShell Module Logging EventID 4103
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4103"
+        
+        - wildcard:
+            data_win_eventdata_contextInfo:
+              value: "* = ServerRemoteHost *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_contextInfo:
+              value: "*wsmprovhost.exe*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_contextInfo"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_contextInfo:
+                    value: "*\\\\Windows\\\\system32\\\\WindowsPowerShell\\\\v1.0\\\\Modules\\\\Microsoft.PowerShell.Archive\\\\Microsoft.PowerShell.Archive.psm1*"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_contextInfo
+    - data_win_eventdata_payload
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Module Logging (EventID 4103) enabled via GPO and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where data_win_eventdata_contextInfo
+  matches '* = ServerRemoteHost *'; data_win_eventdata_contextInfo matches
+  '*wsmprovhost.exe*'; data_win_eventdata_contextInfo matches
+  '*\Windows\system32\WindowsPowerShell\v1.0\Modules\Microsoft.PowerShell.Archive\Microsoft.PowerShell.Archive.psm1*'.
+
+known_false_positives: >
+  Legitimate use remote PowerShell sessions. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://threathunterplaybook.com/hunts/windows/190511-RemotePwshExecution/notebook.html
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1021/006/
+
+response:
+  message: >
+    Remote PowerShell Session (PS Module) detected on host $agent_name$. Matched
+    data_win_eventdata_contextInfo: $data_win_eventdata_contextInfo$. Matched
+    data_win_eventdata_payload: $data_win_eventdata_payload$. MITRE ATT&CK:
+    T1059.001, T1021.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_contextInfo
+      type: other
+    - field: data_win_eventdata_payload
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1021.006
+  custom_tags:
+    - powershell
+    - session
+    - module
+    - execution
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4103" AND data_win_eventdata_contextInfo:/.* = [Ss][Ee][Rr][Vv][Ee][Rr][Rr][Ee][Mm][Oo][Tt][Ee][Hh][Oo][Ss][Tt] .*/ AND data_win_eventdata_contextInfo:/.*[Ww][Ss][Mm][Pp][Rr][Oo][Vv][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee].*/ AND _exists_:data_win_eventdata_contextInfo AND NOT (data_win_eventdata_contextInfo:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Mm][Oo][Dd][Uu][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Aa][Rr][Cc][Hh][Ii][Vv][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Aa][Rr][Cc][Hh][Ii][Vv][Ee]\.[Pp][Ss][Mm]1.*/)

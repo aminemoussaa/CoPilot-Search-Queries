@@ -1,0 +1,150 @@
+name: TanStack Supply-Chain Attack DNS Indicators
+id: ac5a4e3f-7f9d-6abc-d8ea-3b4c5f6a7b8c
+version: 1
+schema_version: "1.0"
+date: "2026-05-12"
+author: Leonardo Gasparini
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ac5a4e3f-7f9d-6abc-d8ea-3b4c5f6a7b8c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects DNS queries to attacker-controlled infrastructure used by the Mini
+  Shai-Hulud campaign targeting TanStack npm packages along with other packages
+  such as mistralai, uipath and so on. The domain git-tanstack.com (registered
+  May 9, 2026) hosted secondary payloads including transformers.pyz. The
+  filev2.getsession.org endpoint was used for credential exfiltration via the
+  Session protocol. MITRE ATT&CK: T1071.001, T1048.
+
+data_source:
+  - Sysmon EventID 22 - DNS Query
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "22"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_queryName:
+                    value: "git-tanstack.com"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_queryName:
+                    value: "filev2.getsession.org"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_queryName
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 22 (DNS query) enabled in the Sysmon configuration and
+  the Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent.
+  The detection looks for events where data_win_eventdata_queryName equals
+  'git-tanstack.com'; data_win_eventdata_queryName equals
+  'filev2.getsession.org'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://socket.dev/blog/tanstack-npm-packages-compromised-mini-shai-hulud-supply-chain-attack
+  - https://socket.dev/supply-chain-attacks/mini-shai-hulud
+  - https://safedep.io/mass-npm-supply-chain-attack-tanstack-mistral/
+  - https://attack.mitre.org/techniques/T1071/001/
+  - https://attack.mitre.org/techniques/T1048/
+
+response:
+  message: >
+    TanStack Supply-Chain Attack DNS Indicators detected on host $agent_name$.
+    Matched data_win_eventdata_queryName: $data_win_eventdata_queryName$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1071.001, T1048
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_queryName
+      type: domain
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1071.001
+    - T1048
+  custom_tags:
+    - tanstack
+    - supply
+    - chain
+    - dns_query
+    - sysmon
+    - command_and_control
+    - exfiltration
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"22" AND (data_win_eventdata_queryName:/[Gg][Ii][Tt]-[Tt][Aa][Nn][Ss][Tt][Aa][Cc][Kk]\.[Cc][Oo][Mm]/ OR data_win_eventdata_queryName:/[Ff][Ii][Ll][Ee][Vv]2\.[Gg][Ee][Tt][Ss][Ee][Ss][Ss][Ii][Oo][Nn]\.[Oo][Rr][Gg]/)

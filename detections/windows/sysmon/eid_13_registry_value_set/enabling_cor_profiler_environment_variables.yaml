@@ -1,0 +1,156 @@
+name: Enabling COR Profiler Environment Variables
+id: ad89044a-8f49-4673-9a55-cbd88a1b374f
+version: 1
+schema_version: "1.0"
+date: "2023-11-24"
+author: Jose Rodriguez (@Cyb3rPandaH), OTR (Open Threat Research), Jimmy Bayne (@bohops)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ad89044a-8f49-4673-9a55-cbd88a1b374f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects .NET Framework CLR and .NET Core CLR "cor_enable_profiling" and
+  "cor_profiler" variables being set and configured. MITRE ATT&CK: T1574.012.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\COR_ENABLE_PROFILING"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\COR_PROFILER"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CORECLR_ENABLE_PROFILING"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CORECLR_PROFILER_PATH*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\COR_ENABLE_PROFILING'; data_win_eventdata_targetObject matches
+  '*\COR_PROFILER'; data_win_eventdata_targetObject matches
+  '*\CORECLR_ENABLE_PROFILING', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/jamieantisocial/status/1304520651248668673
+  - https://www.slideshare.net/JamieWilliams130/started-from-the-bottom-exploiting-data-sources-to-uncover-attck-behaviors
+  - https://www.sans.org/cyber-security-summit/archives
+  - https://learn.microsoft.com/en-us/dotnet/core/runtime-config/debugging-profiling
+  - https://attack.mitre.org/techniques/T1574/012/
+
+response:
+  message: >
+    Enabling COR Profiler Environment Variables detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1574.012
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.012
+  custom_tags:
+    - enabling
+    - profiler
+    - environment
+    - registry
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Cc][Oo][Rr]_[Ee][Nn][Aa][Bb][Ll][Ee]_[Pp][Rr][Oo][Ff][Ii][Ll][Ii][Nn][Gg]/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Rr]_[Pp][Rr][Oo][Ff][Ii][Ll][Ee][Rr]/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Rr][Ee][Cc][Ll][Rr]_[Ee][Nn][Aa][Bb][Ll][Ee]_[Pp][Rr][Oo][Ff][Ii][Ll][Ii][Nn][Gg]/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Rr][Ee][Cc][Ll][Rr]_[Pp][Rr][Oo][Ff][Ii][Ll][Ee][Rr]_[Pp][Aa][Tt][Hh].*/)

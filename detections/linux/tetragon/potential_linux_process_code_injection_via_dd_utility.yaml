@@ -1,0 +1,151 @@
+name: Potential Linux Process Code Injection Via DD Utility
+id: 4cad6c64-d6df-42d6-8dae-eb78defdc415
+version: 1
+schema_version: "1.0"
+date: "2023-12-01"
+author: Joseph Kamau
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4cad6c64-d6df-42d6-8dae-eb78defdc415
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the injection of code by overwriting the memory map of a Linux process
+  using the "dd" Linux command. MITRE ATT&CK: T1055.009.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/dd"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*of=*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*/proc/*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*/mem*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/dd';
+  data_process_exec_process_arguments matches '*of=*';
+  data_process_exec_process_arguments matches '*/proc/*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.aon.com/cyber-solutions/aon_cyber_labs/linux-based-inter-process-code-injection-without-ptrace2/
+  - https://github.com/AonCyberLabs/Cexigua/blob/34d338620afae4c6335ba8d8d499e1d7d3d5d7b5/overwrite.sh
+  - https://attack.mitre.org/techniques/T1055/009/
+
+response:
+  message: >
+    Potential Linux Process Code Injection Via DD Utility detected on host
+    $agent_name$. Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1055.009
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055.009
+  custom_tags:
+    - injection
+    - utility
+    - linux
+    - tetragon
+    - process_creation
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Dd][Dd]/ AND data_process_exec_process_arguments:/.*[Oo][Ff]=.*/ AND data_process_exec_process_arguments:/.*\/[Pp][Rr][Oo][Cc]\/.*/ AND data_process_exec_process_arguments:/.*\/[Mm][Ee][Mm].*/

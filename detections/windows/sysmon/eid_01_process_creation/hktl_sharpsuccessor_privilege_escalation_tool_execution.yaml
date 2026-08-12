@@ -1,0 +1,174 @@
+name: HKTL - SharpSuccessor Privilege Escalation Tool Execution
+id: 38a1ac5f-9c74-47d2-a345-dd6f5eb4e7c8
+version: 1
+schema_version: "1.0"
+date: "2025-06-06"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 38a1ac5f-9c74-47d2-a345-dd6f5eb4e7c8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of SharpSuccessor, a tool used to exploit the
+  BadSuccessor attack for privilege escalation in WinServer 2025 Active
+  Directory environments. Successful usage of this tool can let the attackers
+  gain the domain admin privileges by exploiting the BadSuccessor vulnerability.
+  MITRE ATT&CK: T1068.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SharpSuccessor.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "SharpSuccessor.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*SharpSuccessor*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* add *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /impersonate*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /path*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /account*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /name*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\SharpSuccessor.exe'; data_win_eventdata_originalFileName equals
+  'SharpSuccessor.exe'; data_win_eventdata_commandLine matches
+  '*SharpSuccessor*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/logangoins/SharpSuccessor
+  - https://attack.mitre.org/techniques/T1068/
+
+response:
+  message: >
+    HKTL - SharpSuccessor Privilege Escalation Tool Execution detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1068
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1068
+  custom_tags:
+    - sharpsuccessor
+    - privilege
+    - escalation
+    - process_creation
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Hh][Aa][Rr][Pp][Ss][Uu][Cc][Cc][Ee][Ss][Ss][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Hh][Aa][Rr][Pp][Ss][Uu][Cc][Cc][Ee][Ss][Ss][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*[Ss][Hh][Aa][Rr][Pp][Ss][Uu][Cc][Cc][Ee][Ss][Ss][Oo][Rr].*/ OR (data_win_eventdata_commandLine:/.* [Aa][Dd][Dd] .*/ AND data_win_eventdata_commandLine:/.* \/[Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ee].*/ AND data_win_eventdata_commandLine:/.* \/[Pp][Aa][Tt][Hh].*/ AND data_win_eventdata_commandLine:/.* \/[Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ AND data_win_eventdata_commandLine:/.* \/[Nn][Aa][Mm][Ee].*/))

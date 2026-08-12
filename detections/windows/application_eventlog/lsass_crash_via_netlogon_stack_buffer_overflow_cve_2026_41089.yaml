@@ -1,0 +1,156 @@
+name: LSASS Crash Via Netlogon Stack Buffer Overflow - CVE-2026-41089
+id: f8a66a02-4a16-46e5-b7fd-a42c8a93d137
+version: 1
+schema_version: "1.0"
+date: "2026-06-02"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f8a66a02-4a16-46e5-b7fd-a42c8a93d137
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a crash of the LSASS process where netlogon.dll is the faulting module
+  and the exception code is STATUS_STACK_BUFFER_OVERRUN (0xc0000409). This
+  crash, especially on Domain Controllers, might indicate the exploitation of
+  CVE-2026-41089, a denial of service (DoS) vulnerability, which exists in the
+  Netlogon component of Windows and can be triggered by sending specially
+  crafted requests to the Netlogon service, leading to a stack-based buffer
+  overflow and subsequent crash of the LSASS process. MITRE ATT&CK: T1499.
+
+data_source:
+  - Windows Application Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "Application Error"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "1000"
+        - term:
+            data_win_eventdata_appName:
+              value: "lsass.exe"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_moduleName:
+              value: "netlogon.dll"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_exceptionCode:
+              value: "c0000409"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_appName
+    - data_win_eventdata_moduleName
+    - data_win_eventdata_exceptionCode
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals 'Application Error';
+  data_win_system_eventID equals '1000'; data_win_eventdata_appName equals
+  'lsass.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://aretiq.ai/research/vul260513-cve-2026-41089-microsoft-windows-netlogon-buildsamlogonresponse-stack-based-buffer-overflow-rce/
+  - https://learn.microsoft.com/en-us/shows/inside/c0000409
+  - https://github.com/p3Nt3st3r-sTAr/CVE-2026-41089
+  - https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-41089
+  - https://attack.mitre.org/techniques/T1499/
+
+response:
+  message: >
+    LSASS Crash Via Netlogon Stack Buffer Overflow - CVE-2026-41089 detected on
+    host $agent_name$. Matched data_win_system_providerName:
+    $data_win_system_providerName$. Matched data_win_eventdata_appName:
+    $data_win_eventdata_appName$. MITRE ATT&CK: T1499
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_appName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1499
+  custom_tags:
+    - lsass
+    - crash
+    - netlogon
+    - windows_application
+    - impact
+    - cve_2026_41089
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn] [Ee][Rr][Rr][Oo][Rr]/ AND data_win_system_eventID:"1000" AND data_win_eventdata_appName:/[Ll][Ss][Aa][Ss][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_moduleName:/[Nn][Ee][Tt][Ll][Oo][Gg][Oo][Nn]\.[Dd][Ll][Ll]/ AND data_win_eventdata_exceptionCode:/[Cc]0000409/

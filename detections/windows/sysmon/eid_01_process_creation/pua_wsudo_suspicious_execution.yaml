@@ -1,0 +1,174 @@
+name: PUA - Wsudo Suspicious Execution
+id: bdeeabc9-ff2a-4a51-be59-bb253aac7891
+version: 1
+schema_version: "1.0"
+date: "2023-02-14"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bdeeabc9-ff2a-4a51-be59-bb253aac7891
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of wsudo (Windows Sudo Utility). Which is a tool that let the
+  user execute programs with different permissions (System, Trusted Installer,
+  Administrator...etc). MITRE ATT&CK: T1059.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wsudo.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "wsudo.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "Windows sudo utility"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\wsudo-bridge.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-u System*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-uSystem*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-u TrustedInstaller*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-uTrustedInstaller*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --ti *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_description
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\wsudo.exe'; data_win_eventdata_originalFileName equals 'wsudo.exe';
+  data_win_eventdata_description equals 'Windows sudo utility', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/M2Team/Privexec/
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    PUA - Wsudo Suspicious Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1059
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+  custom_tags:
+    - wsudo
+    - process_creation
+    - sysmon
+    - execution
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww][Ss][Uu][Dd][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ss][Uu][Dd][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_description:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Ss][Uu][Dd][Oo] [Uu][Tt][Ii][Ll][Ii][Tt][Yy]/ OR data_win_eventdata_parentImage:/.*\\[Ww][Ss][Uu][Dd][Oo]-[Bb][Rr][Ii][Dd][Gg][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*-[Uu] [Ss][Yy][Ss][Tt][Ee][Mm].*/ OR data_win_eventdata_commandLine:/.*-[Uu][Ss][Yy][Ss][Tt][Ee][Mm].*/ OR data_win_eventdata_commandLine:/.*-[Uu] [Tt][Rr][Uu][Ss][Tt][Ee][Dd][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*-[Uu][Tt][Rr][Uu][Ss][Tt][Ee][Dd][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.* --[Tt][Ii] .*/)

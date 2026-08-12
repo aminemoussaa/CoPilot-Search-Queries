@@ -1,0 +1,163 @@
+name: Python Spawning Pretty TTY on Windows
+id: 480e7e51-e797-47e3-8d72-ebfce65b6d8d
+version: 1
+schema_version: "1.0"
+date: "2022-06-03"
+author: Nextron Systems
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 480e7e51-e797-47e3-8d72-ebfce65b6d8d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects python spawning a pretty tty. MITRE ATT&CK: T1059.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*python.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*python3.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*python2.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*import pty*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.spawn(*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*from pty import spawn*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*python.exe'; data_win_eventdata_image matches '*python3.exe';
+  data_win_eventdata_image matches '*python2.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.volexity.com/blog/2022/06/02/zero-day-exploitation-of-atlassian-confluence/
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    Python Spawning Pretty TTY on Windows detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1059
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+  custom_tags:
+    - python
+    - spawning
+    - pretty
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*[Pp][Yy][Tt][Hh][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Pp][Yy][Tt][Hh][Oo][Nn]3\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Pp][Yy][Tt][Hh][Oo][Nn]2\.[Ee][Xx][Ee]/) AND ((data_win_eventdata_commandLine:/.*[Ii][Mm][Pp][Oo][Rr][Tt] [Pp][Tt][Yy].*/ AND data_win_eventdata_commandLine:/.*\.[Ss][Pp][Aa][Ww][Nn]\(.*/) OR data_win_eventdata_commandLine:/.*[Ff][Rr][Oo][Mm] [Pp][Tt][Yy] [Ii][Mm][Pp][Oo][Rr][Tt] [Ss][Pp][Aa][Ww][Nn].*/)

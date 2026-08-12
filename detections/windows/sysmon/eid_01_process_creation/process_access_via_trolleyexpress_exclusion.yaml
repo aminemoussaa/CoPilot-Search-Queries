@@ -1,0 +1,188 @@
+name: Process Access via TrolleyExpress Exclusion
+id: 4c0aaedc-154c-4427-ada0-d80ef9c9deb6
+version: 1
+schema_version: "1.0"
+date: "2022-05-13"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4c0aaedc-154c-4427-ada0-d80ef9c9deb6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a possible process memory dump that uses the white-listed Citrix
+  TrolleyExpress.exe filename as a way to dump the lsass process memory. MITRE
+  ATT&CK: T1218.011, T1003.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\TrolleyExpress 7*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\TrolleyExpress 8*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\TrolleyExpress 9*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\TrolleyExpress.exe 7*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\TrolleyExpress.exe 8*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\TrolleyExpress.exe 9*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\TrolleyExpress.exe -ma *"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\TrolleyExpress.exe"
+                          case_insensitive: true
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_originalFileName:
+                                      value: "*CtxInstall*"
+                                      case_insensitive: true
+                                - bool:
+                                    must_not:
+                                      - exists:
+                                          field: "data_win_eventdata_originalFileName"
+                              minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*\TrolleyExpress 7*'; data_win_eventdata_commandLine matches
+  '*\TrolleyExpress 8*'; data_win_eventdata_commandLine matches
+  '*\TrolleyExpress 9*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/_xpn_/status/1491557187168178176
+  - https://www.youtube.com/watch?v=Ie831jF0bb0
+  - https://attack.mitre.org/techniques/T1218/011/
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    Process Access via TrolleyExpress Exclusion detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1218.011, T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.011
+    - T1003.001
+  custom_tags:
+    - trolleyexpress
+    - exclusion
+    - process_creation
+    - sysmon
+    - stealth
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss] 7.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss] 8.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss] 9.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss]\.[Ee][Xx][Ee] 7.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss]\.[Ee][Xx][Ee] 8.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss]\.[Ee][Xx][Ee] 9.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss]\.[Ee][Xx][Ee] -[Mm][Aa] .*/ OR (data_win_eventdata_image:/.*\\[Tt][Rr][Oo][Ll][Ll][Ee][Yy][Ee][Xx][Pp][Rr][Ee][Ss][Ss]\.[Ee][Xx][Ee]/ AND NOT (data_win_eventdata_originalFileName:/.*[Cc][Tt][Xx][Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/ OR NOT _exists_:data_win_eventdata_originalFileName)))

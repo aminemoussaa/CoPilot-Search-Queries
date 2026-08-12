@@ -1,0 +1,230 @@
+name: Suspicious ScreenSave Change by Reg.exe
+id: 0fc35fc3-efe6-4898-8a37-0b233339524f
+version: 1
+schema_version: "1.0"
+date: "2022-06-02"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0fc35fc3-efe6-4898-8a37-0b233339524f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may establish persistence by executing malicious content triggered
+  by user inactivity. Screensavers are programs that execute after a
+  configurable time of user inactivity and consist of Portable Executable (PE)
+  files with a .scr file extension. MITRE ATT&CK: T1546.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\reg.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*HKEY_CURRENT_USER\\\\Control Panel\\\\Desktop*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*HKCU\\\\Control Panel\\\\Desktop*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/v ScreenSaveActive*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/t REG_SZ*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/d 1*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/f*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/v ScreenSaveTimeout*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/t REG_SZ*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/d *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/f*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/v ScreenSaverIsSecure*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/t REG_SZ*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/d 0*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/f*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/v SCRNSAVE.EXE*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/t REG_SZ*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/d *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.scr*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/f*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\reg.exe';
+  data_win_eventdata_commandLine matches '*HKEY_CURRENT_USER\Control
+  Panel\Desktop*'; data_win_eventdata_commandLine matches '*HKCU\Control
+  Panel\Desktop*', among other conditions.
+
+known_false_positives: >
+  GPO. Baseline expected activity in your environment and tune this detection
+  before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1546.002/T1546.002.md
+  - https://www.welivesecurity.com/wp-content/uploads/2017/08/eset-gazer.pdf
+  - https://attack.mitre.org/techniques/T1546/002/
+
+response:
+  message: >
+    Suspicious ScreenSave Change by Reg.exe detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1546.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1546.002
+  custom_tags:
+    - screensave
+    - change
+    - process_creation
+    - sysmon
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_image:/.*\\[Rr][Ee][Gg]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.*[Hh][Kk][Ee][Yy]_[Cc][Uu][Rr][Rr][Ee][Nn][Tt]_[Uu][Ss][Ee][Rr]\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Pp][Aa][Nn][Ee][Ll]\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp].*/ OR data_win_eventdata_commandLine:/.*[Hh][Kk][Cc][Uu]\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Pp][Aa][Nn][Ee][Ll]\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp].*/) AND ((data_win_eventdata_commandLine:/.*\/[Vv] [Ss][Cc][Rr][Ee][Ee][Nn][Ss][Aa][Vv][Ee][Aa][Cc][Tt][Ii][Vv][Ee].*/ AND data_win_eventdata_commandLine:/.*\/[Tt] [Rr][Ee][Gg]_[Ss][Zz].*/ AND data_win_eventdata_commandLine:/.*\/[Dd] 1.*/ AND data_win_eventdata_commandLine:/.*\/[Ff].*/) OR (data_win_eventdata_commandLine:/.*\/[Vv] [Ss][Cc][Rr][Ee][Ee][Nn][Ss][Aa][Vv][Ee][Tt][Ii][Mm][Ee][Oo][Uu][Tt].*/ AND data_win_eventdata_commandLine:/.*\/[Tt] [Rr][Ee][Gg]_[Ss][Zz].*/ AND data_win_eventdata_commandLine:/.*\/[Dd] .*/ AND data_win_eventdata_commandLine:/.*\/[Ff].*/) OR (data_win_eventdata_commandLine:/.*\/[Vv] [Ss][Cc][Rr][Ee][Ee][Nn][Ss][Aa][Vv][Ee][Rr][Ii][Ss][Ss][Ee][Cc][Uu][Rr][Ee].*/ AND data_win_eventdata_commandLine:/.*\/[Tt] [Rr][Ee][Gg]_[Ss][Zz].*/ AND data_win_eventdata_commandLine:/.*\/[Dd] 0.*/ AND data_win_eventdata_commandLine:/.*\/[Ff].*/) OR (data_win_eventdata_commandLine:/.*\/[Vv] [Ss][Cc][Rr][Nn][Ss][Aa][Vv][Ee]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_commandLine:/.*\/[Tt] [Rr][Ee][Gg]_[Ss][Zz].*/ AND data_win_eventdata_commandLine:/.*\/[Dd] .*/ AND data_win_eventdata_commandLine:/.*\.[Ss][Cc][Rr].*/ AND data_win_eventdata_commandLine:/.*\/[Ff].*/))

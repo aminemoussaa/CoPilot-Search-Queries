@@ -1,0 +1,232 @@
+name: HackTool - UACMe Akagi Execution
+id: d38d2fa4-98e6-4a24-aff1-410b0c9ad177
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Christian Burkard (Nextron Systems), Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d38d2fa4-98e6-4a24-aff1-410b0c9ad177
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of UACMe, a tool used for UAC bypasses, via default PE
+  metadata. MITRE ATT&CK: T1548.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_product:
+                    value: "UACMe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_company:
+                    value: "REvol Corp"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_company:
+                    value: "APT 92"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_company:
+                    value: "UG North"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_company:
+                    value: "Hazardous Environments"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_company:
+                    value: "CD Project Rekt"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "UACMe main module"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "Pentesting utility"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "Akagi.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "Akagi64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Akagi64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Akagi.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=767637C23BB42CD5D7397CF58B0BE688*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=14C4E4C72BA075E9069EE67F39188AD8*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3C782813D4AFCE07BBFC5A9772ACDBDC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=7D010C6BB6A3726F327F7E239166D127*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=89159BA4DD04E4CE5559F132A9964EB3*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=6F33F4A5FC42B8CEC7314947BD13F30F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=5834ED4291BDEB928270428EBBAF7604*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=5A8A8A43F25485E7EE1B201EDCBC7A38*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=DC7D30B90B2D8ABF664FBED2B1B59894*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=41923EA1F824FE63EA5BEB84DB7A3E74*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3DE09703C8E79ED2CA3F01074719906B*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_product
+    - data_win_eventdata_company
+    - data_win_eventdata_description
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_product equals 'UACMe';
+  data_win_eventdata_company equals 'REvol Corp'; data_win_eventdata_company
+  equals 'APT 92', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/hfiref0x/UACME
+  - https://attack.mitre.org/techniques/T1548/002/
+
+response:
+  message: >
+    HackTool - UACMe Akagi Execution detected on host $agent_name$. Matched
+    data_win_eventdata_product: $data_win_eventdata_product$. Matched
+    data_win_eventdata_company: $data_win_eventdata_company$. MITRE ATT&CK:
+    T1548.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_product
+      type: other
+    - field: data_win_eventdata_company
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1548.002
+  custom_tags:
+    - hacktool
+    - uacme
+    - akagi
+    - process_creation
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_product:/[Uu][Aa][Cc][Mm][Ee]/ OR data_win_eventdata_company:/[Rr][Ee][Vv][Oo][Ll] [Cc][Oo][Rr][Pp]/ OR data_win_eventdata_company:/[Aa][Pp][Tt] 92/ OR data_win_eventdata_company:/[Uu][Gg] [Nn][Oo][Rr][Tt][Hh]/ OR data_win_eventdata_company:/[Hh][Aa][Zz][Aa][Rr][Dd][Oo][Uu][Ss] [Ee][Nn][Vv][Ii][Rr][Oo][Nn][Mm][Ee][Nn][Tt][Ss]/ OR data_win_eventdata_company:/[Cc][Dd] [Pp][Rr][Oo][Jj][Ee][Cc][Tt] [Rr][Ee][Kk][Tt]/ OR data_win_eventdata_description:/[Uu][Aa][Cc][Mm][Ee] [Mm][Aa][Ii][Nn] [Mm][Oo][Dd][Uu][Ll][Ee]/ OR data_win_eventdata_description:/[Pp][Ee][Nn][Tt][Ee][Ss][Tt][Ii][Nn][Gg] [Uu][Tt][Ii][Ll][Ii][Tt][Yy]/ OR data_win_eventdata_originalFileName:/[Aa][Kk][Aa][Gg][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Aa][Kk][Aa][Gg][Ii]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Kk][Aa][Gg][Ii]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Kk][Aa][Gg][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=767637[Cc]23[Bb][Bb]42[Cc][Dd]5[Dd]7397[Cc][Ff]58[Bb]0[Bb][Ee]688.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=14[Cc]4[Ee]4[Cc]72[Bb][Aa]075[Ee]9069[Ee][Ee]67[Ff]39188[Aa][Dd]8.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Cc]782813[Dd]4[Aa][Ff][Cc][Ee]07[Bb][Bb][Ff][Cc]5[Aa]9772[Aa][Cc][Dd][Bb][Dd][Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=7[Dd]010[Cc]6[Bb][Bb]6[Aa]3726[Ff]327[Ff]7[Ee]239166[Dd]127.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=89159[Bb][Aa]4[Dd][Dd]04[Ee]4[Cc][Ee]5559[Ff]132[Aa]9964[Ee][Bb]3.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=6[Ff]33[Ff]4[Aa]5[Ff][Cc]42[Bb]8[Cc][Ee][Cc]7314947[Bb][Dd]13[Ff]30[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=5834[Ee][Dd]4291[Bb][Dd][Ee][Bb]928270428[Ee][Bb][Bb][Aa][Ff]7604.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=5[Aa]8[Aa]8[Aa]43[Ff]25485[Ee]7[Ee][Ee]1[Bb]201[Ee][Dd][Cc][Bb][Cc]7[Aa]38.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Dd][Cc]7[Dd]30[Bb]90[Bb]2[Dd]8[Aa][Bb][Ff]664[Ff][Bb][Ee][Dd]2[Bb]1[Bb]59894.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=41923[Ee][Aa]1[Ff]824[Ff][Ee]63[Ee][Aa]5[Bb][Ee][Bb]84[Dd][Bb]7[Aa]3[Ee]74.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Dd][Ee]09703[Cc]8[Ee]79[Ee][Dd]2[Cc][Aa]3[Ff]01074719906[Bb].*/)

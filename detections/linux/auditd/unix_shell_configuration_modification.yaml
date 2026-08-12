@@ -1,0 +1,240 @@
+name: Unix Shell Configuration Modification
+id: a94cdd87-6c54-4678-a6cc-2814ffe5a13d
+version: 1
+schema_version: "1.0"
+date: "2023-03-15"
+author: Peter Matkovski, IAI
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a94cdd87-6c54-4678-a6cc-2814ffe5a13d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect unix shell configuration modification. Adversaries may establish
+  persistence through executing malicious commands triggered when a new shell is
+  opened. MITRE ATT&CK: T1546.004.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_audit_type:
+              value: "PATH"
+              case_insensitive: true
+        - bool:
+            should:
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/shells"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/profile"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/etc/profile.d/*"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/bash.bashrc"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/bashrc"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/zsh/zprofile"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/zsh/zshrc"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/zsh/zlogin"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/zsh/zlogout"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/csh.cshrc"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/etc/csh.login"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/root/.bashrc"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/root/.bash_profile"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/root/.profile"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/root/.zshrc"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/root/.zprofile"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.bashrc"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.zshrc"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.bash_profile"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.zprofile"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.profile"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.bash_login"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.bash_logout"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.zlogin"
+                    case_insensitive: true
+              - wildcard:
+                  data_audit_file_name:
+                    value: "/home/*/.zlogout"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_file_name
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_execve_a0
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'PATH'; data_audit_file_name equals '/etc/shells'; data_audit_file_name equals
+  '/etc/profile', among other conditions.
+
+known_false_positives: >
+  Admin or User activity are expected to generate some false positives. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://objective-see.org/blog/blog_0x68.html
+  - https://web.archive.org/web/20221204161143/https://www.glitch-cat.com/p/green-lambert-and-attack
+  - https://www.anomali.com/blog/pulling-linux-rabbit-rabbot-malware-out-of-a-hat
+  - https://attack.mitre.org/techniques/T1546/004/
+
+response:
+  message: >
+    Unix Shell Configuration Modification detected on host $agent_name$. Matched
+    data_audit_type: $data_audit_type$. Matched data_audit_file_name:
+    $data_audit_file_name$. MITRE ATT&CK: T1546.004
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_file_name
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1546.004
+  custom_tags:
+    - shell
+    - configuration
+    - linux
+    - auditd
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_audit_type:/[Pp][Aa][Tt][Hh]/ AND (data_audit_file_name:/\/[Ee][Tt][Cc]\/[Ss][Hh][Ee][Ll][Ll][Ss]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Pp][Rr][Oo][Ff][Ii][Ll][Ee]\.[Dd]\/.*/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Bb][Aa][Ss][Hh]\.[Bb][Aa][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Bb][Aa][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Zz][Ss][Hh]\/[Zz][Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Zz][Ss][Hh]\/[Zz][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Zz][Ss][Hh]\/[Zz][Ll][Oo][Gg][Ii][Nn]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Zz][Ss][Hh]\/[Zz][Ll][Oo][Gg][Oo][Uu][Tt]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Cc][Ss][Hh]\.[Cc][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Ee][Tt][Cc]\/[Cc][Ss][Hh]\.[Ll][Oo][Gg][Ii][Nn]/ OR data_audit_file_name:/\/[Rr][Oo][Oo][Tt]\/\.[Bb][Aa][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Rr][Oo][Oo][Tt]\/\.[Bb][Aa][Ss][Hh]_[Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Rr][Oo][Oo][Tt]\/\.[Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Rr][Oo][Oo][Tt]\/\.[Zz][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Rr][Oo][Oo][Tt]\/\.[Zz][Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Bb][Aa][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Zz][Ss][Hh][Rr][Cc]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Bb][Aa][Ss][Hh]_[Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Zz][Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Pp][Rr][Oo][Ff][Ii][Ll][Ee]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Bb][Aa][Ss][Hh]_[Ll][Oo][Gg][Ii][Nn]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Bb][Aa][Ss][Hh]_[Ll][Oo][Gg][Oo][Uu][Tt]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Zz][Ll][Oo][Gg][Ii][Nn]/ OR data_audit_file_name:/\/[Hh][Oo][Mm][Ee]\/.*\/\.[Zz][Ll][Oo][Gg][Oo][Uu][Tt]/)

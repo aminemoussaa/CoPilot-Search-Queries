@@ -1,0 +1,424 @@
+name: Malicious Nishang PowerShell Commandlets
+id: f772cee9-b7c2-4cb2-8f07-49870adc02e0
+version: 1
+schema_version: "1.0"
+date: "2023-01-16"
+author: Alec Costello
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f772cee9-b7c2-4cb2-8f07-49870adc02e0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Commandlet names and arguments from the Nishang exploitation
+  framework. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Add-ConstrainedDelegationBackdoor*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Copy-VSS*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Create-MultipleSessions*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*DataToEncode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*DNS_TXT_Pwnage*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Do-Exfiltration-Dns*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Download_Execute*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Download-Execute-PS*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*DownloadAndExtractFromRemoteRegistry*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*DumpCerts*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*DumpCreds*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*DumpHashes*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Enable-DuplicateToken*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Enable-Duplication*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Execute-Command-MSSQL*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Execute-DNSTXT-Code*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Execute-OnTime*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ExetoText*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*exfill*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ExfilOption*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*FakeDC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*FireBuster*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*FireListener*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-Information *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-PassHints*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-Web-Credentials*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-WebCredentials*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Get-WLAN-Keys*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*HTTP-Backdoor*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-AmsiBypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-BruteForce*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-CredentialsPhish*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-Decode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-Encode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-Interceptor*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-JSRatRegsvr*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-JSRatRundll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-MimikatzWDigestDowngrade*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-NetworkRelay*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-PowerShellIcmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-PowerShellUdp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-Prasadhak*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-PSGcat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-PsGcatAgent*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-SessionGopher*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-SSIDExfil*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*LoggedKeys*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Nishang*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*NotAllNameSpaces*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-CHM*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*OUT-DNSTXT*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-HTA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-RundllCommand*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-SCF*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-SCT*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-Shortcut*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-WebQuery*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Out-Word*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Parse_Keys*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Password-List*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Powerpreter*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Remove-Persistence*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Remove-PoshRat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Remove-Update*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Run-EXEonRemote*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-DCShadowPermissions*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-RemotePSRemoting*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Set-RemoteWMI*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Shellcode32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Shellcode64*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*StringtoBase64*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*TexttoExe*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches
+  '*Add-ConstrainedDelegationBackdoor*'; data_win_eventdata_scriptBlockText
+  matches '*Copy-VSS*'; data_win_eventdata_scriptBlockText matches
+  '*Create-MultipleSessions*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/samratashok/nishang
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Malicious Nishang PowerShell Commandlets detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - nishang
+    - powershell
+    - commandlets
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Aa][Dd][Dd]-[Cc][Oo][Nn][Ss][Tt][Rr][Aa][Ii][Nn][Ee][Dd][Dd][Ee][Ll][Ee][Gg][Aa][Tt][Ii][Oo][Nn][Bb][Aa][Cc][Kk][Dd][Oo][Oo][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Oo][Pp][Yy]-[Vv][Ss][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Rr][Ee][Aa][Tt][Ee]-[Mm][Uu][Ll][Tt][Ii][Pp][Ll][Ee][Ss][Ee][Ss][Ss][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Aa][Tt][Aa][Tt][Oo][Ee][Nn][Cc][Oo][Dd][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Nn][Ss]_[Tt][Xx][Tt]_[Pp][Ww][Nn][Aa][Gg][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Oo]-[Ee][Xx][Ff][Ii][Ll][Tt][Rr][Aa][Tt][Ii][Oo][Nn]-[Dd][Nn][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd]_[Ee][Xx][Ee][Cc][Uu][Tt][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd]-[Ee][Xx][Ee][Cc][Uu][Tt][Ee]-[Pp][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Aa][Nn][Dd][Ee][Xx][Tt][Rr][Aa][Cc][Tt][Ff][Rr][Oo][Mm][Rr][Ee][Mm][Oo][Tt][Ee][Rr][Ee][Gg][Ii][Ss][Tt][Rr][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Uu][Mm][Pp][Cc][Ee][Rr][Tt][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Uu][Mm][Pp][Cc][Rr][Ee][Dd][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Uu][Mm][Pp][Hh][Aa][Ss][Hh][Ee][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Nn][Aa][Bb][Ll][Ee]-[Dd][Uu][Pp][Ll][Ii][Cc][Aa][Tt][Ee][Tt][Oo][Kk][Ee][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Nn][Aa][Bb][Ll][Ee]-[Dd][Uu][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Xx][Ee][Cc][Uu][Tt][Ee]-[Cc][Oo][Mm][Mm][Aa][Nn][Dd]-[Mm][Ss][Ss][Qq][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Xx][Ee][Cc][Uu][Tt][Ee]-[Dd][Nn][Ss][Tt][Xx][Tt]-[Cc][Oo][Dd][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Xx][Ee][Cc][Uu][Tt][Ee]-[Oo][Nn][Tt][Ii][Mm][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Xx][Ee][Tt][Oo][Tt][Ee][Xx][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Xx][Ff][Ii][Ll][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Ee][Xx][Ff][Ii][Ll][Oo][Pp][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*[Ff][Aa][Kk][Ee][Dd][Cc].*/ OR data_win_eventdata_scriptBlockText:/.*[Ff][Ii][Rr][Ee][Bb][Uu][Ss][Tt][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Ff][Ii][Rr][Ee][Ll][Ii][Ss][Tt][Ee][Nn][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ii][Nn][Ff][Oo][Rr][Mm][Aa][Tt][Ii][Oo][Nn] .*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Pp][Aa][Ss][Ss][Hh][Ii][Nn][Tt][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ww][Ee][Bb]-[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ww][Ee][Bb][Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Ww][Ll][Aa][Nn]-[Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Hh][Tt][Tt][Pp]-[Bb][Aa][Cc][Kk][Dd][Oo][Oo][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Aa][Mm][Ss][Ii][Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Bb][Rr][Uu][Tt][Ee][Ff][Oo][Rr][Cc][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][Ss][Pp][Hh][Ii][Ss][Hh].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Dd][Ee][Cc][Oo][Dd][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ee][Nn][Cc][Oo][Dd][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ii][Nn][Tt][Ee][Rr][Cc][Ee][Pp][Tt][Oo][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Jj][Ss][Rr][Aa][Tt][Rr][Ee][Gg][Ss][Vv][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Jj][Ss][Rr][Aa][Tt][Rr][Uu][Nn][Dd][Ll][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz][Ww][Dd][Ii][Gg][Ee][Ss][Tt][Dd][Oo][Ww][Nn][Gg][Rr][Aa][Dd][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Nn][Ee][Tt][Ww][Oo][Rr][Kk][Rr][Ee][Ll][Aa][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll][Ii][Cc][Mm][Pp].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll][Uu][Dd][Pp].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Pp][Rr][Aa][Ss][Aa][Dd][Hh][Aa][Kk].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Pp][Ss][Gg][Cc][Aa][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Pp][Ss][Gg][Cc][Aa][Tt][Aa][Gg][Ee][Nn][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ss][Ee][Ss][Ss][Ii][Oo][Nn][Gg][Oo][Pp][Hh][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ss][Ss][Ii][Dd][Ee][Xx][Ff][Ii][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Ll][Oo][Gg][Gg][Ee][Dd][Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ii][Ss][Hh][Aa][Nn][Gg].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Oo][Tt][Aa][Ll][Ll][Nn][Aa][Mm][Ee][Ss][Pp][Aa][Cc][Ee][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Cc][Hh][Mm].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Dd][Nn][Ss][Tt][Xx][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Hh][Tt][Aa].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Rr][Uu][Nn][Dd][Ll][Ll][Cc][Oo][Mm][Mm][Aa][Nn][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Ss][Cc][Ff].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Ss][Cc][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Ss][Hh][Oo][Rr][Tt][Cc][Uu][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Ww][Ee][Bb][Qq][Uu][Ee][Rr][Yy].*/ OR data_win_eventdata_scriptBlockText:/.*[Oo][Uu][Tt]-[Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Pp][Aa][Rr][Ss][Ee]_[Kk][Ee][Yy][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]-[Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Pp][Oo][Ww][Ee][Rr][Pp][Rr][Ee][Tt][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Pp][Ee][Rr][Ss][Ii][Ss][Tt][Ee][Nn][Cc][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Pp][Oo][Ss][Hh][Rr][Aa][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Uu][Pp][Dd][Aa][Tt][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Uu][Nn]-[Ee][Xx][Ee][Oo][Nn][Rr][Ee][Mm][Oo][Tt][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Dd][Cc][Ss][Hh][Aa][Dd][Oo][Ww][Pp][Ee][Rr][Mm][Ii][Ss][Ss][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Rr][Ee][Mm][Oo][Tt][Ee][Pp][Ss][Rr][Ee][Mm][Oo][Tt][Ii][Nn][Gg].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Rr][Ee][Mm][Oo][Tt][Ee][Ww][Mm][Ii].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Hh][Ee][Ll][Ll][Cc][Oo][Dd][Ee]32.*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Hh][Ee][Ll][Ll][Cc][Oo][Dd][Ee]64.*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Tt][Rr][Ii][Nn][Gg][Tt][Oo][Bb][Aa][Ss][Ee]64.*/ OR data_win_eventdata_scriptBlockText:/.*[Tt][Ee][Xx][Tt][Tt][Oo][Ee][Xx][Ee].*/)

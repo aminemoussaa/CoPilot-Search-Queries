@@ -1,0 +1,230 @@
+name: Use NTFS Short Name in Command Line
+id: dd6b39d9-d9be-4a3b-8fe0-fe3c6a5c1795
+version: 1
+schema_version: "1.0"
+date: "2022-09-21"
+author: frack113, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: dd6b39d9-d9be-4a3b-8fe0-fe3c6a5c1795
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect use of the Windows 8.3 short name. Which could be used as a method to
+  avoid command-line detection. MITRE ATT&CK: T1564.004.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.bat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.msi*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.vbe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.vbs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.dll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~1.hta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.bat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.msi*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.vbe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.vbs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.dll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*~2.hta*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\WebEx\\\\WebexHost.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\thor\\\\thor64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*C:\\\\xampp\\\\vcredist\\\\VCREDI~1.EXE*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*~1.exe*'; data_win_eventdata_commandLine matches '*~1.bat*';
+  data_win_eventdata_commandLine matches '*~1.msi*', among other conditions.
+
+known_false_positives: >
+  Applications could use this notation occasionally which might generate some
+  false positives. In that case Investigate the parent and child process.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://www.acunetix.com/blog/articles/windows-short-8-3-filenames-web-security-problem/
+  - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-2000-server/cc959352(v=technet.10)
+  - https://twitter.com/jonasLyk/status/1555914501802921984
+  - https://attack.mitre.org/techniques/T1564/004/
+
+response:
+  message: >
+    Use NTFS Short Name in Command Line detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. MITRE
+    ATT&CK: T1564.004
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1564.004
+  custom_tags:
+    - short
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*\~1\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\~1\.[Bb][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*\~1\.[Mm][Ss][Ii].*/ OR data_win_eventdata_commandLine:/.*\~1\.[Vv][Bb][Ee].*/ OR data_win_eventdata_commandLine:/.*\~1\.[Vv][Bb][Ss].*/ OR data_win_eventdata_commandLine:/.*\~1\.[Dd][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*\~1\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\~1\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\~1\.[Hh][Tt][Aa].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Bb][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Mm][Ss][Ii].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Vv][Bb][Ee].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Vv][Bb][Ss].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Dd][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\~2\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\~2\.[Hh][Tt][Aa].*/) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_parentImage:/.*\\[Ww][Ee][Bb][Ee][Xx]\\[Ww][Ee][Bb][Ee][Xx][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Tt][Hh][Oo][Rr]\\[Tt][Hh][Oo][Rr]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*[Cc]:\\[Xx][Aa][Mm][Pp][Pp]\\[Vv][Cc][Rr][Ee][Dd][Ii][Ss][Tt]\\[Vv][Cc][Rr][Ee][Dd][Ii]\~1\.[Ee][Xx][Ee].*/)

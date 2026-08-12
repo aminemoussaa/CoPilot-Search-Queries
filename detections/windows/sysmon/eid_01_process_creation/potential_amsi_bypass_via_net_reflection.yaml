@@ -1,0 +1,160 @@
+name: Potential AMSI Bypass Via .NET Reflection
+id: 30edb182-aa75-42c0-b0a9-e998bb29067c
+version: 1
+schema_version: "1.0"
+date: "2023-02-03"
+author: Markus Neis, @Kostastsale
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 30edb182-aa75-42c0-b0a9-e998bb29067c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Request to "amsiInitFailed" that can be used to disable AMSI Scanning.
+  MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*System.Management.Automation.AmsiUtils*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*amsiInitFailed*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*[Ref].Assembly.GetType*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*SetValue($null,$true)*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*NonPublic,Static*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*System.Management.Automation.AmsiUtils*'; data_win_eventdata_commandLine
+  matches '*amsiInitFailed*'; data_win_eventdata_commandLine matches
+  '*[Ref].Assembly.GetType*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://s3cur3th1ssh1t.github.io/Bypass_AMSI_by_manual_modification/
+  - https://www.mdsec.co.uk/2018/06/exploring-powershell-amsi-and-logging-evasion/
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Potential AMSI Bypass Via .NET Reflection detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - bypass
+    - reflection
+    - process_creation
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Aa][Uu][Tt][Oo][Mm][Aa][Tt][Ii][Oo][Nn]\.[Aa][Mm][Ss][Ii][Uu][Tt][Ii][Ll][Ss].*/ AND data_win_eventdata_commandLine:/.*[Aa][Mm][Ss][Ii][Ii][Nn][Ii][Tt][Ff][Aa][Ii][Ll][Ee][Dd].*/) OR (data_win_eventdata_commandLine:/.*\[[Rr][Ee][Ff]\]\.[Aa][Ss][Ss][Ee][Mm][Bb][Ll][Yy]\.[Gg][Ee][Tt][Tt][Yy][Pp][Ee].*/ AND data_win_eventdata_commandLine:/.*[Ss][Ee][Tt][Vv][Aa][Ll][Uu][Ee]\(\$[Nn][Uu][Ll][Ll],\$[Tt][Rr][Uu][Ee]\).*/ AND data_win_eventdata_commandLine:/.*[Nn][Oo][Nn][Pp][Uu][Bb][Ll][Ii][Cc],[Ss][Tt][Aa][Tt][Ii][Cc].*/))

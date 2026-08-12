@@ -1,0 +1,224 @@
+name: MSSQL Server Failed Logon From External Network
+id: ebfe73c2-5bc9-4ed9-aaa8-8b54b2b4777d
+version: 1
+schema_version: "1.0"
+date: "2025-05-28"
+author: j4son
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ebfe73c2-5bc9-4ed9-aaa8-8b54b2b4777d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects failed logon attempts from clients with external network IP to an
+  MSSQL server. This can be a sign of a bruteforce attack. MITRE ATT&CK: T1110.
+
+data_source:
+  - Windows Application Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_win_system_providerName:
+              value: "*MSSQL*"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "18456"
+        - exists:
+            field: "data_win_eventdata_data"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 10.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.16.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.17.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.18.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.19.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.20.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.21.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.22.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.23.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.24.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.25.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.26.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.27.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.28.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.29.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.30.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 172.31.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 192.168.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 127.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: 169.254.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_data:
+                          value: "*CLIENT: <local machine>*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_data
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName matches '*MSSQL*';
+  data_win_system_eventID equals '18456'; data_win_eventdata_data matches
+  '*CLIENT: 10.*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://cybersecthreat.com/2020/07/08/enable-mssql-authentication-log-to-eventlog/
+  - https://www.experts-exchange.com/questions/27800944/EventID-18456-Failed-to-open-the-explicitly-specified-database.html
+  - https://attack.mitre.org/techniques/T1110/
+
+response:
+  message: >
+    MSSQL Server Failed Logon From External Network detected on host
+    $agent_name$. Matched data_win_system_providerName:
+    $data_win_system_providerName$. Matched data_win_eventdata_data:
+    $data_win_eventdata_data$. MITRE ATT&CK: T1110
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_data
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1110
+  custom_tags:
+    - mssql
+    - server
+    - failed
+    - windows_application
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: "data_win_system_providerName:/.*[Mm][Ss][Ss][Qq][Ll].*/ AND data_win_system_eventID:\"18456\" AND _exists_:data_win_eventdata_data AND NOT (data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 10\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.16\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.17\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.18\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.19\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.20\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.21\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.22\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.23\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.24\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.25\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.26\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.27\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.28\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.29\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.30\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 172\\.31\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 192\\.168\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 127\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: 169\\.254\\..*/ OR data_win_eventdata_data:/.*[Cc][Ll][Ii][Ee][Nn][Tt]: \\<[Ll][Oo][Cc][Aa][Ll] [Mm][Aa][Cc][Hh][Ii][Nn][Ee]\\>.*/)"

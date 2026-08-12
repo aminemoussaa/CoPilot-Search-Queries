@@ -1,0 +1,223 @@
+name: First Time Seen Remote Named Pipe
+id: 52d8b0c6-53d6-439a-9e41-52ad442ad9ad
+version: 1
+schema_version: "1.0"
+date: "2023-03-14"
+author: Samir Bousseaden
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 52d8b0c6-53d6-439a-9e41-52ad442ad9ad
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  This detection excludes known namped pipes accessible remotely and notify on
+  newly observed ones, may help to detect lateral movement and remote exec using
+  named pipes. MITRE ATT&CK: T1021.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5145"
+        - term:
+            data_win_eventdata_shareName:
+              value: "\\\\*\\IPC$"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_relativeTargetName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "atsvc"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "samr"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "lsarpc"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "lsass"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "winreg"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "netlogon"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "srvsvc"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "protected_storage"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "wkssvc"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "browser"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "netdfs"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "svcctl"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "spoolss"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "ntsvcs"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "LSM_API_service"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "HydraLsPipe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "TermSrv_API_service"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "MsFteWds"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "sql\\query"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_relativeTargetName:
+                          value: "eventlog"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_shareName
+    - data_win_eventdata_relativeTargetName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5145'; data_win_eventdata_shareName equals
+  '\\*\IPC$'; data_win_eventdata_relativeTargetName equals 'atsvc', among other
+  conditions.
+
+known_false_positives: >
+  Update the excluded named pipe to filter out any newly observed legit named
+  pipe. Baseline expected activity in your environment and tune this detection
+  before relying on it for automated response.
+
+references:
+  - https://twitter.com/menasec1/status/1104489274387451904
+  - https://attack.mitre.org/techniques/T1021/002/
+
+response:
+  message: >
+    First Time Seen Remote Named Pipe detected on host $agent_name$. Matched
+    data_win_eventdata_shareName: $data_win_eventdata_shareName$. Matched
+    data_win_eventdata_relativeTargetName:
+    $data_win_eventdata_relativeTargetName$. MITRE ATT&CK: T1021.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_shareName
+      type: other
+    - field: data_win_eventdata_relativeTargetName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1021.002
+  custom_tags:
+    - first
+    - named
+    - windows_security
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5145" AND data_win_eventdata_shareName:/\\\\\*\\[Ii][Pp][Cc]\$/ AND _exists_:data_win_eventdata_relativeTargetName AND NOT (data_win_eventdata_relativeTargetName:/[Aa][Tt][Ss][Vv][Cc]/ OR data_win_eventdata_relativeTargetName:/[Ss][Aa][Mm][Rr]/ OR data_win_eventdata_relativeTargetName:/[Ll][Ss][Aa][Rr][Pp][Cc]/ OR data_win_eventdata_relativeTargetName:/[Ll][Ss][Aa][Ss][Ss]/ OR data_win_eventdata_relativeTargetName:/[Ww][Ii][Nn][Rr][Ee][Gg]/ OR data_win_eventdata_relativeTargetName:/[Nn][Ee][Tt][Ll][Oo][Gg][Oo][Nn]/ OR data_win_eventdata_relativeTargetName:/[Ss][Rr][Vv][Ss][Vv][Cc]/ OR data_win_eventdata_relativeTargetName:/[Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ee][Dd]_[Ss][Tt][Oo][Rr][Aa][Gg][Ee]/ OR data_win_eventdata_relativeTargetName:/[Ww][Kk][Ss][Ss][Vv][Cc]/ OR data_win_eventdata_relativeTargetName:/[Bb][Rr][Oo][Ww][Ss][Ee][Rr]/ OR data_win_eventdata_relativeTargetName:/[Nn][Ee][Tt][Dd][Ff][Ss]/ OR data_win_eventdata_relativeTargetName:/[Ss][Vv][Cc][Cc][Tt][Ll]/ OR data_win_eventdata_relativeTargetName:/[Ss][Pp][Oo][Oo][Ll][Ss][Ss]/ OR data_win_eventdata_relativeTargetName:/[Nn][Tt][Ss][Vv][Cc][Ss]/ OR data_win_eventdata_relativeTargetName:/[Ll][Ss][Mm]_[Aa][Pp][Ii]_[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_relativeTargetName:/[Hh][Yy][Dd][Rr][Aa][Ll][Ss][Pp][Ii][Pp][Ee]/ OR data_win_eventdata_relativeTargetName:/[Tt][Ee][Rr][Mm][Ss][Rr][Vv]_[Aa][Pp][Ii]_[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ OR data_win_eventdata_relativeTargetName:/[Mm][Ss][Ff][Tt][Ee][Ww][Dd][Ss]/ OR data_win_eventdata_relativeTargetName:/[Ss][Qq][Ll]\\[Qq][Uu][Ee][Rr][Yy]/ OR data_win_eventdata_relativeTargetName:/[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg]/)

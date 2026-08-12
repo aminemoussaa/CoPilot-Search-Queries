@@ -1,0 +1,176 @@
+name: Azure AD Health Monitoring Agent Registry Keys Access
+id: ff151c33-45fa-475d-af4f-c2f93571f4fe
+version: 1
+schema_version: "1.0"
+date: "2022-10-09"
+author: Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research), MSTIC
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ff151c33-45fa-475d-af4f-c2f93571f4fe
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  This detection uses Windows security events to detect suspicious access
+  attempts to the registry key of Azure AD Health monitoring agent. This
+  detection requires an access control entry (ACE) on the system access control
+  list (SACL) of the following securable object
+  HKLM\SOFTWARE\Microsoft\Microsoft Online\Reporting\MonitoringAgent. MITRE
+  ATT&CK: T1012.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "4656"
+              - term:
+                  data_win_system_eventID: "4663"
+            minimum_should_match: 1
+        - term:
+            data_win_eventdata_objectType:
+              value: "Key"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_objectName:
+              value: "\\REGISTRY\\MACHINE\\SOFTWARE\\Microsoft\\Microsoft Online\\Reporting\\MonitoringAgent"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_processName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*Microsoft.Identity.Health.Adfs.DiagnosticsAgent.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*Microsoft.Identity.Health.Adfs.InsightsService.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*Microsoft.Identity.Health.Adfs.MonitoringAgent.Startup.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*Microsoft.Identity.Health.Adfs.PshSurrogate.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*Microsoft.Identity.Health.Common.Clients.ResourceMonitor.exe*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_objectType
+    - data_win_eventdata_objectName
+    - data_win_eventdata_processName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4656'; data_win_system_eventID equals '4663';
+  data_win_eventdata_objectType equals 'Key', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://o365blog.com/post/hybridhealthagent/
+  - https://github.com/OTRF/Set-AuditRule/blob/c3dec5443414231714d850565d364ca73475ade5/rules/registry/aad_connect_health_monitoring_agent.yml
+  - https://attack.mitre.org/techniques/T1012/
+
+response:
+  message: >
+    Azure AD Health Monitoring Agent Registry Keys Access detected on host
+    $agent_name$. Matched data_win_eventdata_objectType:
+    $data_win_eventdata_objectType$. Matched data_win_eventdata_objectName:
+    $data_win_eventdata_objectName$. MITRE ATT&CK: T1012
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_objectType
+      type: other
+    - field: data_win_eventdata_objectName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1012
+  custom_tags:
+    - azure
+    - health
+    - monitoring
+    - windows_security
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"4656" OR data_win_system_eventID:"4663") AND data_win_eventdata_objectType:/[Kk][Ee][Yy]/ AND data_win_eventdata_objectName:/\\[Rr][Ee][Gg][Ii][Ss][Tt][Rr][Yy]\\[Mm][Aa][Cc][Hh][Ii][Nn][Ee]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Nn][Ll][Ii][Nn][Ee]\\[Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]\\[Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg][Aa][Gg][Ee][Nn][Tt]/ AND _exists_:data_win_eventdata_processName AND NOT (data_win_eventdata_processName:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy]\.[Hh][Ee][Aa][Ll][Tt][Hh]\.[Aa][Dd][Ff][Ss]\.[Dd][Ii][Aa][Gg][Nn][Oo][Ss][Tt][Ii][Cc][Ss][Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_processName:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy]\.[Hh][Ee][Aa][Ll][Tt][Hh]\.[Aa][Dd][Ff][Ss]\.[Ii][Nn][Ss][Ii][Gg][Hh][Tt][Ss][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_processName:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy]\.[Hh][Ee][Aa][Ll][Tt][Hh]\.[Aa][Dd][Ff][Ss]\.[Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg][Aa][Gg][Ee][Nn][Tt]\.[Ss][Tt][Aa][Rr][Tt][Uu][Pp]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_processName:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy]\.[Hh][Ee][Aa][Ll][Tt][Hh]\.[Aa][Dd][Ff][Ss]\.[Pp][Ss][Hh][Ss][Uu][Rr][Rr][Oo][Gg][Aa][Tt][Ee]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_processName:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy]\.[Hh][Ee][Aa][Ll][Tt][Hh]\.[Cc][Oo][Mm][Mm][Oo][Nn]\.[Cc][Ll][Ii][Ee][Nn][Tt][Ss]\.[Rr][Ee][Ss][Oo][Uu][Rr][Cc][Ee][Mm][Oo][Nn][Ii][Tt][Oo][Rr]\.[Ee][Xx][Ee].*/)

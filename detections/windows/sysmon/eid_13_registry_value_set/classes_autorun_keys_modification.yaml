@@ -1,0 +1,251 @@
+name: Classes Autorun Keys Modification
+id: 9df5f547-c86a-433e-b533-f2794357e242
+version: 1
+schema_version: "1.0"
+date: "2025-10-22"
+author: Victor Sergeev, Daniil Yugoslavskiy, Gleb Sukhodolskiy, Timur Zinniatullin, oscd.community, Tim Shelton, frack113 (split)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9df5f547-c86a-433e-b533-f2794357e242
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects modification of Windows Registry Classes keys used for persistence.
+  Adversaries modify these autostart extensibility points (ASEP) to execute
+  malicious code when file types are opened or actions are performed. Various
+  legitimate software also uses these keys. Currently, this rule only filters
+  out known legitimate software paths, thus it is recommended to review and tune
+  filters for your environment to reduce false positives before deploying to
+  production. MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Software\\\\Classes*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Folder\\\\ShellEx\\\\ExtShellFolderViews*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Folder\\\\ShellEx\\\\DragDropHandlers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Folder\\\\Shellex\\\\ColumnHandlers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Filter*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Exefile\\\\Shell\\\\Open\\\\Command\\\\(Default)*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Directory\\\\Shellex\\\\DragDropHandlers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Directory\\\\Shellex\\\\CopyHookHandlers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CLSID\\\\{AC757296-3522-4E11-9862-C17BE5A1767E}\\\\Instance*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CLSID\\\\{ABE3B9A4-257D-4B97-BD1A-294AF496222E}\\\\Instance*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CLSID\\\\{7ED96837-96F0-4812-B211-F13C24117ED3}\\\\Instance*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CLSID\\\\{083863F1-70DE-11d0-BD40-00A0C911CE86}\\\\Instance*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Classes\\\\AllFileSystemObjects\\\\ShellEx\\\\DragDropHandlers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\.cmd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\ShellEx\\\\PropertySheetHandlers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\ShellEx\\\\ContextMenuHandlers*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\drvinst.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_details:
+                          value: "(Empty)"
+                          case_insensitive: true
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_details"
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\System32\\svchost.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\lnkfile\\\\shellex\\\\ContextMenuHandlers\\\\*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - term:
+                  data_win_eventdata_details:
+                    value: "{807583E5-5146-11D5-A672-00B0D022E945}"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Software\Classes*'; data_win_eventdata_targetObject matches
+  '*\Folder\ShellEx\ExtShellFolderViews*'; data_win_eventdata_targetObject
+  matches '*\Folder\ShellEx\DragDropHandlers*', among other conditions.
+
+known_false_positives: >
+  Legitimate software automatically (mostly, during installation) sets up
+  autorun keys for legitimate reason. Legitimate administrator sets up autorun
+  keys for legitimate reason. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1547.001/T1547.001.md
+  - https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns
+  - https://gist.github.com/GlebSukhodolskiy/0fc5fa5f482903064b448890db1eaf9d
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Classes Autorun Keys Modification detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1547.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - classes
+    - autorun
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Cc][Ll][Aa][Ss][Ss][Ee][Ss].*/ AND (data_win_eventdata_targetObject:/.*\\[Ff][Oo][Ll][Dd][Ee][Rr]\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Ee][Xx][Tt][Ss][Hh][Ee][Ll][Ll][Ff][Oo][Ll][Dd][Ee][Rr][Vv][Ii][Ee][Ww][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ff][Oo][Ll][Dd][Ee][Rr]\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Dd][Rr][Aa][Gg][Dd][Rr][Oo][Pp][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ff][Oo][Ll][Dd][Ee][Rr]\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Cc][Oo][Ll][Uu][Mm][Nn][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ff][Ii][Ll][Tt][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Ee][Xx][Ee][Ff][Ii][Ll][Ee]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\).*/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy]\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Dd][Rr][Aa][Gg][Dd][Rr][Oo][Pp][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy]\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Cc][Oo][Pp][Yy][Hh][Oo][Oo][Kk][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{[Aa][Cc]757296-3522-4[Ee]11-9862-[Cc]17[Bb][Ee]5[Aa]1767[Ee]\}\\[Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{[Aa][Bb][Ee]3[Bb]9[Aa]4-257[Dd]-4[Bb]97-[Bb][Dd]1[Aa]-294[Aa][Ff]496222[Ee]\}\\[Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{7[Ee][Dd]96837-96[Ff]0-4812-[Bb]211-[Ff]13[Cc]24117[Ee][Dd]3\}\\[Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{083863[Ff]1-70[Dd][Ee]-11[Dd]0-[Bb][Dd]40-00[Aa]0[Cc]911[Cc][Ee]86\}\\[Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Aa][Ll][Ll][Ff][Ii][Ll][Ee][Ss][Yy][Ss][Tt][Ee][Mm][Oo][Bb][Jj][Ee][Cc][Tt][Ss]\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Dd][Rr][Aa][Gg][Dd][Rr][Oo][Pp][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\\.[Ee][Xx][Ee].*/ OR data_win_eventdata_targetObject:/.*\\\.[Cc][Mm][Dd].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Pp][Rr][Oo][Pp][Ee][Rr][Tt][Yy][Ss][Hh][Ee][Ee][Tt][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Cc][Oo][Nn][Tt][Ee][Xx][Tt][Mm][Ee][Nn][Uu][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss].*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Rr][Vv][Ii][Nn][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_details:/\([Ee][Mm][Pp][Tt][Yy]\)/ OR NOT _exists_:data_win_eventdata_details OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Ll][Nn][Kk][Ff][Ii][Ll][Ee]\\[Ss][Hh][Ee][Ll][Ll][Ee][Xx]\\[Cc][Oo][Nn][Tt][Ee][Xx][Tt][Mm][Ee][Nn][Uu][Hh][Aa][Nn][Dd][Ll][Ee][Rr][Ss]\\.*/)) AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_details:/\{807583[Ee]5-5146-11[Dd]5-[Aa]672-00[Bb]0[Dd]022[Ee]945\}/)

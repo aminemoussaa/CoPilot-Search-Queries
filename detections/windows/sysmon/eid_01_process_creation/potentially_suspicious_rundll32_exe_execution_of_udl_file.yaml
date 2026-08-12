@@ -1,0 +1,171 @@
+name: Potentially Suspicious Rundll32.EXE Execution of UDL File
+id: 0ea52357-cd59-4340-9981-c46c7e900428
+version: 1
+schema_version: "1.0"
+date: "2024-08-16"
+author: "@kostastsale"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0ea52357-cd59-4340-9981-c46c7e900428
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of rundll32.exe with the oledb32.dll library to open a
+  UDL file. Threat actors can abuse this technique as a phishing vector to
+  capture authentication credentials or other sensitive data. MITRE ATT&CK:
+  T1218.011, T1071.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\explorer.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\rundll32.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "RUNDLL32.EXE"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*oledb32.dll*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*,OpenDSLFile *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*\\\\Users\\\\*\\\\Downloads\\\\*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*.udl"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\explorer.exe'; data_win_eventdata_image matches '*\rundll32.exe';
+  data_win_eventdata_originalFileName equals 'RUNDLL32.EXE', among other
+  conditions.
+
+known_false_positives: >
+  UDL files serve as a convenient and flexible tool for managing and testing
+  database connections in various development and administrative scenarios.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://trustedsec.com/blog/oops-i-udld-it-again
+  - https://attack.mitre.org/techniques/T1218/011/
+  - https://attack.mitre.org/techniques/T1071/
+
+response:
+  message: >
+    Potentially Suspicious Rundll32.EXE Execution of UDL File detected on host
+    $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1218.011, T1071
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.011
+    - T1071
+  custom_tags:
+    - rundll32
+    - process_creation
+    - sysmon
+    - execution
+    - command_and_control
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Oo][Ll][Ee][Dd][Bb]32\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*,[Oo][Pp][Ee][Nn][Dd][Ss][Ll][Ff][Ii][Ll][Ee] .*/ AND data_win_eventdata_commandLine:/.*\\[Uu][Ss][Ee][Rr][Ss]\\.*\\[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss]\\.*/ AND data_win_eventdata_commandLine:/.*\.[Uu][Dd][Ll]/

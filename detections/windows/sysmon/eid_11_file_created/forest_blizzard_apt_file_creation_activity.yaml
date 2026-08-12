@@ -1,0 +1,227 @@
+name: Forest Blizzard APT - File Creation Activity
+id: b92d1d19-f5c9-4ed6-bbd5-7476709dc389
+version: 1
+schema_version: "1.0"
+date: "2024-07-11"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b92d1d19-f5c9-4ed6-bbd5-7476709dc389
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of specific files inside of ProgramData directory. These
+  files were seen being created by Forest Blizzard as described by MSFT. MITRE
+  ATT&CK: T1685.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\Microsoft\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\Adobe\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\Comms\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\Intel\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\Kaspersky Lab\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\Bitdefender\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\ESET\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\NVIDIA\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\UbiSoft\\\\v*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\ProgramData\\\\Steam\\\\v*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\prnms003.inf_*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\prnms009.inf_*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "C:\\\\ProgramData\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.save"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\doit.bat"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\execute.bat"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\servtask.bat"
+                                case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*\\\\wayzgoose*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*.dll"
+                                      case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  'C:\ProgramData\Microsoft\v*'; data_win_eventdata_targetFilename matches
+  'C:\ProgramData\Adobe\v*'; data_win_eventdata_targetFilename matches
+  'C:\ProgramData\Comms\v*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/en-us/security/blog/2024/04/22/analyzing-forest-blizzards-custom-post-compromise-tool-for-exploiting-cve-2022-38028-to-obtain-credentials/
+  - https://attack.mitre.org/techniques/T1685/001/
+
+response:
+  message: >
+    Forest Blizzard APT - File Creation Activity detected on host $agent_name$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1685.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685.001
+  custom_tags:
+    - forest
+    - blizzard
+    - file_event
+    - sysmon
+    - defense_impairment
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (((data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Aa][Dd][Oo][Bb][Ee]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Cc][Oo][Mm][Mm][Ss]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Ii][Nn][Tt][Ee][Ll]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Kk][Aa][Ss][Pp][Ee][Rr][Ss][Kk][Yy] [Ll][Aa][Bb]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Bb][Ii][Tt][Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Ee][Ss][Ee][Tt]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Nn][Vv][Ii][Dd][Ii][Aa]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Uu][Bb][Ii][Ss][Oo][Ff][Tt]\\[Vv].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Ss][Tt][Ee][Aa][Mm]\\[Vv].*/) AND (data_win_eventdata_targetFilename:/.*\\[Pp][Rr][Nn][Mm][Ss]003\.[Ii][Nn][Ff]_.*/ OR data_win_eventdata_targetFilename:/.*\\[Pp][Rr][Nn][Mm][Ss]009\.[Ii][Nn][Ff]_.*/)) OR (data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\.*/ AND (data_win_eventdata_targetFilename:/.*\.[Ss][Aa][Vv][Ee]/ OR data_win_eventdata_targetFilename:/.*\\[Dd][Oo][Ii][Tt]\.[Bb][Aa][Tt]/ OR data_win_eventdata_targetFilename:/.*\\[Ee][Xx][Ee][Cc][Uu][Tt][Ee]\.[Bb][Aa][Tt]/ OR data_win_eventdata_targetFilename:/.*\\[Ss][Ee][Rr][Vv][Tt][Aa][Ss][Kk]\.[Bb][Aa][Tt]/ OR (data_win_eventdata_targetFilename:/.*\\[Ww][Aa][Yy][Zz][Gg][Oo][Oo][Ss][Ee].*/ AND data_win_eventdata_targetFilename:/.*\.[Dd][Ll][Ll]/))))

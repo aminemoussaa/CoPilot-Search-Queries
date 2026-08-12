@@ -1,0 +1,479 @@
+name: HackTool - Generic Process Access
+id: d0d2f720-d14f-448d-8242-51ff396a334e
+version: 1
+schema_version: "1.0"
+date: "2023-11-27"
+author: Nasreddine Bencherchali (Nextron Systems), Swachchhanda Shrawan Poudel
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d0d2f720-d14f-448d-8242-51ff396a334e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects process access requests from hacktool processes based on their default
+  image name. MITRE ATT&CK: T1003.001.
+
+data_source:
+  - Sysmon EventID 10 - Process Access
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "10"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Akagi.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Akagi64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\atexec_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Certify.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Certipy.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\CoercedPotato.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\crackmapexec.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\CreateMiniDump.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\dcomexec_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\dpapi_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\findDelegation_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\GetADUsers_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\GetNPUsers_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\getPac_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\getST_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\getTGT_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\GetUserSPNs_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\gmer.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\hashcat.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\htran.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\ifmap_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\impersonate.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Inveigh.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\LocalPotato.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\mimikatz_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\mimikatz.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\netview_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\nmapAnswerMachine_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\opdump_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\PasswordDump.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Potato.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\PowerTool.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\PowerTool64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\psexec_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\PurpleSharp.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\pypykatz.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\QuarksPwDump.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\rdp_check_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Rubeus.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SafetyKatz.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\sambaPipe_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SelectMyParent.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharpChisel.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharPersist.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharpEvtMute.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharpImpersonation.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharpLDAPmonitor.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharpLdapWhoami.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharpUp.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SharpView.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\smbclient_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\smbserver_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\sniff_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\sniffer_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\split_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SpoolSample.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\Stracciatella.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\SysmonEOP.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\temp\\\\rot.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\ticketer_windows.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\TruffleSnout.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\winPEASany_ofs.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\winPEASany.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\winPEASx64_ofs.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\winPEASx64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\winPEASx86_ofs.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\winPEASx86.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\xordump.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\goldenPac*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\just_dce_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\karmaSMB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\kintercept*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\LocalPotato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\ntlmrelayx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\rpcdump*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\samrdump*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\secretsdump*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\smbexec*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\smbrelayx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\wmiexec*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*\\\\wmipersist*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*HotPotato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*Juicy Potato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*JuicyPotato*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*PetitPotam*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_sourceImage:
+                    value: "*RottenPotato*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_sourceImage
+    - data_win_eventdata_targetImage
+    - data_win_eventdata_grantedAccess
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 10 (process access) enabled in the Sysmon
+  configuration for the monitored target processes and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_sourceImage matches
+  '*\Akagi.exe'; data_win_eventdata_sourceImage matches '*\Akagi64.exe';
+  data_win_eventdata_sourceImage matches '*\atexec_windows.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://jsecurity101.medium.com/bypassing-access-mask-auditing-strategies-480fb641c158
+  - https://www.splunk.com/en_us/blog/security/you-bet-your-lsass-hunting-lsass-access.html
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    HackTool - Generic Process Access detected on host $agent_name$. Matched
+    data_win_eventdata_sourceImage: $data_win_eventdata_sourceImage$. Matched
+    data_win_eventdata_targetImage: $data_win_eventdata_targetImage$. MITRE
+    ATT&CK: T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_sourceImage
+      type: process
+    - field: data_win_eventdata_targetImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.001
+  custom_tags:
+    - hacktool
+    - process_access
+    - sysmon
+    - credential_access
+    - s0002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"10" AND (data_win_eventdata_sourceImage:/.*\\[Aa][Kk][Aa][Gg][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Aa][Kk][Aa][Gg][Ii]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Aa][Tt][Ee][Xx][Ee][Cc]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Cc][Ee][Rr][Tt][Ii][Ff][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Cc][Ee][Rr][Tt][Ii][Pp][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Cc][Oo][Ee][Rr][Cc][Ee][Dd][Pp][Oo][Tt][Aa][Tt][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Cc][Rr][Aa][Cc][Kk][Mm][Aa][Pp][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Cc][Rr][Ee][Aa][Tt][Ee][Mm][Ii][Nn][Ii][Dd][Uu][Mm][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Dd][Cc][Oo][Mm][Ee][Xx][Ee][Cc]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Dd][Pp][Aa][Pp][Ii]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ff][Ii][Nn][Dd][Dd][Ee][Ll][Ee][Gg][Aa][Tt][Ii][Oo][Nn]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Ee][Tt][Aa][Dd][Uu][Ss][Ee][Rr][Ss]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Ee][Tt][Nn][Pp][Uu][Ss][Ee][Rr][Ss]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Ee][Tt][Pp][Aa][Cc]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Ee][Tt][Ss][Tt]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Ee][Tt][Tt][Gg][Tt]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Ee][Tt][Uu][Ss][Ee][Rr][Ss][Pp][Nn][Ss]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Mm][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Hh][Aa][Ss][Hh][Cc][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Hh][Tt][Rr][Aa][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ii][Ff][Mm][Aa][Pp]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ii][Nn][Vv][Ee][Ii][Gg][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ll][Oo][Cc][Aa][Ll][Pp][Oo][Tt][Aa][Tt][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Nn][Ee][Tt][Vv][Ii][Ee][Ww]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Nn][Mm][Aa][Pp][Aa][Nn][Ss][Ww][Ee][Rr][Mm][Aa][Cc][Hh][Ii][Nn][Ee]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Oo][Pp][Dd][Uu][Mm][Pp]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][Dd][Uu][Mm][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Oo][Tt][Aa][Tt][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Tt][Oo][Oo][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Tt][Oo][Oo][Ll]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Ss][Ee][Xx][Ee][Cc]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Uu][Rr][Pp][Ll][Ee][Ss][Hh][Aa][Rr][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Pp][Yy][Pp][Yy][Kk][Aa][Tt][Zz]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Qq][Uu][Aa][Rr][Kk][Ss][Pp][Ww][Dd][Uu][Mm][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Rr][Dd][Pp]_[Cc][Hh][Ee][Cc][Kk]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Rr][Uu][Bb][Ee][Uu][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Aa][Ff][Ee][Tt][Yy][Kk][Aa][Tt][Zz]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Aa][Mm][Bb][Aa][Pp][Ii][Pp][Ee]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Ee][Ll][Ee][Cc][Tt][Mm][Yy][Pp][Aa][Rr][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Cc][Hh][Ii][Ss][Ee][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Ee][Rr][Ss][Ii][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Ee][Vv][Tt][Mm][Uu][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ii][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Ll][Dd][Aa][Pp][Mm][Oo][Nn][Ii][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Ll][Dd][Aa][Pp][Ww][Hh][Oo][Aa][Mm][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Uu][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Hh][Aa][Rr][Pp][Vv][Ii][Ee][Ww]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Mm][Bb][Cc][Ll][Ii][Ee][Nn][Tt]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Mm][Bb][Ss][Ee][Rr][Vv][Ee][Rr]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Nn][Ii][Ff][Ff]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Nn][Ii][Ff][Ff][Ee][Rr]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Pp][Ll][Ii][Tt]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Pp][Oo][Oo][Ll][Ss][Aa][Mm][Pp][Ll][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Tt][Rr][Aa][Cc][Cc][Ii][Aa][Tt][Ee][Ll][Ll][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Yy][Ss][Mm][Oo][Nn][Ee][Oo][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Tt][Ee][Mm][Pp]\\[Rr][Oo][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Tt][Ii][Cc][Kk][Ee][Tt][Ee][Rr]_[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Tt][Rr][Uu][Ff][Ff][Ll][Ee][Ss][Nn][Oo][Uu][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Ii][Nn][Pp][Ee][Aa][Ss][Aa][Nn][Yy]_[Oo][Ff][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Ii][Nn][Pp][Ee][Aa][Ss][Aa][Nn][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Ii][Nn][Pp][Ee][Aa][Ss][Xx]64_[Oo][Ff][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Ii][Nn][Pp][Ee][Aa][Ss][Xx]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Ii][Nn][Pp][Ee][Aa][Ss][Xx]86_[Oo][Ff][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Ii][Nn][Pp][Ee][Aa][Ss][Xx]86\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Xx][Oo][Rr][Dd][Uu][Mm][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_sourceImage:/.*\\[Gg][Oo][Ll][Dd][Ee][Nn][Pp][Aa][Cc].*/ OR data_win_eventdata_sourceImage:/.*\\[Jj][Uu][Ss][Tt]_[Dd][Cc][Ee]_.*/ OR data_win_eventdata_sourceImage:/.*\\[Kk][Aa][Rr][Mm][Aa][Ss][Mm][Bb].*/ OR data_win_eventdata_sourceImage:/.*\\[Kk][Ii][Nn][Tt][Ee][Rr][Cc][Ee][Pp][Tt].*/ OR data_win_eventdata_sourceImage:/.*\\[Ll][Oo][Cc][Aa][Ll][Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_sourceImage:/.*\\[Nn][Tt][Ll][Mm][Rr][Ee][Ll][Aa][Yy][Xx].*/ OR data_win_eventdata_sourceImage:/.*\\[Rr][Pp][Cc][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Aa][Mm][Rr][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Ee][Cc][Rr][Ee][Tt][Ss][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Mm][Bb][Ee][Xx][Ee][Cc].*/ OR data_win_eventdata_sourceImage:/.*\\[Ss][Mm][Bb][Rr][Ee][Ll][Aa][Yy][Xx].*/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Mm][Ii][Ee][Xx][Ee][Cc].*/ OR data_win_eventdata_sourceImage:/.*\\[Ww][Mm][Ii][Pp][Ee][Rr][Ss][Ii][Ss][Tt].*/ OR data_win_eventdata_sourceImage:/.*[Hh][Oo][Tt][Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_sourceImage:/.*[Jj][Uu][Ii][Cc][Yy] [Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_sourceImage:/.*[Jj][Uu][Ii][Cc][Yy][Pp][Oo][Tt][Aa][Tt][Oo].*/ OR data_win_eventdata_sourceImage:/.*[Pp][Ee][Tt][Ii][Tt][Pp][Oo][Tt][Aa][Mm].*/ OR data_win_eventdata_sourceImage:/.*[Rr][Oo][Tt][Tt][Ee][Nn][Pp][Oo][Tt][Aa][Tt][Oo].*/)

@@ -1,0 +1,200 @@
+name: Suspicious Scripting in a WMI Consumer
+id: fe21810c-2a8c-478f-8dd3-5a287fb2a0e0
+version: 1
+schema_version: "1.0"
+date: "2023-09-09"
+author: Florian Roth (Nextron Systems), Jonhnathan Ribeiro
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fe21810c-2a8c-478f-8dd3-5a287fb2a0e0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious commands that are related to scripting/powershell in WMI
+  Event Consumers. MITRE ATT&CK: T1059.005.
+
+data_source:
+  - Sysmon EventID 19/20/21 - WMI Event
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "19"
+              - term:
+                  data_win_system_eventID: "20"
+              - term:
+                  data_win_system_eventID: "21"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_destination:
+                          value: "*new-object*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_destination:
+                          value: "*net.webclient*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_destination:
+                          value: "*.downloadstring*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_destination:
+                          value: "*new-object*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_destination:
+                          value: "*net.webclient*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_destination:
+                          value: "*.downloadfile*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_destination:
+                    value: "* iex(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_destination:
+                    value: "* -nop *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_destination:
+                    value: "* -noprofile *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_destination:
+                    value: "* -decode *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_destination:
+                    value: "* -enc *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_destination:
+                    value: "*WScript.Shell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_destination:
+                    value: "*System.Security.Cryptography.FromBase64Transform*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_destination
+    - data_win_eventdata_operation
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon WMI event logging (EventIDs 19/20/21) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_destination matches '*new-object*';
+  data_win_eventdata_destination matches '*net.webclient*';
+  data_win_eventdata_destination matches '*.downloadstring*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate administrative scripts. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://in.security/an-intro-into-abusing-and-identifying-wmi-event-subscriptions-for-persistence/
+  - https://github.com/Neo23x0/signature-base/blob/615bf1f6bac3c1bdc417025c40c073e6c2771a76/yara/gen_susp_lnk_files.yar#L19
+  - https://github.com/RiccardoAncarani/LiquidSnake
+  - https://attack.mitre.org/techniques/T1059/005/
+
+response:
+  message: >
+    Suspicious Scripting in a WMI Consumer detected on host $agent_name$.
+    Matched data_win_eventdata_destination: $data_win_eventdata_destination$.
+    Matched data_win_eventdata_operation: $data_win_eventdata_operation$. MITRE
+    ATT&CK: T1059.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_destination
+      type: other
+    - field: data_win_eventdata_operation
+      type: operation
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.005
+  custom_tags:
+    - scripting
+    - consumer
+    - wmi_event
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"19" OR data_win_system_eventID:"20" OR data_win_system_eventID:"21") AND ((data_win_eventdata_destination:/.*[Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_destination:/.*[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt].*/ AND data_win_eventdata_destination:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg].*/) OR (data_win_eventdata_destination:/.*[Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_destination:/.*[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt].*/ AND data_win_eventdata_destination:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ff][Ii][Ll][Ee].*/) OR data_win_eventdata_destination:/.* [Ii][Ee][Xx]\(.*/ OR data_win_eventdata_destination:/.* -[Nn][Oo][Pp] .*/ OR data_win_eventdata_destination:/.* -[Nn][Oo][Pp][Rr][Oo][Ff][Ii][Ll][Ee] .*/ OR data_win_eventdata_destination:/.* -[Dd][Ee][Cc][Oo][Dd][Ee] .*/ OR data_win_eventdata_destination:/.* -[Ee][Nn][Cc] .*/ OR data_win_eventdata_destination:/.*[Ww][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_destination:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy]\.[Cc][Rr][Yy][Pp][Tt][Oo][Gg][Rr][Aa][Pp][Hh][Yy]\.[Ff][Rr][Oo][Mm][Bb][Aa][Ss][Ee]64[Tt][Rr][Aa][Nn][Ss][Ff][Oo][Rr][Mm].*/)

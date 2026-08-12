@@ -1,0 +1,154 @@
+name: HackTool - HandleKatz Duplicating LSASS Handle
+id: b1bd3a59-c1fd-4860-9f40-4dd161a7d1f5
+version: 1
+schema_version: "1.0"
+date: "2023-11-28"
+author: Bhabesh Raj (rule), @thefLinkk
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b1bd3a59-c1fd-4860-9f40-4dd161a7d1f5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects HandleKatz opening LSASS to duplicate its handle to later dump the
+  memory without opening any new handles. MITRE ATT&CK: T1106, T1003.001.
+
+data_source:
+  - Sysmon EventID 10 - Process Access
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "10"
+        
+        - wildcard:
+            data_win_eventdata_targetImage:
+              value: "*\\\\lsass.exe"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_grantedAccess:
+              value: "0x1440"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_callTrace:
+              value: "C:\\\\Windows\\\\System32\\\\ntdll.dll+*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_callTrace:
+              value: "*|UNKNOWN(*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_callTrace: "*)"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetImage
+    - data_win_eventdata_grantedAccess
+    - data_win_eventdata_callTrace
+    - data_win_eventdata_sourceImage
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 10 (process access) enabled in the Sysmon
+  configuration for the monitored target processes and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetImage matches
+  '*\lsass.exe'; data_win_eventdata_grantedAccess equals '0x1440';
+  data_win_eventdata_callTrace matches 'C:\Windows\System32\ntdll.dll+*', among
+  other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/codewhitesec/HandleKatz
+  - https://attack.mitre.org/techniques/T1106/
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    HackTool - HandleKatz Duplicating LSASS Handle detected on host
+    $agent_name$. Matched data_win_eventdata_targetImage:
+    $data_win_eventdata_targetImage$. Matched data_win_eventdata_grantedAccess:
+    $data_win_eventdata_grantedAccess$. MITRE ATT&CK: T1106, T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetImage
+      type: process
+    - field: data_win_eventdata_grantedAccess
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1106
+    - T1003.001
+  custom_tags:
+    - hacktool
+    - handlekatz
+    - duplicating
+    - process_access
+    - sysmon
+    - execution
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"10" AND data_win_eventdata_targetImage:/.*\\[Ll][Ss][Aa][Ss][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_grantedAccess:/0[Xx]1440/ AND data_win_eventdata_callTrace:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Nn][Tt][Dd][Ll][Ll]\.[Dd][Ll][Ll]\+.*/ AND data_win_eventdata_callTrace:/.*\|[Uu][Nn][Kk][Nn][Oo][Ww][Nn]\(.*/ AND data_win_eventdata_callTrace:/.*\)/

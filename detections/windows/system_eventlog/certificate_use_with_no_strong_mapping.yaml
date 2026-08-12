@@ -1,0 +1,145 @@
+name: Certificate Use With No Strong Mapping
+id: 993c2665-e6ef-40e3-a62a-e1a97686af79
+version: 1
+schema_version: "1.0"
+date: "2025-09-22"
+author: "@br4dy5"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 993c2665-e6ef-40e3-a62a-e1a97686af79
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a user certificate that was valid but could not be mapped to a user in
+  a strong way (such as via explicit mapping, key trust mapping, or a SID) This
+  could be a sign of exploitation of the elevation of privilege vulnerabilities
+  (CVE-2022-34691, CVE-2022-26931, CVE-2022-26923) that can occur when the KDC
+  allows certificate spoofing by not requiring a strong mapping. Events where
+  the AccountName and CN of the Subject do not match, or where the CN ends in a
+  dollar sign indicating a machine, may indicate certificate spoofing.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_system_providerName:
+                    value: "Kerberos-Key-Distribution-Center"
+                    case_insensitive: true
+              - term:
+                  data_win_system_providerName:
+                    value: "Microsoft-Windows-Kerberos-Key-Distribution-Center"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "39"
+              - term:
+                  data_win_system_eventID: "41"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals
+  'Kerberos-Key-Distribution-Center'; data_win_system_providerName equals
+  'Microsoft-Windows-Kerberos-Key-Distribution-Center'; data_win_system_eventID
+  equals '39', among other conditions.
+
+known_false_positives: >
+  If prevalent in the environment, filter on events where the AccountName and CN
+  of the Subject do not reference the same user. If prevalent in the
+  environment, filter on CNs that end in a dollar sign indicating it is a
+  machine name. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16
+
+response:
+  message: >
+    Certificate Use With No Strong Mapping detected on host $agent_name$.
+    Matched data_win_system_providerName: $data_win_system_providerName$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - certificate
+    - strong
+    - mapping
+    - windows_system
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_providerName:/[Kk][Ee][Rr][Bb][Ee][Rr][Oo][Ss]-[Kk][Ee][Yy]-[Dd][Ii][Ss][Tt][Rr][Ii][Bb][Uu][Tt][Ii][Oo][Nn]-[Cc][Ee][Nn][Tt][Ee][Rr]/ OR data_win_system_providerName:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Kk][Ee][Rr][Bb][Ee][Rr][Oo][Ss]-[Kk][Ee][Yy]-[Dd][Ii][Ss][Tt][Rr][Ii][Bb][Uu][Tt][Ii][Oo][Nn]-[Cc][Ee][Nn][Tt][Ee][Rr]/) AND (data_win_system_eventID:"39" OR data_win_system_eventID:"41")

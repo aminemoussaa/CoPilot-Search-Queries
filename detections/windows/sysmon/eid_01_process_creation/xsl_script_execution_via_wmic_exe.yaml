@@ -1,0 +1,247 @@
+name: XSL Script Execution Via WMIC.EXE
+id: 05c36dd6-79d6-4a9a-97da-3db20298ab2d
+version: 1
+schema_version: "1.0"
+date: "2026-01-24"
+author: Timur Zinniatullin, oscd.community, Swachchhanda Shrawan Poudel
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 05c36dd6-79d6-4a9a-97da-3db20298ab2d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of WMIC with the "format" flag to potentially load local
+  XSL files. Adversaries abuse this functionality to execute arbitrary files
+  while potentially bypassing application whitelisting defenses. Extensible
+  Stylesheet Language (XSL) files are commonly used to describe the processing
+  and rendering of data within XML files. MITRE ATT&CK: T1047, T1220, T1059.005,
+  T1059.007.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wmic.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "wmic.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=1B1A3F43BF37B5BFE60751F2EE2F326E*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=37777A96245A3C74EB217308F3546F4C*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=9D87C9D67CE724033C0B40CC4CA1B206*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=B12619881D79C3ACADF45E752A58554A*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=16A48C3CABF98A9DC1BF02C07FE1EA00*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-format:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/format:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–format:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—format:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―format:*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:List*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:htable*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:hform*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:table*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:mof*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:value*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:rawxml*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:xml*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Format:csv*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine: "*://*"
+                    - wildcard:
+                        data_win_eventdata_commandLine: "*\\\\\\\\*"
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\wmic.exe'; data_win_eventdata_originalFileName equals 'wmic.exe';
+  data_win_eventdata_hashes matches
+  '*IMPHASH=1B1A3F43BF37B5BFE60751F2EE2F326E*', among other conditions.
+
+known_false_positives: >
+  WMIC.exe FP depend on scripts and administrative methods used in the monitored
+  environment.. Static format arguments -
+  https://petri.com/command-line-wmi-part-3. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1220/T1220.md
+  - https://attack.mitre.org/techniques/T1047/
+  - https://attack.mitre.org/techniques/T1220/
+  - https://attack.mitre.org/techniques/T1059/005/
+  - https://attack.mitre.org/techniques/T1059/007/
+
+response:
+  message: >
+    XSL Script Execution Via WMIC.EXE detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1047, T1220, T1059.005, T1059.007
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1047
+    - T1220
+    - T1059.005
+    - T1059.007
+  custom_tags:
+    - process_creation
+    - sysmon
+    - stealth
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=1[Bb]1[Aa]3[Ff]43[Bb][Ff]37[Bb]5[Bb][Ff][Ee]60751[Ff]2[Ee][Ee]2[Ff]326[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=37777[Aa]96245[Aa]3[Cc]74[Ee][Bb]217308[Ff]3546[Ff]4[Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=9[Dd]87[Cc]9[Dd]67[Cc][Ee]724033[Cc]0[Bb]40[Cc][Cc]4[Cc][Aa]1[Bb]206.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb]12619881[Dd]79[Cc]3[Aa][Cc][Aa][Dd][Ff]45[Ee]752[Aa]58554[Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=16[Aa]48[Cc]3[Cc][Aa][Bb][Ff]98[Aa]9[Dd][Cc]1[Bb][Ff]02[Cc]07[Ff][Ee]1[Ee][Aa]00.*/) AND (data_win_eventdata_commandLine:/.*-[Ff][Oo][Rr][Mm][Aa][Tt]:.*/ OR data_win_eventdata_commandLine:/.*\/[Ff][Oo][Rr][Mm][Aa][Tt]:.*/ OR data_win_eventdata_commandLine:/.*–[Ff][Oo][Rr][Mm][Aa][Tt]:.*/ OR data_win_eventdata_commandLine:/.*—[Ff][Oo][Rr][Mm][Aa][Tt]:.*/ OR data_win_eventdata_commandLine:/.*―[Ff][Oo][Rr][Mm][Aa][Tt]:.*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Hh][Tt][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Hh][Ff][Oo][Rr][Mm].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Tt][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Mm][Oo][Ff].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Vv][Aa][Ll][Uu][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Rr][Aa][Ww][Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*[Ff][Oo][Rr][Mm][Aa][Tt]:[Cc][Ss][Vv].*/ OR data_win_eventdata_commandLine:/.*:\/\/.*/ OR data_win_eventdata_commandLine:/.*\\\\.*/)

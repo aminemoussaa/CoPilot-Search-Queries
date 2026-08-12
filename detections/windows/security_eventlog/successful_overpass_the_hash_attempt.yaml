@@ -1,0 +1,144 @@
+name: Successful Overpass the Hash Attempt
+id: 192a0330-c20b-4356-90b6-7b7049ae0b87
+version: 1
+schema_version: "1.0"
+date: "2021-11-27"
+author: Roberto Rodriguez (source), Dominik Schaudel (rule)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 192a0330-c20b-4356-90b6-7b7049ae0b87
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects successful logon with logon type 9 (NewCredentials) which matches the
+  Overpass the Hash behavior of e.g Mimikatz's sekurlsa::pth module. MITRE
+  ATT&CK: T1550.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4624"
+        - term:
+            data_win_eventdata_logonType: "9"
+        - term:
+            data_win_eventdata_logonProcessName:
+              value: "seclogo"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_authenticationPackageName:
+              value: "Negotiate"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_logonType
+    - data_win_eventdata_logonProcessName
+    - data_win_eventdata_authenticationPackageName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4624'; data_win_eventdata_logonType equals
+  '9'; data_win_eventdata_logonProcessName equals 'seclogo', among other
+  conditions.
+
+known_false_positives: >
+  Runas command-line tool using /netonly parameter. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://web.archive.org/web/20220419045003/https://cyberwardog.blogspot.com/2017/04/chronicles-of-threat-hunter-hunting-for.html
+  - https://attack.mitre.org/techniques/T1550/002/
+
+response:
+  message: >
+    Successful Overpass the Hash Attempt detected on host $agent_name$. Matched
+    data_win_eventdata_logonType: $data_win_eventdata_logonType$. Matched
+    data_win_eventdata_logonProcessName: $data_win_eventdata_logonProcessName$.
+    MITRE ATT&CK: T1550.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_logonType
+      type: other
+    - field: data_win_eventdata_logonProcessName
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1550.002
+  custom_tags:
+    - successful
+    - overpass
+    - windows_security
+    - lateral_movement
+    - s0002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4624" AND data_win_eventdata_logonType:"9" AND data_win_eventdata_logonProcessName:/[Ss][Ee][Cc][Ll][Oo][Gg][Oo]/ AND data_win_eventdata_authenticationPackageName:/[Nn][Ee][Gg][Oo][Tt][Ii][Aa][Tt][Ee]/

@@ -1,0 +1,297 @@
+name: Suspicious WSMAN Provider Image Loads
+id: ad1f4bb9-8dfb-4765-adb6-2a7cfb6c0f94
+version: 1
+schema_version: "1.0"
+date: "2025-10-17"
+author: Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ad1f4bb9-8dfb-4765-adb6-2a7cfb6c0f94
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects signs of potential use of the WSMAN provider from uncommon processes
+  locally and remote execution. MITRE ATT&CK: T1059.001, T1021.003.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\WsmSvc.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\WsmAuto.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Microsoft.WSMan.Management.ni.dll"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "WsmSvc.dll"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "WSMANAUTOMATION.DLL"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "Microsoft.WSMan.Management.dll"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\svchost.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_originalFileName:
+                          value: "WsmWmiPl.dll"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\PowerShell\\6\\pwsh.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\PowerShell\\7\\pwsh.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\PowerShell\\6\\pwsh.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\sdiagnhost.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\services.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell_ise.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*svchost.exe -k netsvcs -p -s BITS*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*svchost.exe -k GraphicsPerfSvcGroup -s GraphicsPerfSvc*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*svchost.exe -k NetworkService -p -s Wecsvc*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*svchost.exe -k netsvcs*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\Framework64\\\\v*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\Framework\\\\v*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\FrameworkArm\\\\v*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Windows\\\\Microsoft.NET\\\\FrameworkArm64\\\\v*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\mscorsvw.exe"
+                                case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\Configure-SMRemoting.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\ServerManager.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Windows\\\\Temp\\\\asgard2-agent\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\Citrix\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\$WINDOWS.~BT\\\\Sources\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\mmc.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\svchost.exe"
+                          case_insensitive: true
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_commandLine"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\WsmSvc.dll'; data_win_eventdata_imageLoaded matches '*\WsmAuto.dll';
+  data_win_eventdata_imageLoaded matches '*\Microsoft.WSMan.Management.ni.dll',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/chadtilbury/status/1275851297770610688
+  - https://bohops.com/2020/05/12/ws-management-com-another-approach-for-winrm-lateral-movement/
+  - https://learn.microsoft.com/en-us/windows/win32/winrm/windows-remote-management-architecture
+  - https://github.com/bohops/WSMan-WinRM
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1021/003/
+
+response:
+  message: >
+    Suspicious WSMAN Provider Image Loads detected on host $agent_name$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1059.001, T1021.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1021.003
+  custom_tags:
+    - wsman
+    - provider
+    - image
+    - image_load
+    - sysmon
+    - execution
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND (data_win_eventdata_imageLoaded:/.*\\[Ww][Ss][Mm][Ss][Vv][Cc]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ss][Mm][Aa][Uu][Tt][Oo]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ww][Ss][Mm][Aa][Nn]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Nn][Ii]\.[Dd][Ll][Ll]/ OR data_win_eventdata_originalFileName:/[Ww][Ss][Mm][Ss][Vv][Cc]\.[Dd][Ll][Ll]/ OR data_win_eventdata_originalFileName:/[Ww][Ss][Mm][Aa][Nn][Aa][Uu][Tt][Oo][Mm][Aa][Tt][Ii][Oo][Nn]\.[Dd][Ll][Ll]/ OR data_win_eventdata_originalFileName:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ww][Ss][Mm][Aa][Nn]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Dd][Ll][Ll]/ OR (data_win_eventdata_image:/.*\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_originalFileName:/[Ww][Ss][Mm][Ww][Mm][Ii][Pp][Ll]\.[Dd][Ll][Ll]/)) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\6\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\6\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Dd][Ii][Aa][Gg][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee] -[Kk] [Nn][Ee][Tt][Ss][Vv][Cc][Ss] -[Pp] -[Ss] [Bb][Ii][Tt][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee] -[Kk] [Gg][Rr][Aa][Pp][Hh][Ii][Cc][Ss][Pp][Ee][Rr][Ff][Ss][Vv][Cc][Gg][Rr][Oo][Uu][Pp] -[Ss] [Gg][Rr][Aa][Pp][Hh][Ii][Cc][Ss][Pp][Ee][Rr][Ff][Ss][Vv][Cc].*/ OR data_win_eventdata_commandLine:/.*[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee] -[Kk] [Nn][Ee][Tt][Ww][Oo][Rr][Kk][Ss][Ee][Rr][Vv][Ii][Cc][Ee] -[Pp] -[Ss] [Ww][Ee][Cc][Ss][Vv][Cc].*/ OR data_win_eventdata_commandLine:/.*[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee] -[Kk] [Nn][Ee][Tt][Ss][Vv][Cc][Ss].*/ OR ((data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]64\\[Vv].*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]\\[Vv].*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk][Aa][Rr][Mm]\\[Vv].*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk][Aa][Rr][Mm]64\\[Vv].*/) AND data_win_eventdata_image:/.*\\[Mm][Ss][Cc][Oo][Rr][Ss][Vv][Ww]\.[Ee][Xx][Ee]/) OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Ee]-[Ss][Mm][Rr][Ee][Mm][Oo][Tt][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Ee][Rr][Vv][Ee][Rr][Mm][Aa][Nn][Aa][Gg][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\[Aa][Ss][Gg][Aa][Rr][Dd]2-[Aa][Gg][Ee][Nn][Tt]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Ii][Tt][Rr][Ii][Xx]\\.*/ OR data_win_eventdata_image:/[Cc]:\\\$[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.\~[Bb][Tt]\\[Ss][Oo][Uu][Rr][Cc][Ee][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Mm][Mm][Cc]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND NOT _exists_:data_win_eventdata_commandLine)

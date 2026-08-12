@@ -1,0 +1,174 @@
+name: AD Privileged Users or Groups Reconnaissance
+id: 35ba1d85-724d-42a3-889f-2e2362bcaf23
+version: 1
+schema_version: "1.0"
+date: "2022-07-13"
+author: Samir Bousseaden
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 35ba1d85-724d-42a3-889f-2e2362bcaf23
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect priv users or groups recon based on 4661 eventid and known privileged
+  users or groups SIDs. MITRE ATT&CK: T1087.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4661"
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_objectType:
+                    value: "SAM_USER"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_objectType:
+                    value: "SAM_GROUP"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_objectName: "*-512"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-502"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-500"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-505"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-519"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-520"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-544"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-551"
+              - wildcard:
+                  data_win_eventdata_objectName: "*-555"
+              - wildcard:
+                  data_win_eventdata_objectName:
+                    value: "*admin*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_subjectUserName"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_subjectUserName: "*$"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_objectType
+    - data_win_eventdata_objectName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4661'; data_win_eventdata_objectType equals
+  'SAM_USER'; data_win_eventdata_objectType equals 'SAM_GROUP', among other
+  conditions.
+
+known_false_positives: >
+  If source account name is not an admin then its super suspicious. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://web.archive.org/web/20230329163438/https://blog.menasec.net/2019/02/threat-hunting-5-detecting-enumeration.html
+  - https://attack.mitre.org/techniques/T1087/002/
+
+response:
+  message: >
+    AD Privileged Users or Groups Reconnaissance detected on host $agent_name$.
+    Matched data_win_eventdata_objectType: $data_win_eventdata_objectType$.
+    Matched data_win_eventdata_objectName: $data_win_eventdata_objectName$.
+    MITRE ATT&CK: T1087.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_objectType
+      type: other
+    - field: data_win_eventdata_objectName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1087.002
+  custom_tags:
+    - privileged
+    - users
+    - groups
+    - windows_security
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4661" AND (data_win_eventdata_objectType:/[Ss][Aa][Mm]_[Uu][Ss][Ee][Rr]/ OR data_win_eventdata_objectType:/[Ss][Aa][Mm]_[Gg][Rr][Oo][Uu][Pp]/) AND (data_win_eventdata_objectName:/.*-512/ OR data_win_eventdata_objectName:/.*-502/ OR data_win_eventdata_objectName:/.*-500/ OR data_win_eventdata_objectName:/.*-505/ OR data_win_eventdata_objectName:/.*-519/ OR data_win_eventdata_objectName:/.*-520/ OR data_win_eventdata_objectName:/.*-544/ OR data_win_eventdata_objectName:/.*-551/ OR data_win_eventdata_objectName:/.*-555/ OR data_win_eventdata_objectName:/.*[Aa][Dd][Mm][Ii][Nn].*/) AND _exists_:data_win_eventdata_subjectUserName AND NOT (data_win_eventdata_subjectUserName:/.*\$/)

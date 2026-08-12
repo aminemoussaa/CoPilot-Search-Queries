@@ -1,0 +1,212 @@
+name: Suspicious DotNET CLR Usage Log Artifact
+id: e0b06658-7d1d-4cd3-bf15-03467507ff7c
+version: 1
+schema_version: "1.0"
+date: "2023-02-23"
+author: frack113, omkar72, oscd.community, Wojciech Lesicki
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e0b06658-7d1d-4cd3-bf15-03467507ff7c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of Usage Log files by the CLR (clr.dll). These files are
+  named after the executing process once the assembly is finished executing for
+  the first time in the (user) session context. MITRE ATT&CK: T1218.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\cmstp.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\cscript.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\mshta.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\msxsl.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\regsvr32.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\rundll32.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\svchost.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\wscript.exe.log"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\UsageLogs\\\\wmic.exe.log"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\MsiExec.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "* -Embedding*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\rundll32.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Temp*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*zzzzInvokeManagedCustomActionOutOfProc*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\UsageLogs\cmstp.exe.log'; data_win_eventdata_targetFilename matches
+  '*\UsageLogs\cscript.exe.log'; data_win_eventdata_targetFilename matches
+  '*\UsageLogs\mshta.exe.log', among other conditions.
+
+known_false_positives: >
+  Rundll32.exe with zzzzInvokeManagedCustomActionOutOfProc in command line and
+  msiexec.exe as parent process -
+  https://twitter.com/SBousseaden/status/1388064061087260675. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://bohops.com/2021/03/16/investigating-net-clr-usage-log-tampering-techniques-for-edr-evasion/
+  - https://github.com/olafhartong/sysmon-modular/blob/fa1ae53132403d262be2bbd7f17ceea7e15e8c78/11_file_create/include_dotnet.xml
+  - https://web.archive.org/web/20221026202428/https://gist.github.com/code-scrap/d7f152ffcdb3e0b02f7f394f5187f008
+  - https://web.archive.org/web/20230329154538/https://blog.menasec.net/2019/07/interesting-difr-traces-of-net-clr.html
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Suspicious DotNET CLR Usage Log Artifact detected on host $agent_name$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. MITRE ATT&CK: T1218
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+  custom_tags:
+    - dotnet
+    - artifact
+    - file_event
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Cc][Mm][Ss][Tt][Pp]\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Cc][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Mm][Ss][Xx][Ss][Ll]\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Rr][Ee][Gg][Ss][Vv][Rr]32\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Ww][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/ OR data_win_eventdata_targetFilename:/.*\\[Uu][Ss][Aa][Gg][Ee][Ll][Oo][Gg][Ss]\\[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]\.[Ll][Oo][Gg]/) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_parentCommandLine AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_parentImage:/.*\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.* -[Ee][Mm][Bb][Ee][Dd][Dd][Ii][Nn][Gg].*/ AND data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Tt][Ee][Mm][Pp].*/ AND data_win_eventdata_commandLine:/.*[Zz][Zz][Zz][Zz][Ii][Nn][Vv][Oo][Kk][Ee][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Cc][Uu][Ss][Tt][Oo][Mm][Aa][Cc][Tt][Ii][Oo][Nn][Oo][Uu][Tt][Oo][Ff][Pp][Rr][Oo][Cc].*/)

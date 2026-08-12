@@ -1,0 +1,184 @@
+name: Third Party Software DLL Sideloading
+id: f9df325d-d7bc-4a32-8a1a-2cc61dcefc63
+version: 1
+schema_version: "1.0"
+date: "2022-08-17"
+author: Nasreddine Bencherchali (Nextron Systems), Wietze Beukema (project and research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f9df325d-d7bc-4a32-8a1a-2cc61dcefc63
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects DLL sideloading of DLLs that are part of third party software (zoom,
+  discord....etc). MITRE ATT&CK: T1574.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "*\\\\commfunc.dll"
+                          case_insensitive: true
+                    - exists:
+                        field: "data_win_eventdata_imageLoaded"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_imageLoaded:
+                                      value: "*\\\\AppData\\\\local\\\\Google\\\\Chrome\\\\Application\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_imageLoaded:
+                                      value: "C:\\\\Program Files\\\\Lenovo\\\\Communications Utility\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_imageLoaded:
+                                      value: "C:\\\\Program Files (x86)\\\\Lenovo\\\\Communications Utility\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "*\\\\tosbtkbd.dll"
+                          case_insensitive: true
+                    - exists:
+                        field: "data_win_eventdata_imageLoaded"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_imageLoaded:
+                                      value: "C:\\\\Program Files\\\\Toshiba\\\\Bluetooth Toshiba Stack\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_imageLoaded:
+                                      value: "C:\\\\Program Files (x86)\\\\Toshiba\\\\Bluetooth Toshiba Stack\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_image
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\commfunc.dll'; data_win_eventdata_imageLoaded matches
+  '*\AppData\local\Google\Chrome\Application\*'; data_win_eventdata_imageLoaded
+  matches 'C:\Program Files\Lenovo\Communications Utility\*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://hijacklibs.net/
+  - https://attack.mitre.org/techniques/T1574/001/
+
+response:
+  message: >
+    Third Party Software DLL Sideloading detected on host $agent_name$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1574.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.001
+  custom_tags:
+    - third
+    - party
+    - software
+    - image_load
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND ((data_win_eventdata_imageLoaded:/.*\\[Cc][Oo][Mm][Mm][Ff][Uu][Nn][Cc]\.[Dd][Ll][Ll]/ AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Gg][Oo][Oo][Gg][Ll][Ee]\\[Cc][Hh][Rr][Oo][Mm][Ee]\\[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ll][Ee][Nn][Oo][Vv][Oo]\\[Cc][Oo][Mm][Mm][Uu][Nn][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Ss] [Uu][Tt][Ii][Ll][Ii][Tt][Yy]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Ll][Ee][Nn][Oo][Vv][Oo]\\[Cc][Oo][Mm][Mm][Uu][Nn][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Ss] [Uu][Tt][Ii][Ll][Ii][Tt][Yy]\\.*/)) OR (data_win_eventdata_imageLoaded:/.*\\[Tt][Oo][Ss][Bb][Tt][Kk][Bb][Dd]\.[Dd][Ll][Ll]/ AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Tt][Oo][Ss][Hh][Ii][Bb][Aa]\\[Bb][Ll][Uu][Ee][Tt][Oo][Oo][Tt][Hh] [Tt][Oo][Ss][Hh][Ii][Bb][Aa] [Ss][Tt][Aa][Cc][Kk]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Tt][Oo][Ss][Hh][Ii][Bb][Aa]\\[Bb][Ll][Uu][Ee][Tt][Oo][Oo][Tt][Hh] [Tt][Oo][Ss][Hh][Ii][Bb][Aa] [Ss][Tt][Aa][Cc][Kk]\\.*/)))

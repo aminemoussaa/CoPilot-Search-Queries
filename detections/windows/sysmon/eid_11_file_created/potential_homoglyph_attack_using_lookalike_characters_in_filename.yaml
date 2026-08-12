@@ -1,0 +1,335 @@
+name: Potential Homoglyph Attack Using Lookalike Characters in Filename
+id: 4f1707b1-b50b-45b4-b5a2-3978b5a5d0d6
+version: 1
+schema_version: "1.0"
+date: "2023-05-08"
+author: Micah Babinski, @micahbabinski
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4f1707b1-b50b-45b4-b5a2-3978b5a5d0d6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the presence of unicode characters which are homoglyphs, or identical
+  in appearance, to ASCII letter characters. This is used as an obfuscation and
+  masquerading techniques. Only "perfect" homoglyphs are included; these are
+  characters that are indistinguishable from ASCII characters and thus may make
+  excellent candidates for homoglyph attack characters. MITRE ATT&CK: T1036,
+  T1036.003.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*А*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*В*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Е*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*К*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*М*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Н*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*О*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Р*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*С*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Т*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Х*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ѕ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*І*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ј*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ү*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ӏ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ԍ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ԛ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ԝ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Α*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Β*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ε*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ζ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Η*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ι*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Κ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Μ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ν*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ο*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Ρ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Τ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Υ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*Χ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*а*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*е*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*о*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*р*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*с*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*х*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ѕ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*і*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ӏ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ј*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*һ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ԁ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ԛ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ԝ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ο*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*А*'; data_win_eventdata_targetFilename matches '*В*';
+  data_win_eventdata_targetFilename matches '*Е*', among other conditions.
+
+known_false_positives: >
+  File names with legitimate Cyrillic text. Will likely require tuning (or not
+  be usable) in countries where these alphabets are in use. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://redcanary.com/threat-detection-report/threats/socgholish/#threat-socgholish
+  - http://www.irongeek.com/homoglyph-attack-generator.php
+  - https://attack.mitre.org/techniques/T1036/
+  - https://attack.mitre.org/techniques/T1036/003/
+
+response:
+  message: >
+    Potential Homoglyph Attack Using Lookalike Characters in Filename detected
+    on host $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1036, T1036.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036
+    - T1036.003
+  custom_tags:
+    - homoglyph
+    - attack
+    - lookalike
+    - file_event
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*[Аа].*/ OR data_win_eventdata_targetFilename:/.*[Вв].*/ OR data_win_eventdata_targetFilename:/.*[Ее].*/ OR data_win_eventdata_targetFilename:/.*[Кк].*/ OR data_win_eventdata_targetFilename:/.*[Мм].*/ OR data_win_eventdata_targetFilename:/.*[Нн].*/ OR data_win_eventdata_targetFilename:/.*[Оо].*/ OR data_win_eventdata_targetFilename:/.*[Рр].*/ OR data_win_eventdata_targetFilename:/.*[Сс].*/ OR data_win_eventdata_targetFilename:/.*[Тт].*/ OR data_win_eventdata_targetFilename:/.*[Хх].*/ OR data_win_eventdata_targetFilename:/.*[Ѕѕ].*/ OR data_win_eventdata_targetFilename:/.*[Іі].*/ OR data_win_eventdata_targetFilename:/.*[Јј].*/ OR data_win_eventdata_targetFilename:/.*[Үү].*/ OR data_win_eventdata_targetFilename:/.*[Ӏӏ].*/ OR data_win_eventdata_targetFilename:/.*[Ԍԍ].*/ OR data_win_eventdata_targetFilename:/.*[Ԛԛ].*/ OR data_win_eventdata_targetFilename:/.*[Ԝԝ].*/ OR data_win_eventdata_targetFilename:/.*[Αα].*/ OR data_win_eventdata_targetFilename:/.*[Ββ].*/ OR data_win_eventdata_targetFilename:/.*[Εε].*/ OR data_win_eventdata_targetFilename:/.*[Ζζ].*/ OR data_win_eventdata_targetFilename:/.*[Ηη].*/ OR data_win_eventdata_targetFilename:/.*[Ιι].*/ OR data_win_eventdata_targetFilename:/.*[Κκ].*/ OR data_win_eventdata_targetFilename:/.*[Μμ].*/ OR data_win_eventdata_targetFilename:/.*[Νν].*/ OR data_win_eventdata_targetFilename:/.*[Οο].*/ OR data_win_eventdata_targetFilename:/.*[Ρρ].*/ OR data_win_eventdata_targetFilename:/.*[Ττ].*/ OR data_win_eventdata_targetFilename:/.*[Υυ].*/ OR data_win_eventdata_targetFilename:/.*[Χχ].*/ OR data_win_eventdata_targetFilename:/.*[Аа].*/ OR data_win_eventdata_targetFilename:/.*[Ее].*/ OR data_win_eventdata_targetFilename:/.*[Оо].*/ OR data_win_eventdata_targetFilename:/.*[Рр].*/ OR data_win_eventdata_targetFilename:/.*[Сс].*/ OR data_win_eventdata_targetFilename:/.*[Хх].*/ OR data_win_eventdata_targetFilename:/.*[Ѕѕ].*/ OR data_win_eventdata_targetFilename:/.*[Іі].*/ OR data_win_eventdata_targetFilename:/.*[Ӏӏ].*/ OR data_win_eventdata_targetFilename:/.*[Јј].*/ OR data_win_eventdata_targetFilename:/.*[Һһ].*/ OR data_win_eventdata_targetFilename:/.*[Ԁԁ].*/ OR data_win_eventdata_targetFilename:/.*[Ԛԛ].*/ OR data_win_eventdata_targetFilename:/.*[Ԝԝ].*/ OR data_win_eventdata_targetFilename:/.*[Οο].*/)

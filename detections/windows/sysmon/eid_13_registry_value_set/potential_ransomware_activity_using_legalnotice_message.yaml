@@ -1,0 +1,160 @@
+name: Potential Ransomware Activity Using LegalNotice Message
+id: 8b9606c9-28be-4a38-b146-0e313cc232c1
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8b9606c9-28be-4a38-b146-0e313cc232c1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect changes to the "LegalNoticeCaption" or "LegalNoticeText" registry
+  values where the message set contains keywords often used in ransomware ransom
+  messages. MITRE ATT&CK: T1491.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Policies\\\\System\\\\LegalNoticeCaption*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Policies\\\\System\\\\LegalNoticeText*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*encrypted*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*Unlock-Password*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*paying*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\LegalNoticeCaption*';
+  data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\LegalNoticeText*';
+  data_win_eventdata_details matches '*encrypted*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/5c1e6f1b4fafd01c8d1ece85f510160fc1275fbf/atomics/T1491.001/T1491.001.md
+  - https://attack.mitre.org/techniques/T1491/001/
+
+response:
+  message: >
+    Potential Ransomware Activity Using LegalNotice Message detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1491.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1491.001
+  custom_tags:
+    - ransomware
+    - legalnotice
+    - message
+    - registry
+    - sysmon
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]\\[Ll][Ee][Gg][Aa][Ll][Nn][Oo][Tt][Ii][Cc][Ee][Cc][Aa][Pp][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]\\[Ll][Ee][Gg][Aa][Ll][Nn][Oo][Tt][Ii][Cc][Ee][Tt][Ee][Xx][Tt].*/) AND (data_win_eventdata_details:/.*[Ee][Nn][Cc][Rr][Yy][Pp][Tt][Ee][Dd].*/ OR data_win_eventdata_details:/.*[Uu][Nn][Ll][Oo][Cc][Kk]-[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_details:/.*[Pp][Aa][Yy][Ii][Nn][Gg].*/)

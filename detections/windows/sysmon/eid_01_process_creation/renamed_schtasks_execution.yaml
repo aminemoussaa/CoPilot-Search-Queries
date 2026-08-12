@@ -1,0 +1,415 @@
+name: Renamed Schtasks Execution
+id: f91e51c9-f344-4b32-969b-0b6f6b8537d4
+version: 1
+schema_version: "1.0"
+date: "2025-11-27"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f91e51c9-f344-4b32-969b-0b6f6b8537d4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of renamed schtasks.exe binary, which is a legitimate
+  Windows utility used for scheduling tasks. One of the very common persistence
+  techniques is schedule malicious tasks using schtasks.exe. Since, it is
+  heavily abused, it is also heavily monitored by security products. To evade
+  detection, threat actors may rename the schtasks.exe binary to schedule their
+  malicious tasks. MITRE ATT&CK: T1036.003, T1053.005.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -delete *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /delete *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –delete *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —delete *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―delete *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -query *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /query *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –query *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —query *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―query *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -change *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /change *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –change *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —change *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―change *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -run *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /run *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –run *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —run *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―run *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -end *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /end *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –end *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —end *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―end *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -tn *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /tn *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –tn *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —tn *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―tn *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -tr *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /tr *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –tr *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —tr *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―tr *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -sc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /sc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –sc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —sc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―sc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -st *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /st *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –st *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —st *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―st *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -ru *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /ru *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –ru *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —ru *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―ru *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -fo *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /fo *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –fo *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —fo *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―fo *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - exists:
+                        field: "data_win_eventdata_commandLine"
+                    - bool:
+                        must_not:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*schtasks*"
+                                case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_originalFileName:
+                          value: "schtasks.exe"
+                          case_insensitive: true
+                    - exists:
+                        field: "data_win_eventdata_image"
+                    - bool:
+                        must_not:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\schtasks.exe"
+                                case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*
+  -create *'; data_win_eventdata_commandLine matches '* /create *';
+  data_win_eventdata_commandLine matches '* –create *', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://x.com/JangPr0/status/1932034543026065833
+  - https://ss64.com/nt/schtasks.html
+  - https://attack.mitre.org/techniques/T1036/003/
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Renamed Schtasks Execution detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1036.003, T1053.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036.003
+    - T1053.005
+  custom_tags:
+    - renamed
+    - schtasks
+    - process_creation
+    - sysmon
+    - execution
+    - persistence
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (((data_win_eventdata_commandLine:/.* -[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* –[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* —[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* ―[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Dd][Ee][Ll][Ee][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Dd][Ee][Ll][Ee][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* –[Dd][Ee][Ll][Ee][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* —[Dd][Ee][Ll][Ee][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* ―[Dd][Ee][Ll][Ee][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Qq][Uu][Ee][Rr][Yy] .*/ OR data_win_eventdata_commandLine:/.* \/[Qq][Uu][Ee][Rr][Yy] .*/ OR data_win_eventdata_commandLine:/.* –[Qq][Uu][Ee][Rr][Yy] .*/ OR data_win_eventdata_commandLine:/.* —[Qq][Uu][Ee][Rr][Yy] .*/ OR data_win_eventdata_commandLine:/.* ―[Qq][Uu][Ee][Rr][Yy] .*/ OR data_win_eventdata_commandLine:/.* -[Cc][Hh][Aa][Nn][Gg][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Cc][Hh][Aa][Nn][Gg][Ee] .*/ OR data_win_eventdata_commandLine:/.* –[Cc][Hh][Aa][Nn][Gg][Ee] .*/ OR data_win_eventdata_commandLine:/.* —[Cc][Hh][Aa][Nn][Gg][Ee] .*/ OR data_win_eventdata_commandLine:/.* ―[Cc][Hh][Aa][Nn][Gg][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Rr][Uu][Nn] .*/ OR data_win_eventdata_commandLine:/.* \/[Rr][Uu][Nn] .*/ OR data_win_eventdata_commandLine:/.* –[Rr][Uu][Nn] .*/ OR data_win_eventdata_commandLine:/.* —[Rr][Uu][Nn] .*/ OR data_win_eventdata_commandLine:/.* ―[Rr][Uu][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Dd] .*/ OR data_win_eventdata_commandLine:/.* \/[Ee][Nn][Dd] .*/ OR data_win_eventdata_commandLine:/.* –[Ee][Nn][Dd] .*/ OR data_win_eventdata_commandLine:/.* —[Ee][Nn][Dd] .*/ OR data_win_eventdata_commandLine:/.* ―[Ee][Nn][Dd] .*/) AND (data_win_eventdata_commandLine:/.* -[Tt][Nn] .*/ OR data_win_eventdata_commandLine:/.* \/[Tt][Nn] .*/ OR data_win_eventdata_commandLine:/.* –[Tt][Nn] .*/ OR data_win_eventdata_commandLine:/.* —[Tt][Nn] .*/ OR data_win_eventdata_commandLine:/.* ―[Tt][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Tt][Rr] .*/ OR data_win_eventdata_commandLine:/.* \/[Tt][Rr] .*/ OR data_win_eventdata_commandLine:/.* –[Tt][Rr] .*/ OR data_win_eventdata_commandLine:/.* —[Tt][Rr] .*/ OR data_win_eventdata_commandLine:/.* ―[Tt][Rr] .*/ OR data_win_eventdata_commandLine:/.* -[Ss][Cc] .*/ OR data_win_eventdata_commandLine:/.* \/[Ss][Cc] .*/ OR data_win_eventdata_commandLine:/.* –[Ss][Cc] .*/ OR data_win_eventdata_commandLine:/.* —[Ss][Cc] .*/ OR data_win_eventdata_commandLine:/.* ―[Ss][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.* \/[Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.* –[Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.* —[Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.* ―[Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.* -[Rr][Uu] .*/ OR data_win_eventdata_commandLine:/.* \/[Rr][Uu] .*/ OR data_win_eventdata_commandLine:/.* –[Rr][Uu] .*/ OR data_win_eventdata_commandLine:/.* —[Rr][Uu] .*/ OR data_win_eventdata_commandLine:/.* ―[Rr][Uu] .*/ OR data_win_eventdata_commandLine:/.* -[Ff][Oo] .*/ OR data_win_eventdata_commandLine:/.* \/[Ff][Oo] .*/ OR data_win_eventdata_commandLine:/.* –[Ff][Oo] .*/ OR data_win_eventdata_commandLine:/.* —[Ff][Oo] .*/ OR data_win_eventdata_commandLine:/.* ―[Ff][Oo] .*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss].*/)) OR (data_win_eventdata_originalFileName:/[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/)))

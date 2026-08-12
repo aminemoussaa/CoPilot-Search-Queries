@@ -1,0 +1,268 @@
+name: CurrentControlSet Autorun Keys Modification
+id: f674e36a-4b91-431e-8aef-f8a96c2aca35
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Victor Sergeev, Daniil Yugoslavskiy, Gleb Sukhodolskiy, Timur Zinniatullin, oscd.community, Tim Shelton, frack113 (split)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f674e36a-4b91-431e-8aef-f8a96c2aca35
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects modification of autostart extensibility point (ASEP) in registry.
+  MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\SYSTEM\\\\CurrentControlSet\\\\Control*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Terminal Server\\\\WinStations\\\\RDP-Tcp\\\\InitialProgram*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Terminal Server\\\\Wds\\\\rdpwd\\\\StartupPrograms*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SecurityProviders\\\\SecurityProviders*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SafeBoot\\\\AlternateShell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Print\\\\Providers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Print\\\\Monitors*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\NetworkProvider\\\\Order*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Lsa\\\\Notification Packages*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Lsa\\\\Authentication Packages*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\BootVerificationProgram\\\\ImagePath*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_details"
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - exists:
+            field: "data_win_eventdata_user"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_details:
+                          value: "(Empty)"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\System32\\spoolsv.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Print\\\\Monitors\\\\CutePDF Writer Monitor*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_details:
+                                      value: "cpwmon64_v40.dll"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_details:
+                                      value: "CutePDF Writer"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\System32\\spoolsv.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*Print\\\\Monitors\\\\Appmon\\\\Ports\\\\Microsoft.Office.OneNote_*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_user:
+                                      value: "*AUTHORI*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_user:
+                                      value: "*AUTORI*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\System32\\poqexec.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\NetworkProvider\\\\Order\\\\ProviderOrder"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\System32\\spoolsv.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Print\\\\Monitors\\\\MONVNC\\\\Driver"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_details:
+                                value: "VNCpm.dll"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SYSTEM\CurrentControlSet\Control*'; data_win_eventdata_targetObject matches
+  '*\Terminal Server\WinStations\RDP-Tcp\InitialProgram*';
+  data_win_eventdata_targetObject matches '*\Terminal
+  Server\Wds\rdpwd\StartupPrograms*', among other conditions.
+
+known_false_positives: >
+  Legitimate software automatically (mostly, during installation) sets up
+  autorun keys for legitimate reason. Legitimate administrator sets up autorun
+  keys for legitimate reason. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1547.001/T1547.001.md
+  - https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns
+  - https://gist.github.com/GlebSukhodolskiy/0fc5fa5f482903064b448890db1eaf9d
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    CurrentControlSet Autorun Keys Modification detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_details: $data_win_eventdata_details$. MITRE
+    ATT&CK: T1547.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - currentcontrolset
+    - autorun
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ss][Ee][Tt]\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll].*/ AND (data_win_eventdata_targetObject:/.*\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\[Ww][Ii][Nn][Ss][Tt][Aa][Tt][Ii][Oo][Nn][Ss]\\[Rr][Dd][Pp]-[Tt][Cc][Pp]\\[Ii][Nn][Ii][Tt][Ii][Aa][Ll][Pp][Rr][Oo][Gg][Rr][Aa][Mm].*/ OR data_win_eventdata_targetObject:/.*\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\[Ww][Dd][Ss]\\[Rr][Dd][Pp][Ww][Dd]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp][Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr][Ss]\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Aa][Ff][Ee][Bb][Oo][Oo][Tt]\\[Aa][Ll][Tt][Ee][Rr][Nn][Aa][Tt][Ee][Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Rr][Ii][Nn][Tt]\\[Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Rr][Ii][Nn][Tt]\\[Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Nn][Ee][Tt][Ww][Oo][Rr][Kk][Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr]\\[Oo][Rr][Dd][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Ll][Ss][Aa]\\[Nn][Oo][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn] [Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ll][Ss][Aa]\\[Aa][Uu][Tt][Hh][Ee][Nn][Tt][Ii][Cc][Aa][Tt][Ii][Oo][Nn] [Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Bb][Oo][Oo][Tt][Vv][Ee][Rr][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Pp][Rr][Oo][Gg][Rr][Aa][Mm]\\[Ii][Mm][Aa][Gg][Ee][Pp][Aa][Tt][Hh].*/) AND _exists_:data_win_eventdata_details AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND _exists_:data_win_eventdata_user AND NOT (data_win_eventdata_details:/\([Ee][Mm][Pp][Tt][Yy]\)/ OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Pp][Oo][Oo][Ll][Ss][Vv]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Pp][Rr][Ii][Nn][Tt]\\[Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ss]\\[Cc][Uu][Tt][Ee][Pp][Dd][Ff] [Ww][Rr][Ii][Tt][Ee][Rr] [Mm][Oo][Nn][Ii][Tt][Oo][Rr].*/ AND (data_win_eventdata_details:/[Cc][Pp][Ww][Mm][Oo][Nn]64_[Vv]40\.[Dd][Ll][Ll]/ OR data_win_eventdata_details:/[Cc][Uu][Tt][Ee][Pp][Dd][Ff] [Ww][Rr][Ii][Tt][Ee][Rr]/)) OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Pp][Oo][Oo][Ll][Ss][Vv]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*[Pp][Rr][Ii][Nn][Tt]\\[Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ss]\\[Aa][Pp][Pp][Mm][Oo][Nn]\\[Pp][Oo][Rr][Tt][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Oo][Ff][Ff][Ii][Cc][Ee]\.[Oo][Nn][Ee][Nn][Oo][Tt][Ee]_.*/ AND (data_win_eventdata_user:/.*[Aa][Uu][Tt][Hh][Oo][Rr][Ii].*/ OR data_win_eventdata_user:/.*[Aa][Uu][Tt][Oo][Rr][Ii].*/)) OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Pp][Oo][Qq][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Nn][Ee][Tt][Ww][Oo][Rr][Kk][Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr]\\[Oo][Rr][Dd][Ee][Rr]\\[Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr][Oo][Rr][Dd][Ee][Rr]/) OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Pp][Oo][Oo][Ll][Ss][Vv]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Pp][Rr][Ii][Nn][Tt]\\[Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ss]\\[Mm][Oo][Nn][Vv][Nn][Cc]\\[Dd][Rr][Ii][Vv][Ee][Rr]/ AND data_win_eventdata_details:/[Vv][Nn][Cc][Pp][Mm]\.[Dd][Ll][Ll]/))

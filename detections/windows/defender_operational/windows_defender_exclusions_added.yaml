@@ -1,0 +1,126 @@
+name: Windows Defender Exclusions Added
+id: 1321dc4e-a1fe-481d-a016-52c45f0c8b4f
+version: 1
+schema_version: "1.0"
+date: "2022-12-06"
+author: Christian Burkard (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1321dc4e-a1fe-481d-a016-52c45f0c8b4f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects the Setting of Windows Defender Exclusions. MITRE ATT&CK: T1685.
+
+data_source:
+  - Windows Defender Operational Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5007"
+        - wildcard:
+            data_win_eventdata_newValue:
+              value: "*\\\\Microsoft\\\\Windows Defender\\\\Exclusions*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_newValue
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_eventID equals '5007';
+  data_win_eventdata_newValue matches '*\Microsoft\Windows
+  Defender\Exclusions*'.
+
+known_false_positives: >
+  Administrator actions. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/_nullbind/status/1204923340810543109
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Windows Defender Exclusions Added detected on host $agent_name$. Matched
+    data_win_eventdata_newValue: $data_win_eventdata_newValue$. MITRE ATT&CK:
+    T1685
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_newValue
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - defender
+    - exclusions
+    - added
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5007" AND data_win_eventdata_newValue:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Ee][Xx][Cc][Ll][Uu][Ss][Ii][Oo][Nn][Ss].*/

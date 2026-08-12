@@ -1,0 +1,258 @@
+name: Suspicious Child Process of SAP NetWeaver - Linux
+id: 69dea60b-2deb-4c9e-a685-ad542f4367f9
+version: 1
+schema_version: "1.0"
+date: "2025-04-28"
+author: Elastic (idea), Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 69dea60b-2deb-4c9e-a685-ad542f4367f9
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious child processes spawned by SAP NetWeaver on Linux systems
+  that could indicate potential exploitation of vulnerability that allows
+  arbitrary execution via webshells such as CVE-2025-31324. MITRE ATT&CK: T1190,
+  T1059.003.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_parent_binary:
+                    value: "*/j2ee/cluster/apps/sap.com/irj/servlet_jsp/irj/work*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_binary:
+                    value: "*/j2ee/cluster/apps/sap.com/irj/servlet_jsp/irj/root*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_cwd:
+                    value: "*/j2ee/cluster/apps/sap.com/irj/servlet_jsp/irj/work*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_cwd:
+                    value: "*/j2ee/cluster/apps/sap.com/irj/servlet_jsp/irj/root*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ash"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/bash"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/csh"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/dash"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ksh"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/sh"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/tcsh"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/zsh"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python2"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python3"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/perl"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ruby"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/curl"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/wget"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nc"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/netcat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ncat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/socat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nmap"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/telnet"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/awk"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/sed"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_parent_binary
+    - data_process_exec_process_cwd
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_parent_binary matches
+  '*/j2ee/cluster/apps/sap.com/irj/servlet_jsp/irj/work*';
+  data_process_exec_parent_binary matches
+  '*/j2ee/cluster/apps/sap.com/irj/servlet_jsp/irj/root*';
+  data_process_exec_process_cwd matches
+  '*/j2ee/cluster/apps/sap.com/irj/servlet_jsp/irj/work*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate administrative activities such as software updates. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://reliaquest.com/blog/threat-spotlight-reliaquest-uncovers-vulnerability-behind-sap-netweaver-compromise/
+  - https://onapsis.com/blog/active-exploitation-of-sap-vulnerability-cve-2025-31324/
+  - https://attack.mitre.org/techniques/T1190/
+  - https://attack.mitre.org/techniques/T1059/003/
+
+response:
+  message: >
+    Suspicious Child Process of SAP NetWeaver - Linux detected on host
+    $agent_name$. Matched data_process_exec_parent_binary:
+    $data_process_exec_parent_binary$. Matched data_process_exec_process_cwd:
+    $data_process_exec_process_cwd$. MITRE ATT&CK: T1190, T1059.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_parent_binary
+      type: other
+    - field: data_process_exec_process_cwd
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1190
+    - T1059.003
+  custom_tags:
+    - child
+    - netweaver
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - initial_access
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_parent_binary:/.*\/[Jj]2[Ee][Ee]\/[Cc][Ll][Uu][Ss][Tt][Ee][Rr]\/[Aa][Pp][Pp][Ss]\/[Ss][Aa][Pp]\.[Cc][Oo][Mm]\/[Ii][Rr][Jj]\/[Ss][Ee][Rr][Vv][Ll][Ee][Tt]_[Jj][Ss][Pp]\/[Ii][Rr][Jj]\/[Ww][Oo][Rr][Kk].*/ OR data_process_exec_parent_binary:/.*\/[Jj]2[Ee][Ee]\/[Cc][Ll][Uu][Ss][Tt][Ee][Rr]\/[Aa][Pp][Pp][Ss]\/[Ss][Aa][Pp]\.[Cc][Oo][Mm]\/[Ii][Rr][Jj]\/[Ss][Ee][Rr][Vv][Ll][Ee][Tt]_[Jj][Ss][Pp]\/[Ii][Rr][Jj]\/[Rr][Oo][Oo][Tt].*/ OR data_process_exec_process_cwd:/.*\/[Jj]2[Ee][Ee]\/[Cc][Ll][Uu][Ss][Tt][Ee][Rr]\/[Aa][Pp][Pp][Ss]\/[Ss][Aa][Pp]\.[Cc][Oo][Mm]\/[Ii][Rr][Jj]\/[Ss][Ee][Rr][Vv][Ll][Ee][Tt]_[Jj][Ss][Pp]\/[Ii][Rr][Jj]\/[Ww][Oo][Rr][Kk].*/ OR data_process_exec_process_cwd:/.*\/[Jj]2[Ee][Ee]\/[Cc][Ll][Uu][Ss][Tt][Ee][Rr]\/[Aa][Pp][Pp][Ss]\/[Ss][Aa][Pp]\.[Cc][Oo][Mm]\/[Ii][Rr][Jj]\/[Ss][Ee][Rr][Vv][Ll][Ee][Tt]_[Jj][Ss][Pp]\/[Ii][Rr][Jj]\/[Rr][Oo][Oo][Tt].*/) AND (data_process_exec_process_binary:/.*\/[Aa][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Bb][Aa][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Cc][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Dd][Aa][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Kk][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Tt][Cc][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Zz][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]2/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]3/ OR data_process_exec_process_binary:/.*\/[Pp][Ee][Rr][Ll]/ OR data_process_exec_process_binary:/.*\/[Rr][Uu][Bb][Yy]/ OR data_process_exec_process_binary:/.*\/[Cc][Uu][Rr][Ll]/ OR data_process_exec_process_binary:/.*\/[Ww][Gg][Ee][Tt]/ OR data_process_exec_process_binary:/.*\/[Nn][Cc]/ OR data_process_exec_process_binary:/.*\/[Nn][Ee][Tt][Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Nn][Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Ss][Oo][Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Nn][Mm][Aa][Pp]/ OR data_process_exec_process_binary:/.*\/[Tt][Ee][Ll][Nn][Ee][Tt]/ OR data_process_exec_process_binary:/.*\/[Aa][Ww][Kk]/ OR data_process_exec_process_binary:/.*\/[Ss][Ee][Dd]/)

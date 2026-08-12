@@ -1,0 +1,178 @@
+name: Authencesn Crypto Module Load via Modprobe - Copy-Fail Indicator
+id: 474b415a-d917-4f3b-8c62-9e1a0d5f7b48
+version: 1
+schema_version: "1.0"
+date: "2026-05-09"
+author: Gene Kazimiarovich
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 474b415a-d917-4f3b-8c62-9e1a0d5f7b48
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects kernel auto-loading of the authencesn crypto module via modprobe This
+  occurs when user-space code creates an AF_ALG socket and binds the authencesn
+  AEAD cipher (e.g., authencesn(hmac(sha256),cbc(aes))). The kernel invokes
+  modprobe to load the crypto module. This is a key indicator of CVE-2026-31431
+  (Copy Fail) exploitation, where the authencesn cipher is used to trigger a
+  buffer overflow in the AF_ALG AEAD splice path, corrupting the page cache of
+  SUID binaries for local privilege escalation. On Linux systems, modprobe is
+  typically a symlink to kmod, so the process image will be /usr/bin/kmod (or
+  /bin/kmod) with 'modprobe' appearing in the command line. MITRE ATT&CK: T1068,
+  T1547.006.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/kmod"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*modprobe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*crypto-authencesn(*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/modprobe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*crypto-authencesn(*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/kmod';
+  data_process_exec_process_arguments matches '*modprobe*';
+  data_process_exec_process_arguments matches '*crypto-authencesn(*', among
+  other conditions.
+
+known_false_positives: >
+  Legitimate manual loading of the authencesn module by administrators for
+  kernel crypto benchmarking or IPsec configuration (near-zero in production).
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://www.linkedin.com/posts/stamatis-chatzimangou_copyfail-kql-activity-7455582422215114752-S4RW/
+  - https://www.splunk.com/en_us/blog/security/detecting-copy-fail-cve-2026-31431-phenomenal-power-itty-bitty-script.html
+  - https://nvd.nist.gov/vuln/detail/CVE-2026-31431
+  - https://man7.org/linux/man-pages/man8/modprobe.8.html
+  - https://www.kernel.org/doc/html/latest/crypto/userspace-if.html
+  - https://attack.mitre.org/techniques/T1068/
+  - https://attack.mitre.org/techniques/T1547/006/
+
+response:
+  message: >
+    Authencesn Crypto Module Load via Modprobe - Copy-Fail Indicator detected on
+    host $agent_name$. Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1068, T1547.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1068
+    - T1547.006
+  custom_tags:
+    - authencesn
+    - crypto
+    - module
+    - linux
+    - tetragon
+    - process_creation
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_process_exec_process_binary:/.*\/[Kk][Mm][Oo][Dd]/ AND data_process_exec_process_arguments:/.*[Mm][Oo][Dd][Pp][Rr][Oo][Bb][Ee].*/ AND data_process_exec_process_arguments:/.*[Cc][Rr][Yy][Pp][Tt][Oo]-[Aa][Uu][Tt][Hh][Ee][Nn][Cc][Ee][Ss][Nn]\(.*/) OR (data_process_exec_process_binary:/.*\/[Mm][Oo][Dd][Pp][Rr][Oo][Bb][Ee]/ AND data_process_exec_process_arguments:/.*[Cc][Rr][Yy][Pp][Tt][Oo]-[Aa][Uu][Tt][Hh][Ee][Nn][Cc][Ee][Ss][Nn]\(.*/))

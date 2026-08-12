@@ -1,0 +1,194 @@
+name: VHD Image Download Via Browser
+id: 8468111a-ef07-4654-903b-b863a80bbc95
+version: 1
+schema_version: "1.0"
+date: "2023-05-05"
+author: frack113, Christopher Peacock '@securepeacock', SCYTHE '@scythe_io'
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8468111a-ef07-4654-903b-b863a80bbc95
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects creation of ".vhd"/".vhdx" files by browser processes. Malware can use
+  mountable Virtual Hard Disk ".vhd" files to encapsulate payloads and evade
+  security controls. MITRE ATT&CK: T1587.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\brave.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\chrome.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\firefox.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\iexplore.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\maxthon.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\MicrosoftEdge.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\msedge.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\msedgewebview2.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\opera.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\safari.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\seamonkey.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\vivaldi.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\whale.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*.vhd*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\brave.exe'; data_win_eventdata_image matches '*\chrome.exe';
+  data_win_eventdata_image matches '*\firefox.exe', among other conditions.
+
+known_false_positives: >
+  Legitimate downloads of ".vhd" files would also trigger this. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://redcanary.com/blog/intelligence-insights-october-2021/
+  - https://www.kaspersky.com/blog/lazarus-vhd-ransomware/36559/
+  - https://securelist.com/lazarus-on-the-hunt-for-big-game/97757/
+  - https://attack.mitre.org/techniques/T1587/001/
+
+response:
+  message: >
+    VHD Image Download Via Browser detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    MITRE ATT&CK: T1587.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1587.001
+  custom_tags:
+    - image
+    - download
+    - browser
+    - file_event
+    - sysmon
+    - resource_development
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_image:/.*\\[Bb][Rr][Aa][Vv][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Cc][Hh][Rr][Oo][Mm][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ff][Ii][Rr][Ee][Ff][Oo][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ii][Ee][Xx][Pp][Ll][Oo][Rr][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Aa][Xx][Tt][Hh][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt][Ee][Dd][Gg][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Ss][Ee][Dd][Gg][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Ss][Ee][Dd][Gg][Ee][Ww][Ee][Bb][Vv][Ii][Ee][Ww]2\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Oo][Pp][Ee][Rr][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ss][Aa][Ff][Aa][Rr][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ss][Ee][Aa][Mm][Oo][Nn][Kk][Ee][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Vv][Ii][Vv][Aa][Ll][Dd][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Hh][Aa][Ll][Ee]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetFilename:/.*\.[Vv][Hh][Dd].*/

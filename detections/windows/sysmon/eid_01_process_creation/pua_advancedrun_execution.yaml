@@ -1,0 +1,171 @@
+name: PUA - AdvancedRun Execution
+id: d2b749ee-4225-417e-b20e-a8d2193cbb84
+version: 1
+schema_version: "1.0"
+date: "2023-02-21"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d2b749ee-4225-417e-b20e-a8d2193cbb84
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of AdvancedRun utility. MITRE ATT&CK: T1564.003,
+  T1134.002, T1059.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "AdvancedRun.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /EXEFilename *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /Run*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /WindowState 0*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /RunAs *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /CommandLine *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'AdvancedRun.exe'; data_win_eventdata_commandLine matches '* /EXEFilename *';
+  data_win_eventdata_commandLine matches '* /Run*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/splinter_code/status/1483815103279603714
+  - https://medium.com/s2wblog/analysis-of-destructive-malware-whispergate-targeting-ukraine-9d5d158f19f3
+  - https://www.elastic.co/security-labs/operation-bleeding-bear
+  - https://www.winhelponline.com/blog/run-program-as-system-localsystem-account-windows/
+  - https://attack.mitre.org/techniques/T1564/003/
+  - https://attack.mitre.org/techniques/T1134/002/
+  - https://attack.mitre.org/techniques/T1059/003/
+
+response:
+  message: >
+    PUA - AdvancedRun Execution detected on host $agent_name$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1564.003, T1134.002, T1059.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1564.003
+    - T1134.002
+    - T1059.003
+  custom_tags:
+    - advancedrun
+    - process_creation
+    - sysmon
+    - execution
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Aa][Dd][Vv][Aa][Nn][Cc][Ee][Dd][Rr][Uu][Nn]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_commandLine:/.* \/[Ee][Xx][Ee][Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee] .*/ AND data_win_eventdata_commandLine:/.* \/[Rr][Uu][Nn].*/) OR (data_win_eventdata_commandLine:/.* \/[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Aa][Tt][Ee] 0.*/ AND data_win_eventdata_commandLine:/.* \/[Rr][Uu][Nn][Aa][Ss] .*/ AND data_win_eventdata_commandLine:/.* \/[Cc][Oo][Mm][Mm][Aa][Nn][Dd][Ll][Ii][Nn][Ee] .*/))

@@ -1,0 +1,306 @@
+name: Suspicious PowerShell Invocations - Specific
+id: ae7fbf8e-f3cb-49fd-8db4-5f3bed522c71
+version: 1
+schema_version: "1.0"
+date: "2025-02-17"
+author: Florian Roth (Nextron Systems), Jonhnathan Ribeiro
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ae7fbf8e-f3cb-49fd-8db4-5f3bed522c71
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious PowerShell invocation command parameters. MITRE ATT&CK:
+  T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-nop*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -w *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*hidden*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -c *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*[Convert]::FromBase64String*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -w *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*hidden*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-noni*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-nop*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -c *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*iex*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*New-Object*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -w *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*hidden*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-ep*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*bypass*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-Enc*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*powershell*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*reg*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*add*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_scriptBlockText:
+                                value: "*\\\\software\\\\microsoft\\\\windows\\\\currentversion\\\\run*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_scriptBlockText:
+                                value: "*\\\\software\\\\wow6432node\\\\microsoft\\\\windows\\\\currentversion\\\\run*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_scriptBlockText:
+                                value: "*\\\\software\\\\microsoft\\\\windows\\\\currentversion\\\\policies\\\\explorer\\\\run*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*bypass*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-noprofile*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-windowstyle*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*hidden*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*new-object*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*system.net.webclient*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*.download*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*iex*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*New-Object*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Net.WebClient*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*.Download*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_scriptBlockText"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*(New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*(New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Write-ChocolateyWarning*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*-nop*';
+  data_win_eventdata_scriptBlockText matches '* -w *';
+  data_win_eventdata_scriptBlockText matches '*hidden*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - Internal Research
+  - https://github.com/HackTricks-wiki/hacktricks/blob/e4c7b21b8f36c97c35b7c622732b38a189ce18f7/src/windows-hardening/windows-local-privilege-escalation/privilege-escalation-with-autorun-binaries.md
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Suspicious PowerShell Invocations - Specific detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - powershell
+    - invocations
+    - specific
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND ((data_win_eventdata_scriptBlockText:/.*-[Nn][Oo][Pp].*/ AND data_win_eventdata_scriptBlockText:/.* -[Ww] .*/ AND data_win_eventdata_scriptBlockText:/.*[Hh][Ii][Dd][Dd][Ee][Nn].*/ AND data_win_eventdata_scriptBlockText:/.* -[Cc] .*/ AND data_win_eventdata_scriptBlockText:/.*\[[Cc][Oo][Nn][Vv][Ee][Rr][Tt]\]::[Ff][Rr][Oo][Mm][Bb][Aa][Ss][Ee]64[Ss][Tt][Rr][Ii][Nn][Gg].*/) OR (data_win_eventdata_scriptBlockText:/.* -[Ww] .*/ AND data_win_eventdata_scriptBlockText:/.*[Hh][Ii][Dd][Dd][Ee][Nn].*/ AND data_win_eventdata_scriptBlockText:/.*-[Nn][Oo][Nn][Ii].*/ AND data_win_eventdata_scriptBlockText:/.*-[Nn][Oo][Pp].*/ AND data_win_eventdata_scriptBlockText:/.* -[Cc] .*/ AND data_win_eventdata_scriptBlockText:/.*[Ii][Ee][Xx].*/ AND data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt].*/) OR (data_win_eventdata_scriptBlockText:/.* -[Ww] .*/ AND data_win_eventdata_scriptBlockText:/.*[Hh][Ii][Dd][Dd][Ee][Nn].*/ AND data_win_eventdata_scriptBlockText:/.*-[Ee][Pp].*/ AND data_win_eventdata_scriptBlockText:/.*[Bb][Yy][Pp][Aa][Ss][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*-[Ee][Nn][Cc].*/) OR (data_win_eventdata_scriptBlockText:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ AND data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Gg].*/ AND data_win_eventdata_scriptBlockText:/.*[Aa][Dd][Dd].*/ AND (data_win_eventdata_scriptBlockText:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ww][Oo][Ww]6432[Nn][Oo][Dd][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\\[Rr][Uu][Nn].*/)) OR (data_win_eventdata_scriptBlockText:/.*[Bb][Yy][Pp][Aa][Ss][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*-[Nn][Oo][Pp][Rr][Oo][Ff][Ii][Ll][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*-[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*[Hh][Ii][Dd][Dd][Ee][Nn].*/ AND data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_scriptBlockText:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt].*/ AND data_win_eventdata_scriptBlockText:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd].*/) OR (data_win_eventdata_scriptBlockText:/.*[Ii][Ee][Xx].*/ AND data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt].*/ AND data_win_eventdata_scriptBlockText:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd].*/)) AND _exists_:data_win_eventdata_scriptBlockText AND NOT (data_win_eventdata_scriptBlockText:/.*\([Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt] [Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt]\)\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg]\('[Hh][Tt][Tt][Pp][Ss]:\/\/[Cc][Oo][Mm][Mm][Uu][Nn][Ii][Tt][Yy]\.[Cc][Hh][Oo][Cc][Oo][Ll][Aa][Tt][Ee][Yy]\.[Oo][Rr][Gg]\/[Ii][Nn][Ss][Tt][Aa][Ll][Ll]\.[Pp][Ss]1.*/ OR data_win_eventdata_scriptBlockText:/.*\([Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt] [Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt]\)\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg]\('[Hh][Tt][Tt][Pp][Ss]:\/\/[Cc][Hh][Oo][Cc][Oo][Ll][Aa][Tt][Ee][Yy]\.[Oo][Rr][Gg]\/[Ii][Nn][Ss][Tt][Aa][Ll][Ll]\.[Pp][Ss]1'\).*/ OR data_win_eventdata_scriptBlockText:/.*[Ww][Rr][Ii][Tt][Ee]-[Cc][Hh][Oo][Cc][Oo][Ll][Aa][Tt][Ee][Yy][Ww][Aa][Rr][Nn][Ii][Nn][Gg].*/)

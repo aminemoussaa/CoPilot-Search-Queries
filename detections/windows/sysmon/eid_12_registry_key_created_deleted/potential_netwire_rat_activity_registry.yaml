@@ -1,0 +1,136 @@
+name: Potential NetWire RAT Activity - Registry
+id: 1d218616-71b0-4c40-855b-9dbe75510f7f
+version: 1
+schema_version: "1.0"
+date: "2025-11-03"
+author: Christopher Peacock
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1d218616-71b0-4c40-855b-9dbe75510f7f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects registry keys related to NetWire RAT. MITRE ATT&CK: T1112.
+
+data_source:
+  - Sysmon EventID 12 - Registry Key Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "12"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\software\\\\NetWire*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\software\NetWire*'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.fortinet.com/blog/threat-research/new-netwire-rat-variant-spread-by-phishing
+  - https://resources.infosecinstitute.com/topic/netwire-malware-what-it-is-how-it-works-and-how-to-prevent-it-malware-spotlight/
+  - https://unit42.paloaltonetworks.com/guloader-installing-netwire-rat/
+  - https://blogs.blackberry.com/en/2021/09/threat-thursday-netwire-rat-is-coming-down-the-line
+  - https://app.any.run/tasks/41ecdbde-4997-4301-a350-0270448b4c8f/
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    Potential NetWire RAT Activity - Registry detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1112
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+  custom_tags:
+    - netwire
+    - registry
+    - sysmon
+    - persistence
+    - defense_impairment
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"12" AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Nn][Ee][Tt][Ww][Ii][Rr][Ee].*/

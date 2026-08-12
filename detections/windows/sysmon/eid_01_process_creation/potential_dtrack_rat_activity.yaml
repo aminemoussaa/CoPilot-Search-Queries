@@ -1,0 +1,158 @@
+name: Potential Dtrack RAT Activity
+id: f1531fa4-5b84-4342-8f68-9cf3fdbd83d4
+version: 1
+schema_version: "1.0"
+date: "2025-11-03"
+author: Florian Roth (Nextron Systems), Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f1531fa4-5b84-4342-8f68-9cf3fdbd83d4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects potential Dtrack RAT activity via specific process patterns. MITRE
+  ATT&CK: T1490.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - regexp:
+                  data_win_eventdata_commandLine: ".*(ping[ ]+-n.*echo EEEE[ ]?>[ ]?).*"
+              - bool:
+                  must:
+                    - regexp:
+                        data_win_eventdata_commandLine: ".*(ipconfig[ ]+/all).*"
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\temp\\\\res.ip*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*interface ip show config*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\temp\\\\netsh.res*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches the
+  regex /.*(ping[ ]+-n.*echo EEEE[ ]?>[ ]?).*/; data_win_eventdata_commandLine
+  matches the regex /.*(ipconfig[ ]+/all).*/; data_win_eventdata_commandLine
+  matches '*\temp\res.ip*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://securelist.com/my-name-is-dtrack/93338/
+  - https://securelist.com/andariel-deploys-dtrack-and-maui-ransomware/107063/
+  - https://www.cyberbit.com/endpoint-security/dtrack-apt-malware-found-in-nuclear-power-plant/
+  - https://app.any.run/tasks/4bc9860d-ab51-4077-9e09-59ad346b92fd/
+  - https://app.any.run/tasks/ce4deab5-3263-494f-93e3-afb2b9d79f14/
+  - https://attack.mitre.org/techniques/T1490/
+
+response:
+  message: >
+    Potential Dtrack RAT Activity detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1490
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1490
+  custom_tags:
+    - dtrack
+    - process_creation
+    - sysmon
+    - impact
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*(ping[ ]+-n.*echo EEEE[ ]?\>[ ]?).*/ OR (data_win_eventdata_commandLine:/.*(ipconfig[ ]+\/all).*/ AND data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\[Rr][Ee][Ss]\.[Ii][Pp].*/) OR (data_win_eventdata_commandLine:/.*[Ii][Nn][Tt][Ee][Rr][Ff][Aa][Cc][Ee] [Ii][Pp] [Ss][Hh][Oo][Ww] [Cc][Oo][Nn][Ff][Ii][Gg].*/ AND data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\[Nn][Ee][Tt][Ss][Hh]\.[Rr][Ee][Ss].*/))

@@ -1,0 +1,168 @@
+name: Pass the Hash Activity 2
+id: 8eef149c-bd26-49f2-9e5a-9b00e3af499b
+version: 1
+schema_version: "1.0"
+date: "2022-10-05"
+author: Dave Kennedy, Jeff Warren (method) / David Vassallo (rule)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8eef149c-bd26-49f2-9e5a-9b00e3af499b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects the attack technique pass the hash which is used to move laterally
+  inside the network. MITRE ATT&CK: T1550.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4624"
+                    - term:
+                        data_win_eventdata_subjectUserSid:
+                          value: "S-1-0-0"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_logonType: "3"
+                    - term:
+                        data_win_eventdata_logonProcessName:
+                          value: "NtLmSsp"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_keyLength: "0"
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4624"
+                    - term:
+                        data_win_eventdata_logonType: "9"
+                    - term:
+                        data_win_eventdata_logonProcessName:
+                          value: "seclogo"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_targetUserName"
+        - bool:
+            must_not:
+              - term:
+                  data_win_eventdata_targetUserName:
+                    value: "ANONYMOUS LOGON"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_subjectUserSid
+    - data_win_eventdata_logonType
+    - data_win_eventdata_logonProcessName
+    - data_win_eventdata_keyLength
+    - data_win_eventdata_targetUserName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4624'; data_win_eventdata_subjectUserSid
+  equals 'S-1-0-0'; data_win_eventdata_logonType equals '3', among other
+  conditions.
+
+known_false_positives: >
+  Administrator activity. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/iadgov/Event-Forwarding-Guidance/tree/master/Events
+  - https://web.archive.org/web/20170909091934/https://blog.binarydefense.com/reliably-detecting-pass-the-hash-through-event-log-analysis
+  - https://blog.stealthbits.com/how-to-detect-pass-the-hash-attacks/
+  - https://attack.mitre.org/techniques/T1550/002/
+
+response:
+  message: >
+    Pass the Hash Activity 2 detected on host $agent_name$. Matched
+    data_win_eventdata_subjectUserSid: $data_win_eventdata_subjectUserSid$.
+    Matched data_win_eventdata_logonType: $data_win_eventdata_logonType$. MITRE
+    ATT&CK: T1550.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_subjectUserSid
+      type: user
+    - field: data_win_eventdata_logonType
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1550.002
+  custom_tags:
+    - windows_security
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_win_system_eventID:"4624" AND data_win_eventdata_subjectUserSid:/[Ss]-1-0-0/ AND data_win_eventdata_logonType:"3" AND data_win_eventdata_logonProcessName:/[Nn][Tt][Ll][Mm][Ss][Ss][Pp]/ AND data_win_eventdata_keyLength:"0") OR (data_win_system_eventID:"4624" AND data_win_eventdata_logonType:"9" AND data_win_eventdata_logonProcessName:/[Ss][Ee][Cc][Ll][Oo][Gg][Oo]/)) AND _exists_:data_win_eventdata_targetUserName AND NOT (data_win_eventdata_targetUserName:/[Aa][Nn][Oo][Nn][Yy][Mm][Oo][Uu][Ss] [Ll][Oo][Gg][Oo][Nn]/)

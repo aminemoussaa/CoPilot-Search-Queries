@@ -1,0 +1,251 @@
+name: Copy From Or To Admin Share Or Sysvol Folder
+id: 855bc8b5-2ae8-402e-a9ed-b889e6df1900
+version: 1
+schema_version: "1.0"
+date: "2025-10-22"
+author: Florian Roth (Nextron Systems), oscd.community, Teymur Kheirkhabarov @HeirhabarovT, Zach Stanford @svch0st, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 855bc8b5-2ae8-402e-a9ed-b889e6df1900
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a copy command or a copy utility execution to or from an Admin share
+  or remote. MITRE ATT&CK: T1039, T1048, T1021.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine: "*\\\\\\\\*\\\\*$*"
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Sysvol\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\robocopy.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\xcopy.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "robocopy.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "XCOPY.EXE"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\cmd.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "Cmd.Exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*copy*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell_ise.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe*"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "powershell_ise.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "PowerShell.EXE"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "pwsh.dll"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*copy-item*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*copy *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*cpi *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* cp *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*move *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* move-item*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* mi *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* mv *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*\\*\*$*'; data_win_eventdata_commandLine matches '*\Sysvol\*';
+  data_win_eventdata_image matches '*\robocopy.exe', among other conditions.
+
+known_false_positives: >
+  Administrative scripts. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/SBousseaden/status/1211636381086339073
+  - https://drive.google.com/file/d/1lKya3_mLnR3UQuCoiYruO3qgu052_iS_/view
+  - https://www.elastic.co/guide/en/security/current/remote-file-copy-to-a-hidden-share.html
+  - https://www.microsoft.com/en-us/security/blog/2022/10/18/defenders-beware-a-case-for-post-ransomware-investigations/
+  - https://attack.mitre.org/techniques/T1039/
+  - https://attack.mitre.org/techniques/T1048/
+  - https://attack.mitre.org/techniques/T1021/002/
+
+response:
+  message: >
+    Copy From Or To Admin Share Or Sysvol Folder detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1039, T1048, T1021.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1039
+    - T1048
+    - T1021.002
+  custom_tags:
+    - admin
+    - share
+    - sysvol
+    - process_creation
+    - sysmon
+    - lateral_movement
+    - collection
+    - exfiltration
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*\\\\.*\\.*\$.*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Yy][Ss][Vv][Oo][Ll]\\.*/) AND (data_win_eventdata_image:/.*\\[Rr][Oo][Bb][Oo][Cc][Oo][Pp][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Xx][Cc][Oo][Pp][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Rr][Oo][Bb][Oo][Cc][Oo][Pp][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Xx][Cc][Oo][Pp][Yy]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Cc][Mm][Dd]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Cc][Oo][Pp][Yy].*/) OR ((data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ww][Ss][Hh]\.[Dd][Ll][Ll]/) AND (data_win_eventdata_commandLine:/.*[Cc][Oo][Pp][Yy]-[Ii][Tt][Ee][Mm].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Pp][Yy] .*/ OR data_win_eventdata_commandLine:/.*[Cc][Pp][Ii] .*/ OR data_win_eventdata_commandLine:/.* [Cc][Pp] .*/ OR data_win_eventdata_commandLine:/.*[Mm][Oo][Vv][Ee] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Oo][Vv][Ee]-[Ii][Tt][Ee][Mm].*/ OR data_win_eventdata_commandLine:/.* [Mm][Ii] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Vv] .*/)))

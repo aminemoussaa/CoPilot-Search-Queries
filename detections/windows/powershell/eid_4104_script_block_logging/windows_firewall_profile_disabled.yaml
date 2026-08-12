@@ -1,0 +1,166 @@
+name: Windows Firewall Profile Disabled
+id: 488b44e7-3781-4a71-888d-c95abfacf44d
+version: 1
+schema_version: "1.0"
+date: "2022-12-30"
+author: Austin Songer @austinsonger
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 488b44e7-3781-4a71-888d-c95abfacf44d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when a user disables the Windows Firewall via a Profile to help evade
+  defense. MITRE ATT&CK: T1686.003.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Set-NetFirewallProfile *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "* -Enabled *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "* False*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "* -All *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Public*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Domain*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Private*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Set-NetFirewallProfile *';
+  data_win_eventdata_scriptBlockText matches '* -Enabled *';
+  data_win_eventdata_scriptBlockText matches '* False*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/powershell/module/netsecurity/set-netfirewallprofile?view=windowsserver2022-ps
+  - https://www.tutorialspoint.com/how-to-get-windows-firewall-profile-settings-using-powershell
+  - https://web.archive.org/web/20230929023836/http://powershellhelp.space/commands/set-netfirewallrule-psv5.php
+  - http://woshub.com/manage-windows-firewall-powershell/
+  - https://www.elastic.co/guide/en/security/current/windows-firewall-disabled-via-powershell.html
+  - https://attack.mitre.org/techniques/T1686/003/
+
+response:
+  message: >
+    Windows Firewall Profile Disabled detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1686.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1686.003
+  custom_tags:
+    - firewall
+    - profile
+    - powershell
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Nn][Ee][Tt][Ff][Ii][Rr][Ee][Ww][Aa][Ll][Ll][Pp][Rr][Oo][Ff][Ii][Ll][Ee] .*/ AND data_win_eventdata_scriptBlockText:/.* -[Ee][Nn][Aa][Bb][Ll][Ee][Dd] .*/ AND data_win_eventdata_scriptBlockText:/.* [Ff][Aa][Ll][Ss][Ee].*/ AND (data_win_eventdata_scriptBlockText:/.* -[Aa][Ll][Ll] .*/ OR data_win_eventdata_scriptBlockText:/.*[Pp][Uu][Bb][Ll][Ii][Cc].*/ OR data_win_eventdata_scriptBlockText:/.*[Dd][Oo][Mm][Aa][Ii][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*[Pp][Rr][Ii][Vv][Aa][Tt][Ee].*/)

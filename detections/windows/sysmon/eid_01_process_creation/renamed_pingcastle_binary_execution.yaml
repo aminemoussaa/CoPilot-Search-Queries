@@ -1,0 +1,260 @@
+name: Renamed PingCastle Binary Execution
+id: 2433a154-bb3d-42e4-86c3-a26bdac91c45
+version: 1
+schema_version: "1.0"
+date: "2024-01-11"
+author: Nasreddine Bencherchali (Nextron Systems), X__Junior (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2433a154-bb3d-42e4-86c3-a26bdac91c45
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of a renamed "PingCastle" binary based on the PE
+  metadata fields. MITRE ATT&CK: T1059, T1202.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PingCastleReporting.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PingCastleCloud.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PingCastle.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner aclcheck*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner antivirus*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner computerversion*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner foreignusers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner laps_bitlocker*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner localadmin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner nullsession*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner nullsession-trust*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner oxidbindings*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner remote*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner share*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner smb*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner smb3querynetwork*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner spooler*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner startup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--scanner zerologon*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*--no-enum-limit*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--healthcheck*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--level Full*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--healthcheck*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--server *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\PingCastleReporting.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\PingCastleCloud.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\PingCastle.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'PingCastleReporting.exe'; data_win_eventdata_originalFileName equals
+  'PingCastleCloud.exe'; data_win_eventdata_originalFileName equals
+  'PingCastle.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://thedfirreport.com/2023/10/30/netsupport-intrusion-results-in-domain-compromise/
+  - https://www.pingcastle.com/documentation/scanner/
+  - https://attack.mitre.org/techniques/T1059/
+  - https://attack.mitre.org/techniques/T1202/
+
+response:
+  message: >
+    Renamed PingCastle Binary Execution detected on host $agent_name$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1059, T1202
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+    - T1202
+  custom_tags:
+    - renamed
+    - pingcastle
+    - binary
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee][Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee][Cc][Ll][Oo][Uu][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Aa][Cc][Ll][Cc][Hh][Ee][Cc][Kk].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr][Vv][Ee][Rr][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ff][Oo][Rr][Ee][Ii][Gg][Nn][Uu][Ss][Ee][Rr][Ss].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ll][Aa][Pp][Ss]_[Bb][Ii][Tt][Ll][Oo][Cc][Kk][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ll][Oo][Cc][Aa][Ll][Aa][Dd][Mm][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Nn][Uu][Ll][Ll][Ss][Ee][Ss][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Nn][Uu][Ll][Ll][Ss][Ee][Ss][Ss][Ii][Oo][Nn]-[Tt][Rr][Uu][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Oo][Xx][Ii][Dd][Bb][Ii][Nn][Dd][Ii][Nn][Gg][Ss].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Rr][Ee][Mm][Oo][Tt][Ee].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Hh][Aa][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Mm][Bb].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Mm][Bb]3[Qq][Uu][Ee][Rr][Yy][Nn][Ee][Tt][Ww][Oo][Rr][Kk].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Pp][Oo][Oo][Ll][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_commandLine:/.*--[Ss][Cc][Aa][Nn][Nn][Ee][Rr] [Zz][Ee][Rr][Oo][Ll][Oo][Gg][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*--[Nn][Oo]-[Ee][Nn][Uu][Mm]-[Ll][Ii][Mm][Ii][Tt].*/ OR (data_win_eventdata_commandLine:/.*--[Hh][Ee][Aa][Ll][Tt][Hh][Cc][Hh][Ee][Cc][Kk].*/ AND data_win_eventdata_commandLine:/.*--[Ll][Ee][Vv][Ee][Ll] [Ff][Uu][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*--[Hh][Ee][Aa][Ll][Tt][Hh][Cc][Hh][Ee][Cc][Kk].*/ AND data_win_eventdata_commandLine:/.*--[Ss][Ee][Rr][Vv][Ee][Rr] .*/)) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee][Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee][Cc][Ll][Oo][Uu][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ii][Nn][Gg][Cc][Aa][Ss][Tt][Ll][Ee]\.[Ee][Xx][Ee]/)

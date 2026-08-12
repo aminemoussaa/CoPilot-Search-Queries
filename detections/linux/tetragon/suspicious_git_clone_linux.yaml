@@ -1,0 +1,198 @@
+name: Suspicious Git Clone - Linux
+id: cfec9d29-64ec-4a0f-9ffe-0fdb856d5446
+version: 1
+schema_version: "1.0"
+date: "2023-01-05"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cfec9d29-64ec-4a0f-9ffe-0fdb856d5446
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of "git" in order to clone a remote repository that contain
+  suspicious keywords which might be suspicious. MITRE ATT&CK: T1593.003.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/git"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "* clone *"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*exploit*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*Vulns*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*vulnerability*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*RCE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*RemoteCodeExecution*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*Invoke-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*CVE-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*poc-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*ProofOfConcept*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*proxyshell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*log4shell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*eternalblue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*eternal-blue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*MS17-*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/git';
+  data_process_exec_process_arguments matches '* clone *';
+  data_process_exec_process_arguments matches '*exploit*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://gist.githubusercontent.com/MichaelKoczwara/12faba9c061c12b5814b711166de8c2f/raw/e2068486692897b620c25fde1ea258c8218fe3d3/history.txt
+  - https://attack.mitre.org/techniques/T1593/003/
+
+response:
+  message: >
+    Suspicious Git Clone - Linux detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1593.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1593.003
+  custom_tags:
+    - clone
+    - linux
+    - tetragon
+    - process_creation
+    - reconnaissance
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Gg][Ii][Tt]/ AND data_process_exec_process_arguments:/.* [Cc][Ll][Oo][Nn][Ee] .*/ AND (data_process_exec_process_arguments:/.*[Ee][Xx][Pp][Ll][Oo][Ii][Tt].*/ OR data_process_exec_process_arguments:/.*[Vv][Uu][Ll][Nn][Ss].*/ OR data_process_exec_process_arguments:/.*[Vv][Uu][Ll][Nn][Ee][Rr][Aa][Bb][Ii][Ll][Ii][Tt][Yy].*/ OR data_process_exec_process_arguments:/.*[Rr][Cc][Ee].*/ OR data_process_exec_process_arguments:/.*[Rr][Ee][Mm][Oo][Tt][Ee][Cc][Oo][Dd][Ee][Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn].*/ OR data_process_exec_process_arguments:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-.*/ OR data_process_exec_process_arguments:/.*[Cc][Vv][Ee]-.*/ OR data_process_exec_process_arguments:/.*[Pp][Oo][Cc]-.*/ OR data_process_exec_process_arguments:/.*[Pp][Rr][Oo][Oo][Ff][Oo][Ff][Cc][Oo][Nn][Cc][Ee][Pp][Tt].*/ OR data_process_exec_process_arguments:/.*[Pp][Rr][Oo][Xx][Yy][Ss][Hh][Ee][Ll][Ll].*/ OR data_process_exec_process_arguments:/.*[Ll][Oo][Gg]4[Ss][Hh][Ee][Ll][Ll].*/ OR data_process_exec_process_arguments:/.*[Ee][Tt][Ee][Rr][Nn][Aa][Ll][Bb][Ll][Uu][Ee].*/ OR data_process_exec_process_arguments:/.*[Ee][Tt][Ee][Rr][Nn][Aa][Ll]-[Bb][Ll][Uu][Ee].*/ OR data_process_exec_process_arguments:/.*[Mm][Ss]17-.*/)

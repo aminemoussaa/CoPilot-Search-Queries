@@ -1,0 +1,199 @@
+name: Modify System Firewall
+id: 323ff3f5-0013-4847-bbd4-250b5edb62cc
+version: 1
+schema_version: "1.0"
+date: "2025-10-12"
+author: IAI
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 323ff3f5-0013-4847-bbd4-250b5edb62cc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the removal of system firewall rules. Adversaries may only delete or
+  modify a specific system firewall rule to bypass controls limiting network
+  usage or access. Detection rules that match only on the disabling of firewalls
+  will miss this. MITRE ATT&CK: T1686.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_audit_type:
+                          value: "EXECVE"
+                          case_insensitive: true
+                    - term:
+                        data_audit_execve_a0:
+                          value: "iptables"
+                          case_insensitive: true
+                    - wildcard:
+                        data_audit_execve_a1:
+                          value: "*DROP*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_audit_type:
+                          value: "EXECVE"
+                          case_insensitive: true
+                    - term:
+                        data_audit_execve_a0:
+                          value: "firewall-cmd"
+                          case_insensitive: true
+                    - wildcard:
+                        data_audit_execve_a1:
+                          value: "*remove*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_audit_type:
+                          value: "EXECVE"
+                          case_insensitive: true
+                    - term:
+                        data_audit_execve_a0:
+                          value: "ufw"
+                          case_insensitive: true
+                    - wildcard:
+                        data_audit_execve_a1:
+                          value: "*delete*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_audit_type:
+                          value: "EXECVE"
+                          case_insensitive: true
+                    - term:
+                        data_audit_execve_a0:
+                          value: "nft"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_audit_execve_a1:
+                                value: "*delete*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_audit_execve_a1:
+                                value: "*flush*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_execve_a0
+    - data_audit_execve_a1
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'EXECVE'; data_audit_execve_a0 equals 'iptables'; data_audit_execve_a1 matches
+  '*DROP*', among other conditions.
+
+known_false_positives: >
+  Legitimate admin activity. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://www.trendmicro.com/en_us/research/22/c/cyclops-blink-sets-sights-on-asus-routers--.html
+  - https://blog.aquasec.com/container-security-tnt-container-attack
+  - https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/getting-started-with-nftables_configuring-and-managing-networking
+  - https://attack.mitre.org/techniques/T1686/
+
+response:
+  message: >
+    Modify System Firewall detected on host $agent_name$. Matched
+    data_audit_type: $data_audit_type$. Matched data_audit_execve_a0:
+    $data_audit_execve_a0$. MITRE ATT&CK: T1686
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_execve_a0
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1686
+  custom_tags:
+    - modify
+    - system
+    - firewall
+    - linux
+    - auditd
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_audit_type:/[Ee][Xx][Ee][Cc][Vv][Ee]/ AND data_audit_execve_a0:/[Ii][Pp][Tt][Aa][Bb][Ll][Ee][Ss]/ AND data_audit_execve_a1:/.*[Dd][Rr][Oo][Pp].*/) OR (data_audit_type:/[Ee][Xx][Ee][Cc][Vv][Ee]/ AND data_audit_execve_a0:/[Ff][Ii][Rr][Ee][Ww][Aa][Ll][Ll]-[Cc][Mm][Dd]/ AND data_audit_execve_a1:/.*[Rr][Ee][Mm][Oo][Vv][Ee].*/) OR (data_audit_type:/[Ee][Xx][Ee][Cc][Vv][Ee]/ AND data_audit_execve_a0:/[Uu][Ff][Ww]/ AND data_audit_execve_a1:/.*[Dd][Ee][Ll][Ee][Tt][Ee].*/) OR (data_audit_type:/[Ee][Xx][Ee][Cc][Vv][Ee]/ AND data_audit_execve_a0:/[Nn][Ff][Tt]/ AND (data_audit_execve_a1:/.*[Dd][Ee][Ll][Ee][Tt][Ee].*/ OR data_audit_execve_a1:/.*[Ff][Ll][Uu][Ss][Hh].*/)))

@@ -1,0 +1,157 @@
+name: LSASS Process Memory Dump Creation Via Taskmgr.EXE
+id: 69ca12af-119d-44ed-b50f-a47af0ebc364
+version: 1
+schema_version: "1.0"
+date: "2023-10-19"
+author: Swachchhanda Shrawan Poudel
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 69ca12af-119d-44ed-b50f-a47af0ebc364
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of an "lsass.dmp" file by the taskmgr process. This
+  indicates a manual dumping of the LSASS.exe process memory using Windows Task
+  Manager. MITRE ATT&CK: T1003.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*:\\\\Windows\\\\system32\\\\taskmgr.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*:\\\\Windows\\\\SysWOW64\\\\taskmgr.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\lsass*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*.DMP*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*:\Windows\system32\taskmgr.exe'; data_win_eventdata_image matches
+  '*:\Windows\SysWOW64\taskmgr.exe'; data_win_eventdata_targetFilename matches
+  '*\AppData\Local\Temp\*', among other conditions.
+
+known_false_positives: >
+  Rare case of troubleshooting by an administrator or support that has to be
+  investigated regardless. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/987e3ca988ae3cff4b9f6e388c139c05bf44bbb8/atomics/T1003.001/T1003.001.md#L1
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    LSASS Process Memory Dump Creation Via Taskmgr.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. MITRE ATT&CK: T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.001
+  custom_tags:
+    - lsass
+    - memory
+    - taskmgr
+    - file_event
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Tt][Aa][Ss][Kk][Mm][Gg][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Tt][Aa][Ss][Kk][Mm][Gg][Rr]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/ AND data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss].*/ AND data_win_eventdata_targetFilename:/.*\.[Dd][Mm][Pp].*/

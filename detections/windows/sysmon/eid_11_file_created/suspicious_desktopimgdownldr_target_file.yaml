@@ -1,0 +1,169 @@
+name: Suspicious Desktopimgdownldr Target File
+id: fc4f4817-0c53-4683-a4ee-b17a64bc1039
+version: 1
+schema_version: "1.0"
+date: "2022-06-02"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fc4f4817-0c53-4683-a4ee-b17a64bc1039
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a suspicious Microsoft desktopimgdownldr file creation that stores a
+  file to a suspicious location or contains a file with a suspicious extension.
+  MITRE ATT&CK: T1105.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\svchost.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\Personalization\\\\LockScreenImage\\\\*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*C:\\\\Windows\\\\*"
+                    case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*.jpg*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*.jpeg*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*.png*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\svchost.exe'; data_win_eventdata_targetFilename matches
+  '*\Personalization\LockScreenImage\*'; data_win_eventdata_targetFilename
+  matches '*C:\Windows\*', among other conditions.
+
+known_false_positives: >
+  False positives depend on scripts and administrative tools used in the
+  monitored environment. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://labs.sentinelone.com/living-off-windows-land-a-new-native-file-downldr/
+  - https://twitter.com/SBousseaden/status/1278977301745741825
+  - https://attack.mitre.org/techniques/T1105/
+
+response:
+  message: >
+    Suspicious Desktopimgdownldr Target File detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    MITRE ATT&CK: T1105
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1105
+  custom_tags:
+    - desktopimgdownldr
+    - target
+    - file_event
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_image:/.*\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetFilename:/.*\\[Pp][Ee][Rr][Ss][Oo][Nn][Aa][Ll][Ii][Zz][Aa][Tt][Ii][Oo][Nn]\\[Ll][Oo][Cc][Kk][Ss][Cc][Rr][Ee][Ee][Nn][Ii][Mm][Aa][Gg][Ee]\\.*/ AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_targetFilename:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\.*/) AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_targetFilename:/.*\.[Jj][Pp][Gg].*/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Pp][Ee][Gg].*/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Nn][Gg].*/)

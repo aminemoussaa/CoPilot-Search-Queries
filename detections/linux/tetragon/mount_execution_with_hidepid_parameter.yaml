@@ -1,0 +1,148 @@
+name: Mount Execution With Hidepid Parameter
+id: ec52985a-d024-41e3-8ff6-14169039a0b3
+version: 1
+schema_version: "1.0"
+date: "2023-01-12"
+author: Joseliyo Sanchez, @Joseliyo_Jstnk
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ec52985a-d024-41e3-8ff6-14169039a0b3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of the "mount" command with "hidepid" parameter to make
+  invisible processes to other users from the system. MITRE ATT&CK: T1564.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/mount"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*hidepid=2*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "* -o *"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/mount';
+  data_process_exec_process_arguments matches '*hidepid=2*';
+  data_process_exec_process_arguments matches '* -o *'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blogs.blackberry.com/
+  - https://www.cyberciti.biz/faq/linux-hide-processes-from-other-users/
+  - https://twitter.com/Joseliyo_Jstnk/status/1620131033474822144
+  - https://attack.mitre.org/techniques/T1564/
+
+response:
+  message: >
+    Mount Execution With Hidepid Parameter detected on host $agent_name$.
+    Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1564
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1564
+  custom_tags:
+    - mount
+    - hidepid
+    - parameter
+    - linux
+    - tetragon
+    - process_creation
+    - credential_access
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Mm][Oo][Uu][Nn][Tt]/ AND data_process_exec_process_arguments:/.*[Hh][Ii][Dd][Ee][Pp][Ii][Dd]=2.*/ AND data_process_exec_process_arguments:/.* -[Oo] .*/

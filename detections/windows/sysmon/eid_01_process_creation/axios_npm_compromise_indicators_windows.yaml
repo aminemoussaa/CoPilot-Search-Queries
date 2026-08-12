@@ -1,0 +1,214 @@
+name: Axios NPM Compromise Indicators - Windows
+id: f6c27ecc-d890-4452-80e6-2e274a10e097
+version: 1
+schema_version: "1.0"
+date: "2026-04-01"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f6c27ecc-d890-4452-80e6-2e274a10e097
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the specific Windows execution chain and process tree associated with
+  the Axios NPM supply chain compromise. On March 30, 2026, malicious versions
+  (1.14.1, 0.30.4) were published to npm, injecting a dependency
+  (plain-crypto-js@4.2.1) that executed a postinstall script as a cross-platform
+  RAT dropper. The dropper contacted a C2 server, delivered platform-specific
+  payloads, deleted itself, and replaced package.json to evade detection. The
+  attack used cscript.exe (VBScript), curl.exe (C2), and PowerShell masquerading
+  as Windows Terminal. MITRE ATT&CK: T1195.002, T1059.003, T1059.005, T1105.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\node.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\bun.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\cmd.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*cscript*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*AppData\\\\Local\\\\Temp*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*//nologo && del*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*6202033.vbs*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\curl.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*http://sfrclak.com*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_originalFileName:
+                          value: "PowerShell.EXE"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\"C:\\\\ProgramData\\\\wt.exe\" -w hidden -ep bypass -file*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\node.exe'; data_win_eventdata_parentImage matches '*\bun.exe';
+  data_win_eventdata_image matches '*\cmd.exe', among other conditions.
+
+known_false_positives: >
+  Highly unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.stepsecurity.io/blog/axios-compromised-on-npm-malicious-versions-drop-remote-access-trojan
+  - https://thehackernews.com/2026/03/axios-supply-chain-attack-pushes-cross.html?m=1
+  - https://www.derp.ca/research/axios-npm-supply-chain-rat/
+  - https://www.elastic.co/security-labs/axios-supply-chain-compromise-detections
+  - https://www.virustotal.com/gui/file/e10b1fa84f1d6481625f741b69892780140d4e0e7769e7491e5f4d894c2e0e09
+  - https://attack.mitre.org/techniques/T1195/002/
+  - https://attack.mitre.org/techniques/T1059/003/
+  - https://attack.mitre.org/techniques/T1059/005/
+  - https://attack.mitre.org/techniques/T1105/
+
+response:
+  message: >
+    Axios NPM Compromise Indicators - Windows detected on host $agent_name$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1195.002, T1059.003, T1059.005, T1105
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1195.002
+    - T1059.003
+    - T1059.005
+    - T1105
+  custom_tags:
+    - axios
+    - compromise
+    - indicators
+    - process_creation
+    - sysmon
+    - initial_access
+    - execution
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (((data_win_eventdata_parentImage:/.*\\[Nn][Oo][Dd][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Bb][Uu][Nn]\.[Ee][Xx][Ee]/) AND data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Cc][Ss][Cc][Rr][Ii][Pp][Tt].*/ AND data_win_eventdata_commandLine:/.*[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp].*/ AND data_win_eventdata_commandLine:/.*\/\/[Nn][Oo][Ll][Oo][Gg][Oo] \&\& [Dd][Ee][Ll].*/ AND data_win_eventdata_commandLine:/.*6202033\.[Vv][Bb][Ss].*/) OR ((data_win_eventdata_image:/.*\\[Cc][Uu][Rr][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Hh][Tt][Tt][Pp]:\/\/[Ss][Ff][Rr][Cc][Ll][Aa][Kk]\.[Cc][Oo][Mm].*/) OR (data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*\"[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Ww][Tt]\.[Ee][Xx][Ee]\" -[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] -[Ee][Pp] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ff][Ii][Ll][Ee].*/))

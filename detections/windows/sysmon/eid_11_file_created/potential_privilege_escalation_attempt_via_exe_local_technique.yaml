@@ -1,0 +1,161 @@
+name: Potential Privilege Escalation Attempt Via .Exe.Local Technique
+id: 07a99744-56ac-40d2-97b7-2095967b0e03
+version: 1
+schema_version: "1.0"
+date: "2022-12-19"
+author: Nasreddine Bencherchali (Nextron Systems), Subhash P (@pbssubhash)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 07a99744-56ac-40d2-97b7-2095967b0e03
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential privilege escalation attempt via the creation of the
+  "*.Exe.Local" folder inside the "System32" directory in order to sideload
+  "comctl32.dll".
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\\\Windows\\\\System32\\\\logonUI.exe.local*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\\\Windows\\\\System32\\\\werFault.exe.local*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\\\Windows\\\\System32\\\\consent.exe.local*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\\\Windows\\\\System32\\\\narrator.exe.local*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\\\Windows\\\\System32\\\\wermgr.exe.local*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\comctl32.dll"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  'C:\Windows\System32\logonUI.exe.local*'; data_win_eventdata_targetFilename
+  matches 'C:\Windows\System32\werFault.exe.local*';
+  data_win_eventdata_targetFilename matches
+  'C:\Windows\System32\consent.exe.local*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/binderlabs/DirCreate2System
+  - https://github.com/sailay1996/awesome_windows_logical_bugs/blob/60cbb23a801f4c3195deac1cc46df27c225c3d07/dir_create2system.txt
+
+response:
+  message: >
+    Potential Privilege Escalation Attempt Via .Exe.Local Technique detected on
+    host $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - privilege
+    - escalation
+    - local
+    - file_event
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ll][Oo][Gg][Oo][Nn][Uu][Ii]\.[Ee][Xx][Ee]\.[Ll][Oo][Cc][Aa][Ll].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ee][Rr][Ff][Aa][Uu][Ll][Tt]\.[Ee][Xx][Ee]\.[Ll][Oo][Cc][Aa][Ll].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Oo][Nn][Ss][Ee][Nn][Tt]\.[Ee][Xx][Ee]\.[Ll][Oo][Cc][Aa][Ll].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Nn][Aa][Rr][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]\.[Ll][Oo][Cc][Aa][Ll].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ee][Rr][Mm][Gg][Rr]\.[Ee][Xx][Ee]\.[Ll][Oo][Cc][Aa][Ll].*/) AND data_win_eventdata_targetFilename:/.*\\[Cc][Oo][Mm][Cc][Tt][Ll]32\.[Dd][Ll][Ll]/

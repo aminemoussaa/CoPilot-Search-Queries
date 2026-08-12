@@ -1,0 +1,221 @@
+name: Aruba Network Service Potential DLL Sideloading
+id: 90ae0469-0cee-4509-b67f-e5efcef040f7
+version: 1
+schema_version: "1.0"
+date: "2023-03-15"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 90ae0469-0cee-4509-b67f-e5efcef040f7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential DLL sideloading activity via the Aruba Networks Virtual
+  Intranet Access "arubanetsvc.exe" process using DLL Search Order Hijacking.
+  MITRE ATT&CK: T1574.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\arubanetsvc.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wtsapi32.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\msvcr100.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\msvcp100.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\dbghelp.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\dbgcore.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wininet.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\iphlpapi.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\version.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\cryptsp.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\cryptbase.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wldp.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\profapi.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\sspicli.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\winsta.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\dpapi.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\WinSxS\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\arubanetsvc.exe'; data_win_eventdata_imageLoaded matches '*\wtsapi32.dll';
+  data_win_eventdata_imageLoaded matches '*\msvcr100.dll', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/wdormann/status/1616581559892545537?t=XLCBO9BziGzD7Bmbt8oMEQ&s=09
+  - https://attack.mitre.org/techniques/T1574/001/
+
+response:
+  message: >
+    Aruba Network Service Potential DLL Sideloading detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$.
+    MITRE ATT&CK: T1574.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_imageLoaded
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.001
+  custom_tags:
+    - aruba
+    - network
+    - service
+    - image_load
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_image:/.*\\[Aa][Rr][Uu][Bb][Aa][Nn][Ee][Tt][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_imageLoaded:/.*\\[Ww][Tt][Ss][Aa][Pp][Ii]32\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Ss][Vv][Cc][Rr]100\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Ss][Vv][Cc][Pp]100\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Bb][Gg][Hh][Ee][Ll][Pp]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Bb][Gg][Cc][Oo][Rr][Ee]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Ii][Nn][Ee][Tt]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ii][Pp][Hh][Ll][Pp][Aa][Pp][Ii]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Cc][Rr][Yy][Pp][Tt][Ss][Pp]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Cc][Rr][Yy][Pp][Tt][Bb][Aa][Ss][Ee]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ll][Dd][Pp]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Rr][Oo][Ff][Aa][Pp][Ii]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ss][Ss][Pp][Ii][Cc][Ll][Ii]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Ss][Tt][Aa]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Pp][Aa][Pp][Ii]\.[Dd][Ll][Ll]/) AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Xx][Ss]\\.*/)

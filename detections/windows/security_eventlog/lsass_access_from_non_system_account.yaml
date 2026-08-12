@@ -1,0 +1,255 @@
+name: LSASS Access From Non System Account
+id: 962fe167-e48d-4fd6-9974-11e5b9a5d6d1
+version: 1
+schema_version: "1.0"
+date: "2023-12-11"
+author: Roberto Rodriguez @Cyb3rWard0g
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 962fe167-e48d-4fd6-9974-11e5b9a5d6d1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential mimikatz-like tools accessing LSASS from non system account.
+  MITRE ATT&CK: T1003.001.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "4663"
+              - term:
+                  data_win_system_eventID: "4656"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x100000"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1010"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1400"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1410"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1418"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1438"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x143a"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1f0fff"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1f1fff"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1f2fff"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x1f3fff"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "0x40"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "143a"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "1f0fff"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "1f1fff"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "1f2fff"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_accessMask:
+                    value: "1f3fff"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - term:
+            data_win_eventdata_objectType:
+              value: "Process"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_objectName:
+              value: "*\\\\lsass.exe"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_subjectUserName"
+        - exists:
+            field: "data_win_eventdata_processName"
+        - exists:
+            field: "data_win_eventdata_accessMask"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_subjectUserName: "*$"
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*:\\\\Program Files\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_processName:
+                          value: "*:\\\\Program Files (x86)\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_processName:
+                                value: "C:\\Windows\\System32\\wbem\\WmiPrvSE.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_accessMask:
+                                value: "0x1410"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_processName"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_processName:
+                    value: "*\\\\SteamLibrary\\\\steamapps\\\\*"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_accessMask
+    - data_win_eventdata_objectType
+    - data_win_eventdata_objectName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_processName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4663'; data_win_system_eventID equals '4656';
+  data_win_eventdata_accessMask equals '0x100000', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://threathunterplaybook.com/hunts/windows/170105-LSASSMemoryReadAccess/notebook.html
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    LSASS Access From Non System Account detected on host $agent_name$. Matched
+    data_win_eventdata_accessMask: $data_win_eventdata_accessMask$. Matched
+    data_win_eventdata_objectType: $data_win_eventdata_objectType$. MITRE
+    ATT&CK: T1003.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_accessMask
+      type: other
+    - field: data_win_eventdata_objectType
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.001
+  custom_tags:
+    - lsass
+    - system
+    - account
+    - windows_security
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"4663" OR data_win_system_eventID:"4656") AND (data_win_eventdata_accessMask:/0[Xx]100000/ OR data_win_eventdata_accessMask:/0[Xx]1010/ OR data_win_eventdata_accessMask:/0[Xx]1400/ OR data_win_eventdata_accessMask:/0[Xx]1410/ OR data_win_eventdata_accessMask:/0[Xx]1418/ OR data_win_eventdata_accessMask:/0[Xx]1438/ OR data_win_eventdata_accessMask:/0[Xx]143[Aa]/ OR data_win_eventdata_accessMask:/0[Xx]1[Ff]0[Ff][Ff][Ff]/ OR data_win_eventdata_accessMask:/0[Xx]1[Ff]1[Ff][Ff][Ff]/ OR data_win_eventdata_accessMask:/0[Xx]1[Ff]2[Ff][Ff][Ff]/ OR data_win_eventdata_accessMask:/0[Xx]1[Ff]3[Ff][Ff][Ff]/ OR data_win_eventdata_accessMask:/0[Xx]40/ OR data_win_eventdata_accessMask:/143[Aa]/ OR data_win_eventdata_accessMask:/1[Ff]0[Ff][Ff][Ff]/ OR data_win_eventdata_accessMask:/1[Ff]1[Ff][Ff][Ff]/ OR data_win_eventdata_accessMask:/1[Ff]2[Ff][Ff][Ff]/ OR data_win_eventdata_accessMask:/1[Ff]3[Ff][Ff][Ff]/) AND data_win_eventdata_objectType:/[Pp][Rr][Oo][Cc][Ee][Ss][Ss]/ AND data_win_eventdata_objectName:/.*\\[Ll][Ss][Aa][Ss][Ss]\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_subjectUserName AND _exists_:data_win_eventdata_processName AND _exists_:data_win_eventdata_accessMask AND NOT (data_win_eventdata_subjectUserName:/.*\$/ OR data_win_eventdata_processName:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_processName:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR (data_win_eventdata_processName:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Bb][Ee][Mm]\\[Ww][Mm][Ii][Pp][Rr][Vv][Ss][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_accessMask:/0[Xx]1410/)) AND _exists_:data_win_eventdata_processName AND NOT (data_win_eventdata_processName:/.*\\[Ss][Tt][Ee][Aa][Mm][Ll][Ii][Bb][Rr][Aa][Rr][Yy]\\[Ss][Tt][Ee][Aa][Mm][Aa][Pp][Pp][Ss]\\.*/)

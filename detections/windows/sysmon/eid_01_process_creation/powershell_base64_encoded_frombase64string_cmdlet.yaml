@@ -1,0 +1,163 @@
+name: PowerShell Base64 Encoded FromBase64String Cmdlet
+id: fdb62a13-9a81-4e5c-a38f-ea93a16f6d7c
+version: 1
+schema_version: "1.0"
+date: "2023-04-06"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fdb62a13-9a81-4e5c-a38f-ea93a16f6d7c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of a base64 encoded "FromBase64String" cmdlet in a process
+  command line. MITRE ATT&CK: T1140, T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OjpGcm9tQmFzZTY0U3RyaW5n*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*o6RnJvbUJhc2U2NFN0cmluZ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*6OkZyb21CYXNlNjRTdHJpbm*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OgA6AEYAcgBvAG0AQgBhAHMAZQA2ADQAUwB0AHIAaQBuAGcA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*oAOgBGAHIAbwBtAEIAYQBzAGUANgA0AFMAdAByAGkAbgBnA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*6ADoARgByAG8AbQBCAGEAcwBlADYANABTAHQAcgBpAG4AZw*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*OjpGcm9tQmFzZTY0U3RyaW5n*'; data_win_eventdata_commandLine matches
+  '*o6RnJvbUJhc2U2NFN0cmluZ*'; data_win_eventdata_commandLine matches
+  '*6OkZyb21CYXNlNjRTdHJpbm*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - Internal Research
+  - https://attack.mitre.org/techniques/T1140/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    PowerShell Base64 Encoded FromBase64String Cmdlet detected on host
+    $agent_name$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1140, T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1140
+    - T1059.001
+  custom_tags:
+    - powershell
+    - base64
+    - encoded
+    - process_creation
+    - sysmon
+    - stealth
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Oo][Jj][Pp][Gg][Cc][Mm]9[Tt][Qq][Mm][Ff][Zz][Zz][Tt][Yy]0[Uu]3[Rr][Yy][Aa][Ww]5[Nn].*/ OR data_win_eventdata_commandLine:/.*[Oo]6[Rr][Nn][Jj][Vv][Bb][Uu][Jj][Hh][Cc]2[Uu]2[Nn][Ff][Nn]0[Cc][Mm][Ll][Uu][Zz].*/ OR data_win_eventdata_commandLine:/.*6[Oo][Kk][Zz][Yy][Bb]21[Cc][Yy][Xx][Nn][Ll][Nn][Jj][Rr][Tt][Dd][Hh][Jj][Pp][Bb][Mm].*/ OR data_win_eventdata_commandLine:/.*[Oo][Gg][Aa]6[Aa][Ee][Yy][Aa][Cc][Gg][Bb][Vv][Aa][Gg]0[Aa][Qq][Gg][Bb][Hh][Aa][Hh][Mm][Aa][Zz][Qq][Aa]2[Aa][Dd][Qq][Aa][Uu][Ww][Bb]0[Aa][Hh][Ii][Aa][Aa][Qq][Bb][Uu][Aa][Gg][Cc][Aa].*/ OR data_win_eventdata_commandLine:/.*[Oo][Aa][Oo][Gg][Bb][Gg][Aa][Hh][Ii][Aa][Bb][Ww][Bb][Tt][Aa][Ee][Ii][Aa][Yy][Qq][Bb][Zz][Aa][Gg][Uu][Aa][Nn][Gg][Aa]0[Aa][Ff][Mm][Aa][Dd][Aa][Bb][Yy][Aa][Gg][Kk][Aa][Bb][Gg][Bb][Nn][Aa].*/ OR data_win_eventdata_commandLine:/.*6[Aa][Dd][Oo][Aa][Rr][Gg][Bb][Yy][Aa][Gg]8[Aa][Bb][Qq][Bb][Cc][Aa][Gg][Ee][Aa][Cc][Ww][Bb][Ll][Aa][Dd][Yy][Aa][Nn][Aa][Bb][Tt][Aa][Hh][Qq][Aa][Cc][Gg][Bb][Pp][Aa][Gg]4[Aa][Zz][Ww].*/)

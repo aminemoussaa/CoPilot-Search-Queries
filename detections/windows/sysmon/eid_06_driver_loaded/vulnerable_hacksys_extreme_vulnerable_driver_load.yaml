@@ -1,0 +1,149 @@
+name: Vulnerable HackSys Extreme Vulnerable Driver Load
+id: 295c9289-acee-4503-a571-8eacaef36b28
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 295c9289-acee-4503-a571-8eacaef36b28
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the load of HackSys Extreme Vulnerable Driver which is an
+  intentionally vulnerable Windows driver developed for security enthusiasts to
+  learn and polish their exploitation skills at Kernel level and often abused by
+  threat actors. MITRE ATT&CK: T1543.003.
+
+data_source:
+  - Sysmon EventID 6 - Driver Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "6"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\HEVD.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=f26d0b110873a1c7d8c4f08fbeab89c5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=c46ea2e651fd5f7f716c8867c6d13594*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_hashes
+    - data_win_eventdata_signature
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 6 (driver loaded) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\HEVD.sys'; data_win_eventdata_hashes matches
+  '*IMPHASH=f26d0b110873a1c7d8c4f08fbeab89c5*'; data_win_eventdata_hashes
+  matches '*IMPHASH=c46ea2e651fd5f7f716c8867c6d13594*'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/hacksysteam/HackSysExtremeVulnerableDriver
+  - https://attack.mitre.org/techniques/T1543/003/
+
+response:
+  message: >
+    Vulnerable HackSys Extreme Vulnerable Driver Load detected on host
+    $agent_name$. Matched data_win_eventdata_imageLoaded:
+    $data_win_eventdata_imageLoaded$. Matched data_win_eventdata_hashes:
+    $data_win_eventdata_hashes$. MITRE ATT&CK: T1543.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+  custom_tags:
+    - vulnerable
+    - hacksys
+    - extreme
+    - driver_load
+    - sysmon
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"6" AND (data_win_eventdata_imageLoaded:/.*\\[Hh][Ee][Vv][Dd]\.[Ss][Yy][Ss]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ff]26[Dd]0[Bb]110873[Aa]1[Cc]7[Dd]8[Cc]4[Ff]08[Ff][Bb][Ee][Aa][Bb]89[Cc]5.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Cc]46[Ee][Aa]2[Ee]651[Ff][Dd]5[Ff]7[Ff]716[Cc]8867[Cc]6[Dd]13594.*/)

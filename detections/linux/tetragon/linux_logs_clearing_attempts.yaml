@@ -1,0 +1,192 @@
+name: Linux Logs Clearing Attempts
+id: 80915f59-9b56-4616-9de0-fd0dea6c12fe
+version: 1
+schema_version: "1.0"
+date: "2026-03-18"
+author: Ömer Günal, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 80915f59-9b56-4616-9de0-fd0dea6c12fe
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects logs clearing attempts on Linux systems via utilities such as 'rm',
+  'rmdir', 'shred', and 'unlink' targeting log files and directories.
+  Adversaries often try to clear logs to cover their tracks after performing
+  malicious activities. MITRE ATT&CK: T1685.006.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/rm"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/rmdir"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/shred"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/unlink"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/var/log*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/var/spool/mail*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_process_exec_process_binary"
+        - exists:
+            field: "data_process_exec_process_arguments"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/rm"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "rm -f /var/log/sysstat/*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/rm"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "rm -f -- /var/log//dmesg*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/rm';
+  data_process_exec_process_binary matches '*/rmdir';
+  data_process_exec_process_binary matches '*/shred', among other conditions.
+
+known_false_positives: >
+  Legitimate administration activities. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1070.002/T1070.002.md
+  - https://attack.mitre.org/techniques/T1685/006/
+
+response:
+  message: >
+    Linux Logs Clearing Attempts detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1685.006
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685.006
+  custom_tags:
+    - clearing
+    - linux
+    - tetragon
+    - process_creation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_binary:/.*\/[Rr][Mm]/ OR data_process_exec_process_binary:/.*\/[Rr][Mm][Dd][Ii][Rr]/ OR data_process_exec_process_binary:/.*\/[Ss][Hh][Rr][Ee][Dd]/ OR data_process_exec_process_binary:/.*\/[Uu][Nn][Ll][Ii][Nn][Kk]/) AND (data_process_exec_process_arguments:/.*\/[Vv][Aa][Rr]\/[Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.*\/[Vv][Aa][Rr]\/[Ss][Pp][Oo][Oo][Ll]\/[Mm][Aa][Ii][Ll].*/) AND _exists_:data_process_exec_process_binary AND _exists_:data_process_exec_process_arguments AND NOT ((data_process_exec_process_binary:/.*\/[Rr][Mm]/ AND data_process_exec_process_arguments:/[Rr][Mm] -[Ff] \/[Vv][Aa][Rr]\/[Ll][Oo][Gg]\/[Ss][Yy][Ss][Ss][Tt][Aa][Tt]\/.*/) OR (data_process_exec_process_binary:/.*\/[Rr][Mm]/ AND data_process_exec_process_arguments:/[Rr][Mm] -[Ff] -- \/[Vv][Aa][Rr]\/[Ll][Oo][Gg]\/\/[Dd][Mm][Ee][Ss][Gg].*/))

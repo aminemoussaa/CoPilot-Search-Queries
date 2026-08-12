@@ -1,0 +1,267 @@
+name: Disable Windows Defender Functionalities Via Registry Keys
+id: 0eb46774-f1ab-4a74-8238-1155855f2263
+version: 1
+schema_version: "1.0"
+date: "2024-10-07"
+author: AlertIQ, Ján Trenčanský, frack113, Nasreddine Bencherchali, Swachchhanda Shrawan Poudel
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0eb46774-f1ab-4a74-8238-1155855f2263
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when attackers or tools disable Windows Defender functionalities via
+  the Windows registry. MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows Defender\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender Security Center\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\Policies\\\\Microsoft\\\\Windows Defender\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableAntiSpyware"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableAntiVirus"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableBehaviorMonitoring"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableBlockAtFirstSeen"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableEnhancedNotifications"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableIntrusionPreventionSystem"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableIOAVProtection"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableOnAccessProtection"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableRealtimeMonitoring"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableScanOnRealtimeEnable"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableScriptScanning"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - term:
+                        data_win_eventdata_details:
+                          value: "DWORD (0x00000001)"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisallowExploitProtectionOverride"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Features\\\\TamperProtection"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\MpEngine\\\\MpEnablePus"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\PUAProtection"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Signature Update\\\\ForceUpdateFromMU"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\SpyNet\\\\SpynetReporting"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\SpyNet\\\\SubmitSamplesConsent"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Windows Defender Exploit Guard\\\\Controlled Folder Access\\\\EnableControlledFolderAccess"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - term:
+                        data_win_eventdata_details:
+                          value: "DWORD (0x00000000)"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\Symantec\\\\Symantec Endpoint Protection\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\sepWscSvc64.exe"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\Windows Defender\*'; data_win_eventdata_targetObject
+  matches '*\SOFTWARE\Policies\Microsoft\Windows Defender Security Center\*';
+  data_win_eventdata_targetObject matches '*\SOFTWARE\Policies\Microsoft\Windows
+  Defender\*', among other conditions.
+
+known_false_positives: >
+  Administrator actions via the Windows Defender interface. Third party
+  Antivirus. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://thedfirreport.com/2021/10/18/icedid-to-xinglocker-ransomware-in-24-hours/
+  - https://gist.github.com/anadr/7465a9fde63d41341136949f14c21105
+  - https://admx.help/?Category=Windows_7_2008R2&Policy=Microsoft.Policies.WindowsDefender::SpyNetReporting
+  - https://symantec-enterprise-blogs.security.com/blogs/threat-intelligence/ransomware-hive-conti-avoslocker
+  - https://www.tenforums.com/tutorials/32236-enable-disable-microsoft-defender-pua-protection-windows-10-a.html
+  - https://www.tenforums.com/tutorials/105533-enable-disable-windows-defender-exploit-protection-settings.html
+  - https://www.tenforums.com/tutorials/123792-turn-off-tamper-protection-microsoft-defender-antivirus.html
+  - https://securelist.com/key-group-ransomware-samples-and-telegram-schemes/114025/
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Disable Windows Defender Functionalities Via Registry Keys detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - disable
+    - defender
+    - functionalities
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr] [Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy] [Cc][Ee][Nn][Tt][Ee][Rr]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/) AND (((data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Aa][Nn][Tt][Ii][Ss][Pp][Yy][Ww][Aa][Rr][Ee]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Bb][Ee][Hh][Aa][Vv][Ii][Oo][Rr][Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Bb][Ll][Oo][Cc][Kk][Aa][Tt][Ff][Ii][Rr][Ss][Tt][Ss][Ee][Ee][Nn]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ee][Nn][Hh][Aa][Nn][Cc][Ee][Dd][Nn][Oo][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Ss]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ii][Nn][Tt][Rr][Uu][Ss][Ii][Oo][Nn][Pp][Rr][Ee][Vv][Ee][Nn][Tt][Ii][Oo][Nn][Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ii][Oo][Aa][Vv][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Oo][Nn][Aa][Cc][Cc][Ee][Ss][Ss][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Rr][Ee][Aa][Ll][Tt][Ii][Mm][Ee][Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ss][Cc][Aa][Nn][Oo][Nn][Rr][Ee][Aa][Ll][Tt][Ii][Mm][Ee][Ee][Nn][Aa][Bb][Ll][Ee]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Ss][Cc][Aa][Nn][Nn][Ii][Nn][Gg]/) AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000001\)/) OR ((data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Ll][Ll][Oo][Ww][Ee][Xx][Pp][Ll][Oo][Ii][Tt][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn][Oo][Vv][Ee][Rr][Rr][Ii][Dd][Ee]/ OR data_win_eventdata_targetObject:/.*\\[Ff][Ee][Aa][Tt][Uu][Rr][Ee][Ss]\\[Tt][Aa][Mm][Pp][Ee][Rr][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_targetObject:/.*\\[Mm][Pp][Ee][Nn][Gg][Ii][Nn][Ee]\\[Mm][Pp][Ee][Nn][Aa][Bb][Ll][Ee][Pp][Uu][Ss]/ OR data_win_eventdata_targetObject:/.*\\[Pp][Uu][Aa][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_targetObject:/.*\\[Ss][Ii][Gg][Nn][Aa][Tt][Uu][Rr][Ee] [Uu][Pp][Dd][Aa][Tt][Ee]\\[Ff][Oo][Rr][Cc][Ee][Uu][Pp][Dd][Aa][Tt][Ee][Ff][Rr][Oo][Mm][Mm][Uu]/ OR data_win_eventdata_targetObject:/.*\\[Ss][Pp][Yy][Nn][Ee][Tt]\\[Ss][Pp][Yy][Nn][Ee][Tt][Rr][Ee][Pp][Oo][Rr][Tt][Ii][Nn][Gg]/ OR data_win_eventdata_targetObject:/.*\\[Ss][Pp][Yy][Nn][Ee][Tt]\\[Ss][Uu][Bb][Mm][Ii][Tt][Ss][Aa][Mm][Pp][Ll][Ee][Ss][Cc][Oo][Nn][Ss][Ee][Nn][Tt]/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr] [Ee][Xx][Pp][Ll][Oo][Ii][Tt] [Gg][Uu][Aa][Rr][Dd]\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ll][Ee][Dd] [Ff][Oo][Ll][Dd][Ee][Rr] [Aa][Cc][Cc][Ee][Ss][Ss]\\[Ee][Nn][Aa][Bb][Ll][Ee][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ll][Ee][Dd][Ff][Oo][Ll][Dd][Ee][Rr][Aa][Cc][Cc][Ee][Ss][Ss]/) AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000000\)/)) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ss][Yy][Mm][Aa][Nn][Tt][Ee][Cc]\\[Ss][Yy][Mm][Aa][Nn][Tt][Ee][Cc] [Ee][Nn][Dd][Pp][Oo][Ii][Nn][Tt] [Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]\\.*/ AND data_win_eventdata_image:/.*\\[Ss][Ee][Pp][Ww][Ss][Cc][Ss][Vv][Cc]64\.[Ee][Xx][Ee]/)

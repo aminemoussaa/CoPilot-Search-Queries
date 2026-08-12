@@ -1,0 +1,254 @@
+name: Change PowerShell Policies to an Insecure Level
+id: 87e3c4e8-a6a8-4ad9-bb4f-46e7ff99a180
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 87e3c4e8-a6a8-4ad9-bb4f-46e7ff99a180
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changing the PowerShell script execution policy to a potentially
+  insecure level using the "-ExecutionPolicy" flag. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "powershell_ise.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PowerShell.EXE"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "pwsh.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell_ise.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-executionpolicy *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -ep *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -exec *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Bypass*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Unrestricted*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\SysWOW64\\msiexec.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\System32\\msiexec.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Program Files\\\\PowerShell\\\\7\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-NoProfile -ExecutionPolicy Bypass -File \"C:\\\\Program Files (x86)\\\\PowerShell\\\\7\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*C:\\\\Program Files\\\\Avast Software\\\\Avast\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*C:\\\\Program Files (x86)\\\\Avast Software\\\\Avast\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\instup.exe*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-ExecutionPolicy ByPass -File \"C:\\\\Program Files\\\\Avast Software\\\\Avast*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-ExecutionPolicy ByPass -File \"C:\\\\Program Files (x86)\\\\Avast Software\\\\Avast\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'powershell_ise.exe'; data_win_eventdata_originalFileName equals
+  'PowerShell.EXE'; data_win_eventdata_originalFileName equals 'pwsh.dll', among
+  other conditions.
+
+known_false_positives: >
+  Administrator scripts. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.4
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.4
+  - https://adsecurity.org/?p=2604
+  - https://thedfirreport.com/2021/11/01/from-zero-to-domain-admin/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Change PowerShell Policies to an Insecure Level detected on host
+    $agent_name$. Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - change
+    - powershell
+    - policies
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ww][Ss][Hh]\.[Dd][Ll][Ll]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*-[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Xx][Ee][Cc] .*/) AND (data_win_eventdata_commandLine:/.*[Bb][Yy][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Uu][Nn][Rr][Ee][Ss][Tt][Rr][Ii][Cc][Tt][Ee][Dd].*/) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_commandLine AND NOT ((data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*-[Nn][Oo][Pp][Rr][Oo][Ff][Ii][Ll][Ee] -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ff][Ii][Ll][Ee] \"[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\.*/ OR data_win_eventdata_commandLine:/.*-[Nn][Oo][Pp][Rr][Oo][Ff][Ii][Ll][Ee] -[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ff][Ii][Ll][Ee] \"[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\.*/)) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_commandLine AND NOT ((data_win_eventdata_parentImage:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\.*/ OR data_win_eventdata_parentImage:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\.*/ OR data_win_eventdata_parentImage:/.*\\[Ii][Nn][Ss][Tt][Uu][Pp]\.[Ee][Xx][Ee].*/) AND (data_win_eventdata_commandLine:/.*-[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ff][Ii][Ll][Ee] \"[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*-[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy] [Bb][Yy][Pp][Aa][Ss][Ss] -[Ff][Ii][Ll][Ee] \"[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\.*/))

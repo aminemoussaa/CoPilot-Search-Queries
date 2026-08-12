@@ -1,0 +1,230 @@
+name: Potential Persistence Via App Paths Default Property
+id: 707e097c-e20f-4f67-8807-1f72ff4500d6
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 707e097c-e20f-4f67-8807-1f72ff4500d6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to the "Default" property for keys located in the
+  \Software\Microsoft\Windows\CurrentVersion\App Paths\ registry. Which might be
+  used as a method of persistence The entries found under App Paths are used
+  primarily for the following purposes. First, to map an application's
+  executable file name to that file's fully qualified path. Second, to prepend
+  information to the PATH environment variable on a per-application, per-process
+  basis. MITRE ATT&CK: T1546.012.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\App Paths*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*(Default)"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*Path"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Users\\\\Public*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Windows\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Desktop\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Downloads\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*%temp%*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*%tmp%*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*iex*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*Invoke-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*rundll32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*regsvr32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*mshta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*cscript*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*wscript*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*.bat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*.hta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*.dll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*.ps1*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths*';
+  data_win_eventdata_targetObject matches '*(Default)';
+  data_win_eventdata_targetObject matches '*Path', among other conditions.
+
+known_false_positives: >
+  Legitimate applications registering their binary from on of the suspicious
+  locations mentioned above (tune it). Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.hexacorn.com/blog/2013/01/19/beyond-good-ol-run-key-part-3/
+  - https://learn.microsoft.com/en-us/windows/win32/shell/app-registration
+  - https://attack.mitre.org/techniques/T1546/012/
+
+response:
+  message: >
+    Potential Persistence Via App Paths Default Property detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1546.012
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1546.012
+  custom_tags:
+    - persistence
+    - paths
+    - default
+    - registry
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Aa][Pp][Pp] [Pp][Aa][Tt][Hh][Ss].*/ AND (data_win_eventdata_targetObject:/.*\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ OR data_win_eventdata_targetObject:/.*[Pp][Aa][Tt][Hh]/) AND (data_win_eventdata_details:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc].*/ OR data_win_eventdata_details:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_details:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_details:/.*\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\.*/ OR data_win_eventdata_details:/.*\\[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss]\\.*/ OR data_win_eventdata_details:/.*%[Tt][Ee][Mm][Pp]%.*/ OR data_win_eventdata_details:/.*%[Tt][Mm][Pp]%.*/ OR data_win_eventdata_details:/.*[Ii][Ee][Xx].*/ OR data_win_eventdata_details:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-.*/ OR data_win_eventdata_details:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32.*/ OR data_win_eventdata_details:/.*[Rr][Ee][Gg][Ss][Vv][Rr]32.*/ OR data_win_eventdata_details:/.*[Mm][Ss][Hh][Tt][Aa].*/ OR data_win_eventdata_details:/.*[Cc][Ss][Cc][Rr][Ii][Pp][Tt].*/ OR data_win_eventdata_details:/.*[Ww][Ss][Cc][Rr][Ii][Pp][Tt].*/ OR data_win_eventdata_details:/.*\.[Bb][Aa][Tt].*/ OR data_win_eventdata_details:/.*\.[Hh][Tt][Aa].*/ OR data_win_eventdata_details:/.*\.[Dd][Ll][Ll].*/ OR data_win_eventdata_details:/.*\.[Pp][Ss]1.*/)

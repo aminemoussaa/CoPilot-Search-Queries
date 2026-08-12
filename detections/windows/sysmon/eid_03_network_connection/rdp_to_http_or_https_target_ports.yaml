@@ -1,0 +1,156 @@
+name: RDP to HTTP or HTTPS Target Ports
+id: b1e5da3b-ca8e-4adf-915c-9921f3d85481
+version: 1
+schema_version: "1.0"
+date: "2022-07-14"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b1e5da3b-ca8e-4adf-915c-9921f3d85481
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects svchost hosting RDP termsvcs communicating to target systems on TCP
+  port 80 or 443. MITRE ATT&CK: T1572, T1021.001.
+
+data_source:
+  - Sysmon EventID 3 - Network Connection
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "3"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\svchost.exe"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_initiated:
+              value: "true"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_sourcePort: "3389"
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_destinationPort: "80"
+              - term:
+                  data_win_eventdata_destinationPort: "443"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_initiated
+    - data_win_eventdata_sourcePort
+    - data_win_eventdata_destinationPort
+    - data_win_eventdata_destinationIp
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 3 (network connection) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_image matches '*\svchost.exe'; data_win_eventdata_initiated
+  equals 'true'; data_win_eventdata_sourcePort equals '3389', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/tekdefense/status/1519711183162556416?s=12&t=OTsHCBkQOTNs1k3USz65Zg
+  - https://www.mandiant.com/resources/bypassing-network-restrictions-through-rdp-tunneling
+  - https://attack.mitre.org/techniques/T1572/
+  - https://attack.mitre.org/techniques/T1021/001/
+
+response:
+  message: >
+    RDP to HTTP or HTTPS Target Ports detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_initiated: $data_win_eventdata_initiated$. MITRE ATT&CK:
+    T1572, T1021.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_initiated
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1572
+    - T1021.001
+  custom_tags:
+    - https
+    - target
+    - ports
+    - network_connection
+    - sysmon
+    - command_and_control
+    - lateral_movement
+    - car_2013_07_002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"3" AND data_win_eventdata_image:/.*\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_initiated:/[Tt][Rr][Uu][Ee]/ AND data_win_eventdata_sourcePort:"3389" AND (data_win_eventdata_destinationPort:"80" OR data_win_eventdata_destinationPort:"443")

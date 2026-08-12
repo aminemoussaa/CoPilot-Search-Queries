@@ -1,0 +1,73 @@
+name: PST Export Alert Using New-ComplianceSearchAction
+id: 6897cd82-6664-11ed-9022-0242ac120002
+version: 1
+schema_version: "1.0"
+date: "2022-11-17"
+author: Nikita Khalimonenkov
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6897cd82-6664-11ed-9022-0242ac120002
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: match
+description: >
+  Alert when a user has performed an export to a search using
+  'New-ComplianceSearchAction' with the '-Export' flag. This detection will
+  detect PST export even if the 'eDiscovery search or exported' alert is
+  disabled in the O365.This rule will apply to ExchangePowerShell usage and from
+  the cloud. MITRE ATT&CK: T1114.
+data_source:
+  - Office 365 Management Activity API
+  - "Workload: ThreatIntelligence"
+workload: ThreatIntelligence
+how_to_implement: >
+  Requires the Wazuh office365 module configured with an Azure AD application
+  subscribed to the Office 365 Management Activity API for the relevant
+  workload, ingested into the wazuh-* indices. The detection looks for events
+  where data_office365_eventSource equals 'SecurityComplianceCenter';
+  data_office365_Payload matches '*New-ComplianceSearchAction*';
+  data_office365_Payload matches '*Export*', among other conditions.
+known_false_positives: >
+  Exporting a PST can be done for legitimate purposes by legitimate sources, but
+  due to the sensitive nature of PST content, it must be monitored. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+references:
+  - https://learn.microsoft.com/en-us/powershell/module/exchange/new-compliancesearchaction?view=exchange-ps
+  - https://attack.mitre.org/techniques/T1114/
+response:
+  message: >
+    PST Export Alert Using New-ComplianceSearchAction detected for user
+    $data_office365_UserId$. Matched data_office365_eventSource:
+    $data_office365_eventSource$. Matched data_office365_Payload:
+    $data_office365_Payload$. MITRE ATT&CK: T1114
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: data_office365_UserId
+      type: user
+      score: 50
+  threat_objects:
+    - field: data_office365_eventSource
+      type: other
+    - field: data_office365_Payload
+      type: powershell_script
+tags:
+  asset_type: Cloud Identity
+  mitre_attack_id:
+    - T1114
+  custom_tags:
+    - export
+    - alert
+    - compliancesearchaction
+    - o365
+    - threat_management
+    - collection
+  product:
+    - Office 365
+  security_domain: cloud
+graylog:
+  query: data_office365_eventSource:/[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Cc][Oo][Mm][Pp][Ll][Ii][Aa][Nn][Cc][Ee][Cc][Ee][Nn][Tt][Ee][Rr]/ AND data_office365_Payload:/.*[Nn][Ee][Ww]-[Cc][Oo][Mm][Pp][Ll][Ii][Aa][Nn][Cc][Ee][Ss][Ee][Aa][Rr][Cc][Hh][Aa][Cc][Tt][Ii][Oo][Nn].*/ AND data_office365_Payload:/.*[Ee][Xx][Pp][Oo][Rr][Tt].*/ AND data_office365_Payload:/.*[Pp][Ss][Tt].*/

@@ -1,0 +1,300 @@
+name: MSHTA Execution with Suspicious File Extensions
+id: cc7abbd0-762b-41e3-8a26-57ad50d2eea3
+version: 1
+schema_version: "1.0"
+date: "2025-05-12"
+author: Diego Perez (@darkquassar), Markus Neis, Swisscom (Improve Rule), Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cc7abbd0-762b-41e3-8a26-57ad50d2eea3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of mshta.exe with file types that looks like they do not
+  typically represent HTA (HTML Application) content, such as .png, .jpg, .zip,
+  .pdf, and others, which are often polyglots. MSHTA is a legitimate Windows
+  utility for executing HTML Applications containing VBScript or JScript. Threat
+  actors often abuse this lolbin utility to download and execute malicious
+  scripts disguised as benign files or hosted under misleading extensions to
+  evade detection. MITRE ATT&CK: T1140, T1218.005, T1059.007.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\mshta.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "mshta.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.7z*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.avi*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.bat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.bmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.conf*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.csv*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.dll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.doc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.gif*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.gz*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.ini*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.jpe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.jpg*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.json*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.lnk*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.log*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.mkv*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.mp3*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.mp4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.pdf*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.png*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.ppt*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.rar*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.rtf*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.svg*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.tar*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.tmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.txt*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.xls*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.xml*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.yaml*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.yml*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.zip*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*vbscript*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\mshta.exe'; data_win_eventdata_originalFileName equals 'mshta.exe';
+  data_win_eventdata_commandLine matches '*.7z*', among other conditions.
+
+known_false_positives: >
+  False positives depend on scripts and administrative tools used in the
+  monitored environment. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - http://blog.sevagas.com/?Hacking-around-HTA-files
+  - https://0x00sec.org/t/clientside-exploitation-in-2018-how-pentesting-has-changed/7356
+  - https://learn.microsoft.com/en-us/previous-versions/dotnet/framework/data/xml/xslt/xslt-stylesheet-scripting-using-msxsl-script
+  - https://medium.com/tsscyber/pentesting-and-hta-bypassing-powershell-constrained-language-mode-53a42856c997
+  - https://twitter.com/mattifestation/status/1326228491302563846
+  - https://www.virustotal.com/gui/file/c1f27d9795a2eba630db8a043580a0761798f06370fb1317067805f8a845b00c
+  - https://attack.mitre.org/techniques/T1140/
+  - https://attack.mitre.org/techniques/T1218/005/
+  - https://attack.mitre.org/techniques/T1059/007/
+
+response:
+  message: >
+    MSHTA Execution with Suspicious File Extensions detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1140, T1218.005,
+    T1059.007
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1140
+    - T1218.005
+    - T1059.007
+  custom_tags:
+    - mshta
+    - extensions
+    - process_creation
+    - sysmon
+    - stealth
+    - execution
+    - cve_2020_1599
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*\.7[Zz].*/ OR data_win_eventdata_commandLine:/.*\.[Aa][Vv][Ii].*/ OR data_win_eventdata_commandLine:/.*\.[Bb][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*\.[Bb][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Oo][Nn][Ff].*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Ss][Vv].*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Cc].*/ OR data_win_eventdata_commandLine:/.*\.[Gg][Ii][Ff].*/ OR data_win_eventdata_commandLine:/.*\.[Gg][Zz].*/ OR data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ii].*/ OR data_win_eventdata_commandLine:/.*\.[Jj][Pp][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Jj][Pp][Gg].*/ OR data_win_eventdata_commandLine:/.*\.[Jj][Ss][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*\.[Ll][Nn][Kk].*/ OR data_win_eventdata_commandLine:/.*\.[Ll][Oo][Gg].*/ OR data_win_eventdata_commandLine:/.*\.[Mm][Kk][Vv].*/ OR data_win_eventdata_commandLine:/.*\.[Mm][Pp]3.*/ OR data_win_eventdata_commandLine:/.*\.[Mm][Pp]4.*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Dd][Ff].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Pp][Tt].*/ OR data_win_eventdata_commandLine:/.*\.[Rr][Aa][Rr].*/ OR data_win_eventdata_commandLine:/.*\.[Rr][Tt][Ff].*/ OR data_win_eventdata_commandLine:/.*\.[Ss][Vv][Gg].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Aa][Rr].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Xx][Tt].*/ OR data_win_eventdata_commandLine:/.*\.[Xx][Ll][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Yy][Aa][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Yy][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Zz][Ii][Pp].*/ OR data_win_eventdata_commandLine:/.*[Vv][Bb][Ss][Cc][Rr][Ii][Pp][Tt].*/)

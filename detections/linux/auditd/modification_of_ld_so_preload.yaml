@@ -1,0 +1,139 @@
+name: Modification of ld.so.preload
+id: 4b3cb710-5e83-4715-8c45-8b2b5b3e5751
+version: 1
+schema_version: "1.0"
+date: "2021-11-27"
+author: E.M. Anhaus (originally from Atomic Blue Detections, Tony Lambert), oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4b3cb710-5e83-4715-8c45-8b2b5b3e5751
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Identifies modification of ld.so.preload for shared object injection. This
+  technique is used by attackers to load arbitrary code into processes. MITRE
+  ATT&CK: T1574.006.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_audit_type:
+              value: "PATH"
+              case_insensitive: true
+        - term:
+            data_audit_file_name:
+              value: "/etc/ld.so.preload"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_file_name
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_execve_a0
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'PATH'; data_audit_file_name equals '/etc/ld.so.preload'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1574.006/T1574.006.md
+  - https://eqllib.readthedocs.io/en/latest/analytics/fd9b987a-1101-4ed3-bda6-a70300eaf57e.html
+  - https://attack.mitre.org/techniques/T1574/006/
+
+response:
+  message: >
+    Modification of ld.so.preload detected on host $agent_name$. Matched
+    data_audit_type: $data_audit_type$. Matched data_audit_file_name:
+    $data_audit_file_name$. MITRE ATT&CK: T1574.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_file_name
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.006
+  custom_tags:
+    - preload
+    - linux
+    - auditd
+    - privilege_escalation
+    - persistence
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_audit_type:/[Pp][Aa][Tt][Hh]/ AND data_audit_file_name:/\/[Ee][Tt][Cc]\/[Ll][Dd]\.[Ss][Oo]\.[Pp][Rr][Ee][Ll][Oo][Aa][Dd]/

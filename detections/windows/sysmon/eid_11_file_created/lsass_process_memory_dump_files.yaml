@@ -1,0 +1,223 @@
+name: LSASS Process Memory Dump Files
+id: a5a2d357-1ab8-4675-a967-ef9990a59391
+version: 1
+schema_version: "1.0"
+date: "2024-10-08"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a5a2d357-1ab8-4675-a967-ef9990a59391
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects creation of files with names used by different memory dumping tools to
+  create a memory dump of the LSASS process memory, which contains user
+  credentials. MITRE ATT&CK: T1003.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\Andrew.dmp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\Coredump.dmp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\lsass.dmp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\lsass.rar"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\lsass.zip"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\NotLSASS.zip"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\PPLBlade.dmp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\rustive.dmp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\lsass_2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\lsassdmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\lsassdump*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\lsass*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*.dmp*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*SQLDmpr*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*.mdmp"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\nanodump*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\proc_*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*.dmp"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\Andrew.dmp'; data_win_eventdata_targetFilename matches '*\Coredump.dmp';
+  data_win_eventdata_targetFilename matches '*\lsass.dmp', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.google.com/search?q=procdump+lsass
+  - https://medium.com/@markmotig/some-ways-to-dump-lsass-exe-c4a75fdc49bf
+  - https://github.com/elastic/detection-rules/blob/c76a39796972ecde44cb1da6df47f1b6562c9770/rules/windows/credential_access_lsass_memdump_file_created.toml
+  - https://www.whiteoaksecurity.com/blog/attacks-defenses-dumping-lsass-no-mimikatz/
+  - https://github.com/helpsystems/nanodump
+  - https://github.com/CCob/MirrorDump
+  - https://github.com/safedv/RustiveDump/blob/1a9b026b477587becfb62df9677cede619d42030/src/main.rs#L35
+  - https://github.com/ricardojoserf/NativeDump/blob/01d8cd17f31f51f5955a38e85cd3c83a17596175/NativeDump/Program.cs#L258
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    LSASS Process Memory Dump Files detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.001
+  custom_tags:
+    - lsass
+    - memory
+    - file_event
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*\\[Aa][Nn][Dd][Rr][Ee][Ww]\.[Dd][Mm][Pp]/ OR data_win_eventdata_targetFilename:/.*\\[Cc][Oo][Rr][Ee][Dd][Uu][Mm][Pp]\.[Dd][Mm][Pp]/ OR data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss]\.[Dd][Mm][Pp]/ OR data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss]\.[Rr][Aa][Rr]/ OR data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss]\.[Zz][Ii][Pp]/ OR data_win_eventdata_targetFilename:/.*\\[Nn][Oo][Tt][Ll][Ss][Aa][Ss][Ss]\.[Zz][Ii][Pp]/ OR data_win_eventdata_targetFilename:/.*\\[Pp][Pp][Ll][Bb][Ll][Aa][Dd][Ee]\.[Dd][Mm][Pp]/ OR data_win_eventdata_targetFilename:/.*\\[Rr][Uu][Ss][Tt][Ii][Vv][Ee]\.[Dd][Mm][Pp]/ OR data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss]_2.*/ OR data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss][Dd][Mm][Pp].*/ OR data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss][Dd][Uu][Mm][Pp].*/ OR (data_win_eventdata_targetFilename:/.*\\[Ll][Ss][Aa][Ss][Ss].*/ AND data_win_eventdata_targetFilename:/.*\.[Dd][Mm][Pp].*/) OR (data_win_eventdata_targetFilename:/.*[Ss][Qq][Ll][Dd][Mm][Pp][Rr].*/ AND data_win_eventdata_targetFilename:/.*\.[Mm][Dd][Mm][Pp]/) OR ((data_win_eventdata_targetFilename:/.*\\[Nn][Aa][Nn][Oo][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_targetFilename:/.*\\[Pp][Rr][Oo][Cc]_.*/) AND data_win_eventdata_targetFilename:/.*\.[Dd][Mm][Pp]/))

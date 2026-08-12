@@ -1,0 +1,160 @@
+name: Potential Startup Shortcut Persistence Via PowerShell.EXE
+id: 92fa78e7-4d39-45f1-91a3-8b23f3f1088d
+version: 1
+schema_version: "1.0"
+date: "2023-02-23"
+author: Christopher Peacock '@securepeacock', SCYTHE
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 92fa78e7-4d39-45f1-91a3-8b23f3f1088d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects PowerShell writing startup shortcuts. This procedure was highlighted
+  in Red Canary Intel Insights Oct. 2021, "We frequently observe adversaries
+  using PowerShell to write malicious .lnk files into the startup directory to
+  establish persistence. Accordingly, this detection opportunity is likely to
+  identify persistence mechanisms in multiple threats. In the context of Yellow
+  Cockatoo, this persistence mechanism eventually launches the command-line
+  script that leads to the installation of a malicious DLL". MITRE ATT&CK:
+  T1547.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\start menu\\\\programs\\\\startup\\\\*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*.lnk"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell.exe'; data_win_eventdata_image matches '*\pwsh.exe';
+  data_win_eventdata_targetFilename matches '*\start menu\programs\startup\*',
+  among other conditions.
+
+known_false_positives: >
+  Depending on your environment accepted applications may leverage this at
+  times. It is recommended to search for anomalies inidicative of malware.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://redcanary.com/blog/intelligence-insights-october-2021/
+  - https://github.com/redcanaryco/atomic-red-team/blob/36d49de4c8b00bf36054294b4a1fcbab3917d7c5/atomics/T1547.001/T1547.001.md#atomic-test-7---add-executable-shortcut-link-to-user-startup-folder
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Potential Startup Shortcut Persistence Via PowerShell.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. MITRE ATT&CK: T1547.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - startup
+    - shortcut
+    - persistence
+    - file_event
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetFilename:/.*\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp]\\.*/ AND data_win_eventdata_targetFilename:/.*\.[Ll][Nn][Kk]/

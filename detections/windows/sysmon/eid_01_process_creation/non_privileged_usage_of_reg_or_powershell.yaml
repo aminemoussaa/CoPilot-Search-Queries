@@ -1,0 +1,196 @@
+name: Non-privileged Usage of Reg or Powershell
+id: 8f02c935-effe-45b3-8fc9-ef8696a9e41d
+version: 1
+schema_version: "1.0"
+date: "2024-12-01"
+author: Teymur Kheirkhabarov (idea), Ryan Plas (rule), oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8f02c935-effe-45b3-8fc9-ef8696a9e41d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Search for usage of reg or Powershell by non-privileged users to modify
+  service configuration in registry. MITRE ATT&CK: T1112.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*reg *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*add*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*powershell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*set-itemproperty*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* sp *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*new-itemproperty*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_integrityLevel:
+                    value: "Medium"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_integrityLevel:
+                    value: "S-1-16-8192"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*ControlSet*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*Services*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ImagePath*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*FailureCommand*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ServiceDLL*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_integrityLevel
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*reg
+  *'; data_win_eventdata_commandLine matches '*add*';
+  data_win_eventdata_commandLine matches '*powershell*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://image.slidesharecdn.com/kheirkhabarovoffzonefinal-181117201458/95/hunting-for-privilege-escalation-in-windows-environment-20-638.jpg
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    Non-privileged Usage of Reg or Powershell detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_integrityLevel:
+    $data_win_eventdata_integrityLevel$. MITRE ATT&CK: T1112
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_integrityLevel
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+  custom_tags:
+    - privileged
+    - powershell
+    - process_creation
+    - sysmon
+    - persistence
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Rr][Ee][Gg] .*/ AND data_win_eventdata_commandLine:/.*[Aa][Dd][Dd].*/) OR data_win_eventdata_commandLine:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Tt]-[Ii][Tt][Ee][Mm][Pp][Rr][Oo][Pp][Ee][Rr][Tt][Yy].*/ OR data_win_eventdata_commandLine:/.* [Ss][Pp] .*/ OR data_win_eventdata_commandLine:/.*[Nn][Ee][Ww]-[Ii][Tt][Ee][Mm][Pp][Rr][Oo][Pp][Ee][Rr][Tt][Yy].*/) AND (data_win_eventdata_integrityLevel:/[Mm][Ee][Dd][Ii][Uu][Mm]/ OR data_win_eventdata_integrityLevel:/[Ss]-1-16-8192/) AND data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ss][Ee][Tt].*/ AND data_win_eventdata_commandLine:/.*[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss].*/ AND (data_win_eventdata_commandLine:/.*[Ii][Mm][Aa][Gg][Ee][Pp][Aa][Tt][Hh].*/ OR data_win_eventdata_commandLine:/.*[Ff][Aa][Ii][Ll][Uu][Rr][Ee][Cc][Oo][Mm][Mm][Aa][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Dd][Ll][Ll].*/)

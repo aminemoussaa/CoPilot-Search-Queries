@@ -1,0 +1,564 @@
+name: HackTool - LaZagne Execution
+id: c2b86e67-b880-4eec-b045-50bc98ef4844
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Nasreddine Bencherchali, Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c2b86e67-b880-4eec-b045-50bc98ef4844
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of the LaZagne. A utility used to retrieve multiple
+  types of passwords stored on a local computer. LaZagne has been leveraged
+  multiple times by threat actors in order to dump credentials.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\lazagne.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\PerfLogs\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\ProgramData\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Tmp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Users\\\\Public\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Windows\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\$Recycle.bin*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\AppData\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Desktop\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Downloads\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Favorites\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Links\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Music\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Photos\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Pictures\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Saved Games\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Searches\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Users\\\\Contacts\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Users\\\\Default\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Users\\\\Searches\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Videos\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Windows\\\\addins\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Windows\\\\Fonts\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Windows\\\\IME\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe all"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe browsers"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe chats"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe databases"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe games"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe git"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe mails"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe maven"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe memory"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe multimedia"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe sysadmin"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe unused"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe wifi"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.exe windows"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* all *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* browsers *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* chats *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* databases *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* games *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* mails *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* maven *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* memory *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* multimedia *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* php *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* svn *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* sysadmin *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* unused *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* wifi *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-1Password*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-apachedirectorystudio*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-autologon*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-ChromiumBased*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-coreftp*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-credfiles*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-credman*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-cyberduck*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-dbvis*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-EyeCon*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-filezilla*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-filezillaserver*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-ftpnavigator*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-galconfusion*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-gitforwindows*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-hashdump*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-iisapppool*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-IISCentralCertP*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-kalypsomedia*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-keepass*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-keepassconfig*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-lsa_secrets*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-mavenrepositories*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-memory_dump*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-Mozilla*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-mRemoteNG*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-mscache*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-opensshforwindows*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-openvpn*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-outlook*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-pidgin*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-postgresql*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-psi-im*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-puttycm*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-pypykatz*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-Rclone*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-rdpmanager*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-robomongo*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-roguestale*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-skype*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-SQLDeveloper*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-squirrel*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-tortoise*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-turba*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-UCBrowser*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-unattended*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-vault*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-vaultfiles*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-vnc*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-winscp*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\lazagne.exe'; data_win_eventdata_image matches '*:\PerfLogs\*';
+  data_win_eventdata_image matches '*:\ProgramData\*', among other conditions.
+
+known_false_positives: >
+  Some false positive is expected from tools with similar command line flags.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://github.com/AlessandroZ/LaZagne/tree/master
+  - https://thedfirreport.com/2022/05/09/seo-poisoning-a-gootloader-story/
+  - https://cloud.google.com/blog/topics/threat-intelligence/alphv-ransomware-backup/
+  - https://securelist.com/defttorero-tactics-techniques-and-procedures/107610/
+  - https://github.com/CyberMonitor/APT_CyberCriminal_Campagin_Collections/raw/800c0e06571993a54e39571cf27fd474dcc5c0bc/2017/2017.11.14.Muddying_the_Water/muddying-the-water-targeted-attacks.pdf
+
+response:
+  message: >
+    HackTool - LaZagne Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - hacktool
+    - lazagne
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ll][Aa][Zz][Aa][Gg][Nn][Ee]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/.*:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\.*/ OR data_win_eventdata_image:/.*:\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_image:/.*:\\[Tt][Mm][Pp]\\.*/ OR data_win_eventdata_image:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_image:/.*\\\$[Rr][Ee][Cc][Yy][Cc][Ll][Ee]\.[Bb][Ii][Nn].*/ OR data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\.*/ OR data_win_eventdata_image:/.*\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\.*/ OR data_win_eventdata_image:/.*\\[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Ff][Aa][Vv][Oo][Rr][Ii][Tt][Ee][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Ll][Ii][Nn][Kk][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Mm][Uu][Ss][Ii][Cc]\\.*/ OR data_win_eventdata_image:/.*\\[Pp][Hh][Oo][Tt][Oo][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Pp][Ii][Cc][Tt][Uu][Rr][Ee][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Ss][Aa][Vv][Ee][Dd] [Gg][Aa][Mm][Ee][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Ss][Ee][Aa][Rr][Cc][Hh][Ee][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Cc][Oo][Nn][Tt][Aa][Cc][Tt][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Dd][Ee][Ff][Aa][Uu][Ll][Tt]\\.*/ OR data_win_eventdata_image:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Ss][Ee][Aa][Rr][Cc][Hh][Ee][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Vv][Ii][Dd][Ee][Oo][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Aa][Dd][Dd][Ii][Nn][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ff][Oo][Nn][Tt][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Mm][Ee]\\.*/) AND (data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Aa][Ll][Ll]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Bb][Rr][Oo][Ww][Ss][Ee][Rr][Ss]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Cc][Hh][Aa][Tt][Ss]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee][Ss]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Gg][Aa][Mm][Ee][Ss]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Gg][Ii][Tt]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Mm][Aa][Ii][Ll][Ss]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Mm][Aa][Vv][Ee][Nn]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Mm][Ee][Mm][Oo][Rr][Yy]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Mm][Uu][Ll][Tt][Ii][Mm][Ee][Dd][Ii][Aa]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Ss][Yy][Ss][Aa][Dd][Mm][Ii][Nn]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Uu][Nn][Uu][Ss][Ee][Dd]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Ww][Ii][Ff][Ii]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Ww][Ii][Nn][Dd][Oo][Ww][Ss]/)) OR ((data_win_eventdata_commandLine:/.* [Aa][Ll][Ll] .*/ OR data_win_eventdata_commandLine:/.* [Bb][Rr][Oo][Ww][Ss][Ee][Rr][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Cc][Hh][Aa][Tt][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Gg][Aa][Mm][Ee][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Aa][Ii][Ll][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Aa][Vv][Ee][Nn] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Ee][Mm][Oo][Rr][Yy] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Uu][Ll][Tt][Ii][Mm][Ee][Dd][Ii][Aa] .*/ OR data_win_eventdata_commandLine:/.* [Pp][Hh][Pp] .*/ OR data_win_eventdata_commandLine:/.* [Ss][Vv][Nn] .*/ OR data_win_eventdata_commandLine:/.* [Ss][Yy][Ss][Aa][Dd][Mm][Ii][Nn] .*/ OR data_win_eventdata_commandLine:/.* [Uu][Nn][Uu][Ss][Ee][Dd] .*/ OR data_win_eventdata_commandLine:/.* [Ww][Ii][Ff][Ii] .*/) AND (data_win_eventdata_commandLine:/.*-1[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd].*/ OR data_win_eventdata_commandLine:/.*-[Aa][Pp][Aa][Cc][Hh][Ee][Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy][Ss][Tt][Uu][Dd][Ii][Oo].*/ OR data_win_eventdata_commandLine:/.*-[Aa][Uu][Tt][Oo][Ll][Oo][Gg][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Cc][Hh][Rr][Oo][Mm][Ii][Uu][Mm][Bb][Aa][Ss][Ee][Dd].*/ OR data_win_eventdata_commandLine:/.*-[Cc][Oo][Rr][Ee][Ff][Tt][Pp].*/ OR data_win_eventdata_commandLine:/.*-[Cc][Rr][Ee][Dd][Ff][Ii][Ll][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Cc][Rr][Ee][Dd][Mm][Aa][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Cc][Yy][Bb][Ee][Rr][Dd][Uu][Cc][Kk].*/ OR data_win_eventdata_commandLine:/.*-[Dd][Bb][Vv][Ii][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Ee][Yy][Ee][Cc][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Ff][Ii][Ll][Ee][Zz][Ii][Ll][Ll][Aa].*/ OR data_win_eventdata_commandLine:/.*-[Ff][Ii][Ll][Ee][Zz][Ii][Ll][Ll][Aa][Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*-[Ff][Tt][Pp][Nn][Aa][Vv][Ii][Gg][Aa][Tt][Oo][Rr].*/ OR data_win_eventdata_commandLine:/.*-[Gg][Aa][Ll][Cc][Oo][Nn][Ff][Uu][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Gg][Ii][Tt][Ff][Oo][Rr][Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Hh][Aa][Ss][Hh][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*-[Ii][Ii][Ss][Aa][Pp][Pp][Pp][Oo][Oo][Ll].*/ OR data_win_eventdata_commandLine:/.*-[Ii][Ii][Ss][Cc][Ee][Nn][Tt][Rr][Aa][Ll][Cc][Ee][Rr][Tt][Pp].*/ OR data_win_eventdata_commandLine:/.*-[Kk][Aa][Ll][Yy][Pp][Ss][Oo][Mm][Ee][Dd][Ii][Aa].*/ OR data_win_eventdata_commandLine:/.*-[Kk][Ee][Ee][Pp][Aa][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Kk][Ee][Ee][Pp][Aa][Ss][Ss][Cc][Oo][Nn][Ff][Ii][Gg].*/ OR data_win_eventdata_commandLine:/.*-[Ll][Ss][Aa]_[Ss][Ee][Cc][Rr][Ee][Tt][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Mm][Aa][Vv][Ee][Nn][Rr][Ee][Pp][Oo][Ss][Ii][Tt][Oo][Rr][Ii][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Mm][Ee][Mm][Oo][Rr][Yy]_[Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*-[Mm][Oo][Zz][Ii][Ll][Ll][Aa].*/ OR data_win_eventdata_commandLine:/.*-[Mm][Rr][Ee][Mm][Oo][Tt][Ee][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*-[Mm][Ss][Cc][Aa][Cc][Hh][Ee].*/ OR data_win_eventdata_commandLine:/.*-[Oo][Pp][Ee][Nn][Ss][Ss][Hh][Ff][Oo][Rr][Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Oo][Pp][Ee][Nn][Vv][Pp][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Oo][Uu][Tt][Ll][Oo][Oo][Kk].*/ OR data_win_eventdata_commandLine:/.*-[Pp][Ii][Dd][Gg][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Pp][Oo][Ss][Tt][Gg][Rr][Ee][Ss][Qq][Ll].*/ OR data_win_eventdata_commandLine:/.*-[Pp][Ss][Ii]-[Ii][Mm].*/ OR data_win_eventdata_commandLine:/.*-[Pp][Uu][Tt][Tt][Yy][Cc][Mm].*/ OR data_win_eventdata_commandLine:/.*-[Pp][Yy][Pp][Yy][Kk][Aa][Tt][Zz].*/ OR data_win_eventdata_commandLine:/.*-[Rr][Cc][Ll][Oo][Nn][Ee].*/ OR data_win_eventdata_commandLine:/.*-[Rr][Dd][Pp][Mm][Aa][Nn][Aa][Gg][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*-[Rr][Oo][Bb][Oo][Mm][Oo][Nn][Gg][Oo].*/ OR data_win_eventdata_commandLine:/.*-[Rr][Oo][Gg][Uu][Ee][Ss][Tt][Aa][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*-[Ss][Kk][Yy][Pp][Ee].*/ OR data_win_eventdata_commandLine:/.*-[Ss][Qq][Ll][Dd][Ee][Vv][Ee][Ll][Oo][Pp][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*-[Ss][Qq][Uu][Ii][Rr][Rr][Ee][Ll].*/ OR data_win_eventdata_commandLine:/.*-[Tt][Oo][Rr][Tt][Oo][Ii][Ss][Ee].*/ OR data_win_eventdata_commandLine:/.*-[Tt][Uu][Rr][Bb][Aa].*/ OR data_win_eventdata_commandLine:/.*-[Uu][Cc][Bb][Rr][Oo][Ww][Ss][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*-[Uu][Nn][Aa][Tt][Tt][Ee][Nn][Dd][Ee][Dd].*/ OR data_win_eventdata_commandLine:/.*-[Vv][Aa][Uu][Ll][Tt].*/ OR data_win_eventdata_commandLine:/.*-[Vv][Aa][Uu][Ll][Tt][Ff][Ii][Ll][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*-[Vv][Nn][Cc].*/ OR data_win_eventdata_commandLine:/.*-[Ww][Ii][Nn][Ss][Cc][Pp].*/)))

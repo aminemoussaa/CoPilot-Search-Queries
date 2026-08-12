@@ -1,0 +1,179 @@
+name: Potential Suspicious PowerShell Keywords
+id: 1f49f2ab-26bc-48b3-96cc-dcffbc93eadf
+version: 1
+schema_version: "1.0"
+date: "2023-04-21"
+author: Florian Roth (Nextron Systems), Perez Diego (@darkquassar), Tuan Le (NCSGroup)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1f49f2ab-26bc-48b3-96cc-dcffbc93eadf
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potentially suspicious keywords that could indicate the use of a
+  PowerShell exploitation framework. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*System.Reflection.Assembly.Load($*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*[System.Reflection.Assembly]::Load($*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*[Reflection.Assembly]::Load($*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*System.Reflection.AssemblyName*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Reflection.Emit.AssemblyBuilderAccess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Reflection.Emit.CustomAttributeBuilder*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Runtime.InteropServices.UnmanagedType*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Runtime.InteropServices.DllImportAttribute*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*SuspendThread*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*rundll32*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches
+  '*System.Reflection.Assembly.Load($*'; data_win_eventdata_scriptBlockText
+  matches '*[System.Reflection.Assembly]::Load($*';
+  data_win_eventdata_scriptBlockText matches '*[Reflection.Assembly]::Load($*',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://posts.specterops.io/entering-a-covenant-net-command-and-control-e11038bcf462
+  - https://github.com/PowerShellMafia/PowerSploit/blob/d943001a7defb5e0d1657085a77a0e78609be58f/CodeExecution/Invoke-ReflectivePEInjection.ps1
+  - https://github.com/hlldz/Phant0m/blob/30c2935d8cf4aafda17ee2fab7cd0c4aa9a607c2/old/Invoke-Phant0m.ps1
+  - https://gist.github.com/MHaggis/0dbe00ad401daa7137c81c99c268cfb7
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Potential Suspicious PowerShell Keywords detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - powershell
+    - keywords
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Rr][Ee][Ff][Ll][Ee][Cc][Tt][Ii][Oo][Nn]\.[Aa][Ss][Ss][Ee][Mm][Bb][Ll][Yy]\.[Ll][Oo][Aa][Dd]\(\$.*/ OR data_win_eventdata_scriptBlockText:/.*\[[Ss][Yy][Ss][Tt][Ee][Mm]\.[Rr][Ee][Ff][Ll][Ee][Cc][Tt][Ii][Oo][Nn]\.[Aa][Ss][Ss][Ee][Mm][Bb][Ll][Yy]\]::[Ll][Oo][Aa][Dd]\(\$.*/ OR data_win_eventdata_scriptBlockText:/.*\[[Rr][Ee][Ff][Ll][Ee][Cc][Tt][Ii][Oo][Nn]\.[Aa][Ss][Ss][Ee][Mm][Bb][Ll][Yy]\]::[Ll][Oo][Aa][Dd]\(\$.*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Rr][Ee][Ff][Ll][Ee][Cc][Tt][Ii][Oo][Nn]\.[Aa][Ss][Ss][Ee][Mm][Bb][Ll][Yy][Nn][Aa][Mm][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Ff][Ll][Ee][Cc][Tt][Ii][Oo][Nn]\.[Ee][Mm][Ii][Tt]\.[Aa][Ss][Ss][Ee][Mm][Bb][Ll][Yy][Bb][Uu][Ii][Ll][Dd][Ee][Rr][Aa][Cc][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Ff][Ll][Ee][Cc][Tt][Ii][Oo][Nn]\.[Ee][Mm][Ii][Tt]\.[Cc][Uu][Ss][Tt][Oo][Mm][Aa][Tt][Tt][Rr][Ii][Bb][Uu][Tt][Ee][Bb][Uu][Ii][Ll][Dd][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Uu][Nn][Tt][Ii][Mm][Ee]\.[Ii][Nn][Tt][Ee][Rr][Oo][Pp][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\.[Uu][Nn][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Tt][Yy][Pp][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Uu][Nn][Tt][Ii][Mm][Ee]\.[Ii][Nn][Tt][Ee][Rr][Oo][Pp][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\.[Dd][Ll][Ll][Ii][Mm][Pp][Oo][Rr][Tt][Aa][Tt][Tt][Rr][Ii][Bb][Uu][Tt][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*[Ss][Uu][Ss][Pp][Ee][Nn][Dd][Tt][Hh][Rr][Ee][Aa][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32.*/)

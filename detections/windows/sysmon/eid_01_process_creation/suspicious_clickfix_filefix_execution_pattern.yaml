@@ -1,0 +1,213 @@
+name: Suspicious ClickFix/FileFix Execution Pattern
+id: d487ed4a-fd24-436d-a0b2-f4e95f7b2635
+version: 1
+schema_version: "1.0"
+date: "2025-11-19"
+author: montysecurity, Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d487ed4a-fd24-436d-a0b2-f4e95f7b2635
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious execution patterns where users are tricked into running
+  malicious commands via clipboard manipulation, either through the Windows Run
+  dialog (ClickFix) or File Explorer address bar (FileFix). Attackers leverage
+  social engineering campaigns—such as fake CAPTCHA challenges or urgent
+  alerts—encouraging victims to paste clipboard contents, often executing
+  mshta.exe, powershell.exe, or similar commands to infect systems. MITRE
+  ATT&CK: T1204.001, T1204.004.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\explorer.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine: "*#*"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*account*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*anti-bot*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*botcheck*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*captcha*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*challenge*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*confirmation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*fraud*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*human*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*identification*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*identificator*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*identity*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*robot*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*validation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*verification*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*verify*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\explorer.exe'; data_win_eventdata_commandLine matches '*#*';
+  data_win_eventdata_commandLine matches '*account*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/JohnHammond/recaptcha-phish
+  - https://www.zscaler.com/blogs/security-research/deepseek-lure-using-captchas-spread-malware
+  - https://www.threatdown.com/blog/clipboard-hijacker-tries-to-install-a-trojan/
+  - https://app.any.run/tasks/5c16b4db-4b36-4039-a0ed-9b09abff8be2
+  - https://www.esentire.com/security-advisories/netsupport-rat-clickfix-distribution
+  - https://www.scpx.com.au/2025/11/16/decades-old-finger-protocol-abused-in-clickfix-malware-attacks/
+  - https://attack.mitre.org/techniques/T1204/001/
+  - https://attack.mitre.org/techniques/T1204/004/
+
+response:
+  message: >
+    Suspicious ClickFix/FileFix Execution Pattern detected on host $agent_name$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1204.001, T1204.004
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1204.001
+    - T1204.004
+  custom_tags:
+    - clickfix
+    - filefix
+    - pattern
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*\#.*/ AND (data_win_eventdata_commandLine:/.*[Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ OR data_win_eventdata_commandLine:/.*[Aa][Nn][Tt][Ii]-[Bb][Oo][Tt].*/ OR data_win_eventdata_commandLine:/.*[Bb][Oo][Tt][Cc][Hh][Ee][Cc][Kk].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Pp][Tt][Cc][Hh][Aa].*/ OR data_win_eventdata_commandLine:/.*[Cc][Hh][Aa][Ll][Ll][Ee][Nn][Gg][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Ff][Ii][Rr][Mm][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ff][Rr][Aa][Uu][Dd].*/ OR data_win_eventdata_commandLine:/.*[Hh][Uu][Mm][Aa][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ii][Dd][Ee][Nn][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ii][Dd][Ee][Nn][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Oo][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ii][Dd][Ee][Nn][Tt][Ii][Tt][Yy].*/ OR data_win_eventdata_commandLine:/.*[Rr][Oo][Bb][Oo][Tt].*/ OR data_win_eventdata_commandLine:/.*[Vv][Aa][Ll][Ii][Dd][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ee][Rr][Ii][Ff][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ee][Rr][Ii][Ff][Yy].*/)

@@ -1,11 +1,39 @@
-# eid 16 sysmon config changed
+# Sysmon Event ID 16 — Sysmon Configuration Changed
 
-Sysmon Event ID 16 — Sysmon configuration changed.
+**Platform** `Windows` · **Log source** Sysmon `Microsoft-Windows-Sysmon/Operational` · **1 rule**
 
-**1 rules** — medium 1
+Sysmon's own configuration being changed — tampering with the sensor itself.
 
-> Generated index. Severity and MITRE columns are read from each rule file.
+[← all detections](../README.md)
 
-| Rule | Severity | MITRE ATT&CK | File |
-| --- | --- | --- | --- |
-| Sysmon Configuration Change | medium | — | [sysmon_configuration_change.yaml](./sysmon_configuration_change.yaml) |
+## At a glance
+
+| | |
+| --- | --- |
+| Severity | 🟡 medium 1 |
+| Status | experimental 1 |
+| ATT&CK techniques | 0 distinct |
+| Provenance | 1 Sigma-derived, 0 written for this repo |
+| Event IDs queried | `16` (1) |
+
+## Onboarding
+
+Produced automatically by Sysmon; no configuration needed. Always collect it.
+
+## Fields these rules filter on
+
+| Field | Rules |
+| --- | --- |
+| `data_win_system_eventID` | 1 |
+
+## Rules (1)
+
+Sorted by severity, then name.
+
+| Rule | Severity | Risk | ATT&CK | File |
+| --- | --- | --- | --- | --- |
+| Sysmon Configuration Change | 🟡 medium | 50 | — | [`sysmon_configuration_change.yaml`](./sysmon_configuration_change.yaml) |
+
+---
+
+<sub>Generated index — regenerate after adding or editing rules in this folder.</sub>

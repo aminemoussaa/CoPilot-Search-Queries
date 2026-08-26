@@ -1,0 +1,158 @@
+name: OilRig APT Registry Persistence
+id: 7bdf2a7c-3acc-4091-9581-0a77dad1c5b5
+version: 1
+schema_version: "1.0"
+date: "2023-03-08"
+author: Florian Roth (Nextron Systems), Markus Neis, Jonhnathan Ribeiro, Daniil Yugoslavskiy, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7bdf2a7c-3acc-4091-9581-0a77dad1c5b5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects OilRig registry persistence as reported by Nyotron in their March 2018
+  report. MITRE ATT&CK: T1053.005, T1543.003, T1112, T1071.004.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\UMe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\UT"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*SOFTWARE\Microsoft\Windows\CurrentVersion\UMe';
+  data_win_eventdata_targetObject matches
+  '*SOFTWARE\Microsoft\Windows\CurrentVersion\UT'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://web.archive.org/web/20180402134442/https://nyotron.com/wp-content/uploads/2018/03/Nyotron-OilRig-Malware-Report-March-2018C.pdf
+  - https://attack.mitre.org/techniques/T1053/005/
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://attack.mitre.org/techniques/T1112/
+  - https://attack.mitre.org/techniques/T1071/004/
+
+response:
+  message: >
+    OilRig APT Registry Persistence detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1053.005, T1543.003, T1112, T1071.004
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053.005
+    - T1543.003
+    - T1112
+    - T1071.004
+  custom_tags:
+    - oilrig
+    - registry
+    - persistence
+    - sysmon
+    - privilege_escalation
+    - execution
+    - defense_impairment
+    - g0049
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND (data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Uu][Mm][Ee]/ OR data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Uu][Tt]/)

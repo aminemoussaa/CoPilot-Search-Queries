@@ -1,0 +1,247 @@
+name: Potential Persistence Via Microsoft Office Startup Folder
+id: 0e20c89d-2264-44ae-8238-aeeaba609ece
+version: 1
+schema_version: "1.0"
+date: "2023-06-22"
+author: Max Altgelt (Nextron Systems), Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0e20c89d-2264-44ae-8238-aeeaba609ece
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects creation of Microsoft Office files inside of one of the default
+  startup folders in order to achieve persistence. MITRE ATT&CK: T1137.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\Microsoft\\\\Word\\\\STARTUP*"
+                                case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*\\\\Office*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*\\\\Program Files*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*\\\\STARTUP*"
+                                      case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.doc"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.docm"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.docx"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.dot"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.dotm"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.rtf"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\Microsoft\\\\Excel\\\\XLSTART*"
+                                case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*\\\\Office*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*\\\\Program Files*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*\\\\XLSTART*"
+                                      case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.xls"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.xlsm"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.xlsx"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.xlt"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.xltm"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\WINWORD.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\EXCEL.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\Microsoft\Word\STARTUP*'; data_win_eventdata_targetFilename matches
+  '*\Office*'; data_win_eventdata_targetFilename matches '*\Program Files*',
+  among other conditions.
+
+known_false_positives: >
+  Loading a user environment from a backup or a domain controller.
+  Synchronization of templates. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://insight-jp.nttsecurity.com/post/102hojk/operation-restylink-apt-campaign-targeting-japanese-companies
+  - https://learn.microsoft.com/en-us/office/troubleshoot/excel/use-startup-folders
+  - https://attack.mitre.org/techniques/T1137/
+
+response:
+  message: >
+    Potential Persistence Via Microsoft Office Startup Folder detected on host
+    $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1137
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1137
+  custom_tags:
+    - persistence
+    - microsoft
+    - office
+    - file_event
+    - sysmon
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (((data_win_eventdata_targetFilename:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Oo][Rr][Dd]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR (data_win_eventdata_targetFilename:/.*\\[Oo][Ff][Ff][Ii][Cc][Ee].*/ AND data_win_eventdata_targetFilename:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss].*/ AND data_win_eventdata_targetFilename:/.*\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/)) AND (data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Cc]/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Cc][Mm]/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Cc][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Tt]/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Tt][Mm]/ OR data_win_eventdata_targetFilename:/.*\.[Rr][Tt][Ff]/)) OR ((data_win_eventdata_targetFilename:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ee][Xx][Cc][Ee][Ll]\\[Xx][Ll][Ss][Tt][Aa][Rr][Tt].*/ OR (data_win_eventdata_targetFilename:/.*\\[Oo][Ff][Ff][Ii][Cc][Ee].*/ AND data_win_eventdata_targetFilename:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss].*/ AND data_win_eventdata_targetFilename:/.*\\[Xx][Ll][Ss][Tt][Aa][Rr][Tt].*/)) AND (data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ss]/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ss][Mm]/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ss][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Tt]/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Tt][Mm]/))) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Ww][Ii][Nn][Ww][Oo][Rr][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ee][Xx][Cc][Ee][Ll]\.[Ee][Xx][Ee]/)

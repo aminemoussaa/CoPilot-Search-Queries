@@ -1,0 +1,227 @@
+name: RedSun - Conhost.exe Spawned by TieringEngineService.exe
+id: 2ad78473-6978-40f5-b8f1-89c7e1c27a1a
+version: 1
+schema_version: "1.0"
+date: "2026-04-17"
+author: Swachchhanda Shrawan Poudel (Nextron Systems), @unresolvedhost
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2ad78473-6978-40f5-b8f1-89c7e1c27a1a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects two stages of the RedSun post-exploitation process chain that deliver
+  a SYSTEM-level shell to the attacker's interactive session. Observed process
+  chain services.exe → TieringEngineService.exe → conhost.exe (SYSTEM,
+  CommandLine: bare path, no arguments) → cmd.exe / shell (SYSTEM,
+  TerminalSessionId = attacker's session) Stage 1 — TieringEngineService.exe
+  spawns argument-less conhost.exe: After winning the oplock + Cloud Files mount
+  point race, the malicious TieringEngineService.exe (RedSun.exe copied to
+  System32, started via CoCreateInstance / services.exe) detects it is NT
+  AUTHORITY\SYSTEM and calls LaunchConsoleInSessionId(). This opens
+  \\.\pipe\REDSUN, reads the attacker's session ID, duplicates the SYSTEM token,
+  re-stamps it with that session ID via SetTokenInformation(TokenSessionId),
+  then calls CreateProcessAsUser to spawn conhost.exe with no arguments. Stage 2
+  — Shell spawned from rogue conhost.exe (EDR sources with GrandParentImage):
+  The rogue SYSTEM conhost.exe spawns a shell (cmd.exe, PowerShell, etc.) as
+  SYSTEM in the attacker's interactive session. On EDR sources that expose
+  GrandParentImage, the full three-level chain (TieringEngineService.exe →
+  conhost.exe → shell) can be matched directly. The legitimate
+  TieringEngineService.exe is a headless COM server that is unlikely to spawn
+  conhost.exe under normal conditions. MITRE ATT&CK: T1134.002, T1036.005.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\TieringEngineService.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\conhost.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*conhost.exe\""
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_user:
+                                value: "*AUTHORI*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_user:
+                                value: "*AUTORI*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_user: "*$*"
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_grandParentImage:
+                          value: "*\\\\TieringEngineService.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\conhost.exe"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\cmd.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell_ise.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_user:
+                                value: "*AUTHORI*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_user:
+                                value: "*AUTORI*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_user: "*$*"
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+    - data_win_eventdata_grandParentImage
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\TieringEngineService.exe'; data_win_eventdata_image matches
+  '*\conhost.exe'; data_win_eventdata_commandLine matches '*conhost.exe"', among
+  other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/Nightmare-Eclipse/RedSun
+  - https://attack.mitre.org/techniques/T1134/002/
+  - https://attack.mitre.org/techniques/T1036/005/
+
+response:
+  message: >
+    RedSun - Conhost.exe Spawned by TieringEngineService.exe detected on host
+    $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1134.002, T1036.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1134.002
+    - T1036.005
+  custom_tags:
+    - redsun
+    - conhost
+    - spawned
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_parentImage:/.*\\[Tt][Ii][Ee][Rr][Ii][Nn][Gg][Ee][Nn][Gg][Ii][Nn][Ee][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_image:/.*\\[Cc][Oo][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]\"/ AND (data_win_eventdata_user:/.*[Aa][Uu][Tt][Hh][Oo][Rr][Ii].*/ OR data_win_eventdata_user:/.*[Aa][Uu][Tt][Oo][Rr][Ii].*/ OR data_win_eventdata_user:/.*\$.*/)) OR (data_win_eventdata_grandParentImage:/.*\\[Tt][Ii][Ee][Rr][Ii][Nn][Gg][Ee][Nn][Gg][Ii][Nn][Ee][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentImage:/.*\\[Cc][Oo][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_user:/.*[Aa][Uu][Tt][Hh][Oo][Rr][Ii].*/ OR data_win_eventdata_user:/.*[Aa][Uu][Tt][Oo][Rr][Ii].*/ OR data_win_eventdata_user:/.*\$.*/)))

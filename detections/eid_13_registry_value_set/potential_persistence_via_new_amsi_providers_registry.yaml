@@ -1,0 +1,198 @@
+name: Potential Persistence Via New AMSI Providers - Registry
+id: 33efc23c-6ea2-4503-8cfe-bdf82ce8f705
+version: 1
+schema_version: "1.0"
+date: "2025-10-26"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 33efc23c-6ea2-4503-8cfe-bdf82ce8f705
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when an attacker adds a new AMSI provider via the Windows Registry to
+  bypass AMSI (Antimalware Scan Interface) protections. Attackers may add custom
+  AMSI providers to persist on the system and evade detection by security
+  software that relies on AMSI for scanning scripts and other content. This
+  technique is often used in conjunction with fileless malware and script-based
+  attacks to maintain persistence while avoiding detection.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\Microsoft\\\\AMSI\\\\Providers\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\WOW6432Node\\\\Microsoft\\\\AMSI\\\\Providers\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files\\Avast Software\\Avast\\RegSvr.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files\\Avast Software\\Avast\\x86\\RegSvr.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\{FB904E4E-D2C7-4C8D-8492-B620BB9896B1}*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files\\AVG\\Antivirus\\RegSvr.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files\\AVG\\Antivirus\\x86\\RegSvr.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\{FB904E4E-D2C7-4C8D-8492-B620BB9896B1}*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Program Files\\Avira\\Endpoint Protection SDK\\endpointprotection.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\{00000001-3DCC-4B48-A82E-E2071FE58E05}*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\AMSI\Providers\*'; data_win_eventdata_targetObject
+  matches '*\SOFTWARE\WOW6432Node\Microsoft\AMSI\Providers\*';
+  data_win_eventdata_image equals 'C:\Program Files\Avast
+  Software\Avast\RegSvr.exe', among other conditions.
+
+known_false_positives: >
+  Legitimate security products adding their own AMSI providers. Filter these
+  according to your environment. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://persistence-info.github.io/Data/amsi.html
+  - https://github.com/gtworek/PSBits/blob/8d767892f3b17eefa4d0668f5d2df78e844f01d8/FakeAMSI/FakeAMSI.c
+
+response:
+  message: >
+    Potential Persistence Via New AMSI Providers - Registry detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - persistence
+    - providers
+    - registry
+    - sysmon
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Aa][Mm][Ss][Ii]\\[Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr][Ss]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ww][Oo][Ww]6432[Nn][Oo][Dd][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Aa][Mm][Ss][Ii]\\[Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr][Ss]\\.*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND NOT (((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\[Xx]86\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetObject:/.*\\\{[Ff][Bb]904[Ee]4[Ee]-[Dd]2[Cc]7-4[Cc]8[Dd]-8492-[Bb]620[Bb][Bb]9896[Bb]1\}.*/) OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Gg]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Gg]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\\[Xx]86\\[Rr][Ee][Gg][Ss][Vv][Rr]\.[Ee][Xx][Ee]/) AND data_win_eventdata_targetObject:/.*\\\{[Ff][Bb]904[Ee]4[Ee]-[Dd]2[Cc]7-4[Cc]8[Dd]-8492-[Bb]620[Bb][Bb]9896[Bb]1\}.*/) OR (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Ii][Rr][Aa]\\[Ee][Nn][Dd][Pp][Oo][Ii][Nn][Tt] [Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn] [Ss][Dd][Kk]\\[Ee][Nn][Dd][Pp][Oo][Ii][Nn][Tt][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\\{00000001-3[Dd][Cc][Cc]-4[Bb]48-[Aa]82[Ee]-[Ee]2071[Ff][Ee]58[Ee]05\}.*/))

@@ -1,0 +1,380 @@
+name: Suspicious Double Extension File Execution
+id: 1cdd9a09-06c9-4769-99ff-626e2b3991b8
+version: 1
+schema_version: "1.0"
+date: "2025-05-30"
+author: Florian Roth (Nextron Systems), @blu3_team (idea), Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1cdd9a09-06c9-4769-99ff-626e2b3991b8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects suspicious use of an .exe extension after a non-executable file
+  extension like .pdf.exe, a set of spaces or underlines to cloak the executable
+  file in spear phishing campaigns. MITRE ATT&CK: T1566.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*      .exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*______.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.doc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.doc.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.docx.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.docx.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.gif.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.jpeg.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.jpg.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.mkv.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.mov.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.mp3.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.mp4.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.pdf.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.pdf.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.png.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.ppt.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.ppt.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.pptx.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.pptx.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.rtf.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.rtf.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.svg.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.txt.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.txt.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.xls.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.xls.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.xlsx.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*.xlsx.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*⠀⠀⠀⠀⠀⠀.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*      .exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*______.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.doc.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.doc.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.docx.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.docx.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.gif.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.jpeg.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.jpg.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.mkv.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.mov.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.mp3.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.mp4.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.pdf.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.pdf.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.png.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.ppt.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.ppt.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.pptx.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.pptx.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.rtf.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.rtf.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.svg.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.txt.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.txt.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.xls.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.xls.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.xlsx.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.xlsx.js*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*⠀⠀⠀⠀⠀⠀.exe*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '* .exe';
+  data_win_eventdata_image matches '*______.exe'; data_win_eventdata_image
+  matches '*.doc.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blu3-team.blogspot.com/2019/06/misleading-extensions-xlsexe-docexe.html
+  - https://twitter.com/blackorbird/status/1140519090961825792
+  - https://cloud.google.com/blog/topics/threat-intelligence/cybercriminals-weaponize-fake-ai-websites
+  - https://attack.mitre.org/techniques/T1566/001/
+
+response:
+  message: >
+    Suspicious Double Extension File Execution detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1566.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1566.001
+  custom_tags:
+    - double
+    - extension
+    - process_creation
+    - sysmon
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*      \.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*______\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Dd][Oo][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Dd][Oo][Cc]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Dd][Oo][Cc][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Dd][Oo][Cc][Xx]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Gg][Ii][Ff]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Jj][Pp][Ee][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Jj][Pp][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Mm][Kk][Vv]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Mm][Oo][Vv]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Mm][Pp]3\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Mm][Pp]4\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Pp][Dd][Ff]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Pp][Dd][Ff]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Pp][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Pp][Pp][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Pp][Pp][Tt]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Pp][Pp][Tt][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Pp][Pp][Tt][Xx]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Rr][Tt][Ff]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Rr][Tt][Ff]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Ss][Vv][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Tt][Xx][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Tt][Xx][Tt]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Xx][Ll][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Xx][Ll][Ss]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*\.[Xx][Ll][Ss][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Xx][Ll][Ss][Xx]\.[Jj][Ss]/ OR data_win_eventdata_image:/.*⠀⠀⠀⠀⠀⠀\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*      \.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*______\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Cc]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Cc]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Cc][Xx]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Cc][Xx]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Gg][Ii][Ff]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Jj][Pp][Ee][Gg]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Jj][Pp][Gg]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Mm][Kk][Vv]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Mm][Oo][Vv]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Mm][Pp]3\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Mm][Pp]4\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Dd][Ff]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Dd][Ff]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Nn][Gg]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Pp][Tt]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Pp][Tt]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Pp][Tt][Xx]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Pp][Tt][Xx]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Rr][Tt][Ff]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Rr][Tt][Ff]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Ss][Vv][Gg]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Xx][Tt]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Xx][Tt]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Xx][Ll][Ss]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Xx][Ll][Ss]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*\.[Xx][Ll][Ss][Xx]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\.[Xx][Ll][Ss][Xx]\.[Jj][Ss].*/ OR data_win_eventdata_commandLine:/.*⠀⠀⠀⠀⠀⠀\.[Ee][Xx][Ee].*/)

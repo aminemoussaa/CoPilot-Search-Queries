@@ -1,0 +1,158 @@
+name: HackTool - CoercedPotato Execution
+id: e8d34729-86a4-4140-adfd-0a29c2106307
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e8d34729-86a4-4140-adfd-0a29c2106307
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of CoercedPotato, a tool for privilege escalation. MITRE
+  ATT&CK: T1055.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\CoercedPotato.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --exploitId *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=A75D7669DB6B2E107A44C4057FF7F7D6*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=F91624350E2C678C5DCBE5E1F24E22C9*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=14C81850A079A87E83D50CA41C709A15*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_hashes
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\CoercedPotato.exe'; data_win_eventdata_commandLine matches '* --exploitId
+  *'; data_win_eventdata_hashes matches
+  '*IMPHASH=A75D7669DB6B2E107A44C4057FF7F7D6*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/hackvens/CoercedPotato
+  - https://blog.hackvens.fr/articles/CoercedPotato.html
+  - https://attack.mitre.org/techniques/T1055/
+
+response:
+  message: >
+    HackTool - CoercedPotato Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1055
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055
+  custom_tags:
+    - hacktool
+    - coercedpotato
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Cc][Oo][Ee][Rr][Cc][Ee][Dd][Pp][Oo][Tt][Aa][Tt][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.* --[Ee][Xx][Pp][Ll][Oo][Ii][Tt][Ii][Dd] .*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa]75[Dd]7669[Dd][Bb]6[Bb]2[Ee]107[Aa]44[Cc]4057[Ff][Ff]7[Ff]7[Dd]6.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ff]91624350[Ee]2[Cc]678[Cc]5[Dd][Cc][Bb][Ee]5[Ee]1[Ff]24[Ee]22[Cc]9.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=14[Cc]81850[Aa]079[Aa]87[Ee]83[Dd]50[Cc][Aa]41[Cc]709[Aa]15.*/)

@@ -1,0 +1,165 @@
+name: Active Directory Replication from Non Machine Account
+id: 17d619c1-e020-4347-957e-1d1207455c93
+version: 1
+schema_version: "1.0"
+date: "2021-11-27"
+author: Roberto Rodriguez @Cyb3rWard0g
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 17d619c1-e020-4347-957e-1d1207455c93
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential abuse of Active Directory Replication Service (ADRS) from a
+  non machine account to request credentials. MITRE ATT&CK: T1003.006.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4662"
+        - term:
+            data_win_eventdata_accessMask:
+              value: "0x100"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*1131f6aa-9c07-11d1-f79f-00c04fc2dcd2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*89e95b76-444d-4c62-991a-0facbeda640c*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_subjectUserName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_subjectUserName: "*$"
+                    - wildcard:
+                        data_win_eventdata_subjectUserName:
+                          value: "MSOL_*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_accessMask
+    - data_win_eventdata_properties
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4662'; data_win_eventdata_accessMask equals
+  '0x100'; data_win_eventdata_properties matches
+  '*1131f6aa-9c07-11d1-f79f-00c04fc2dcd2*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://threathunterplaybook.com/hunts/windows/180815-ADObjectAccessReplication/notebook.html
+  - https://threathunterplaybook.com/library/windows/active_directory_replication.html
+  - https://threathunterplaybook.com/hunts/windows/190101-ADModDirectoryReplication/notebook.html
+  - https://attack.mitre.org/techniques/T1003/006/
+
+response:
+  message: >
+    Active Directory Replication from Non Machine Account detected on host
+    $agent_name$. Matched data_win_eventdata_accessMask:
+    $data_win_eventdata_accessMask$. Matched data_win_eventdata_properties:
+    $data_win_eventdata_properties$. MITRE ATT&CK: T1003.006
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_accessMask
+      type: other
+    - field: data_win_eventdata_properties
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.006
+  custom_tags:
+    - active
+    - directory
+    - replication
+    - windows_security
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4662" AND data_win_eventdata_accessMask:/0[Xx]100/ AND (data_win_eventdata_properties:/.*1131[Ff]6[Aa][Aa]-9[Cc]07-11[Dd]1-[Ff]79[Ff]-00[Cc]04[Ff][Cc]2[Dd][Cc][Dd]2.*/ OR data_win_eventdata_properties:/.*1131[Ff]6[Aa][Dd]-9[Cc]07-11[Dd]1-[Ff]79[Ff]-00[Cc]04[Ff][Cc]2[Dd][Cc][Dd]2.*/ OR data_win_eventdata_properties:/.*89[Ee]95[Bb]76-444[Dd]-4[Cc]62-991[Aa]-0[Ff][Aa][Cc][Bb][Ee][Dd][Aa]640[Cc].*/) AND _exists_:data_win_eventdata_subjectUserName AND NOT (data_win_eventdata_subjectUserName:/.*\$/ OR data_win_eventdata_subjectUserName:/[Mm][Ss][Oo][Ll]_.*/)

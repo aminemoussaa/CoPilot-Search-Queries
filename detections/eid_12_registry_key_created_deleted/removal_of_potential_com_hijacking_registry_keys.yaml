@@ -1,0 +1,337 @@
+name: Removal of Potential COM Hijacking Registry Keys
+id: 96f697b0-b499-4e5d-9908-a67bec11cdb6
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 96f697b0-b499-4e5d-9908-a67bec11cdb6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects any deletion of entries in ".*\shell\open\command" registry keys.
+  These registry keys might have been used for COM hijacking activities by a
+  threat actor or an attacker and the deletion could indicate steps to remove
+  its tracks. MITRE ATT&CK: T1112.
+
+data_source:
+  - Sysmon EventID 12 - Registry Key Deleted
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "12"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\shell\\\\open\\\\command"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\explorer.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\system32\\svchost.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\msiexec.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\SysWOW64\\msiexec.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files (x86)\\\\*"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\OpenWith.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Dropbox.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Dropbox.*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\AppData\\\\Local\\\\Temp\\\\Wireshark_uninstaller.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\wireshark-capture-file\\\\*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*peazip*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\PeaZip.*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Everything.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Everything.*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Windows\\\\Installer\\\\MSI*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Program Files (x86)\\\\Java\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\installer.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Classes\\\\WOW6432Node\\\\CLSID\\\\{4299124F-F2C3-41b4-9C73-9236B2AD0E8F}*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\Microsoft\\\\EdgeUpdate\\\\Install*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files (x86)\\Avira\\Antivirus\\"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_image:
+                                      value: "C:\\Program Files\\Avira\\Antivirus\\"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\CLSID\\\\{305CA226-D286-468e-B848-2B2E8E697B74}\\\\Shell\\\\Open\\\\Command"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\AntiVir.Keyfile\\\\shell\\\\open\\\\command"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*AppData\\\\Local\\\\Temp*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\setup.exe*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Temp\\\\is-*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\target.tmp*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\ninite.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\reg.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Discord\\\\shell\\\\open\\\\command"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Spotify.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Spotify\\\\shell\\\\open\\\\command"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*C:\\\\eclipse\\\\eclipse.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*_Classes\\\\eclipse+*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Temp*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\TeamViewer*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\shell\open\command'; data_win_eventdata_image matches
+  '*C:\Windows\explorer.exe'; data_win_eventdata_image equals
+  'C:\Windows\system32\svchost.exe', among other conditions.
+
+known_false_positives: >
+  Legitimate software (un)installations are known to cause false positives.
+  Please add them as a filter when encountered. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/OTRF/detection-hackathon-apt29/issues/7
+  - https://github.com/OTRF/ThreatHunter-Playbook/blob/2d4257f630f4c9770f78d0c1df059f891ffc3fec/docs/evals/apt29/detections/3.C.1_22A46621-7A92-48C1-81BF-B3937EB4FDC3.md
+  - https://learn.microsoft.com/en-us/windows/win32/shell/launch
+  - https://learn.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iexecutecommand
+  - https://learn.microsoft.com/en-us/windows/win32/shell/shell-and-managed-code
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    Removal of Potential COM Hijacking Registry Keys detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1112
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+  custom_tags:
+    - removal
+    - hijacking
+    - registry
+    - sysmon
+    - persistence
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"12" AND data_win_eventdata_targetObject:/.*\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]/ AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Oo][Pp][Ee][Nn][Ww][Ii][Tt][Hh]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND NOT ((data_win_eventdata_image:/.*\\[Dd][Rr][Oo][Pp][Bb][Oo][Xx]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Dd][Rr][Oo][Pp][Bb][Oo][Xx]\..*/) OR (data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\[Ww][Ii][Rr][Ee][Ss][Hh][Aa][Rr][Kk]_[Uu][Nn][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Ww][Ii][Rr][Ee][Ss][Hh][Aa][Rr][Kk]-[Cc][Aa][Pp][Tt][Uu][Rr][Ee]-[Ff][Ii][Ll][Ee]\\.*/) OR (data_win_eventdata_image:/.*[Pp][Ee][Aa][Zz][Ii][Pp].*/ AND data_win_eventdata_targetObject:/.*\\[Pp][Ee][Aa][Zz][Ii][Pp]\..*/) OR (data_win_eventdata_image:/.*\\[Ee][Vv][Ee][Rr][Yy][Tt][Hh][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Ee][Vv][Ee][Rr][Yy][Tt][Hh][Ii][Nn][Gg]\..*/) OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\[Mm][Ss][Ii].*/ OR (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Jj][Aa][Vv][Aa]\\.*/ AND data_win_eventdata_image:/.*\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Ww][Oo][Ww]6432[Nn][Oo][Dd][Ee]\\[Cc][Ll][Ss][Ii][Dd]\\\{4299124[Ff]-[Ff]2[Cc]3-41[Bb]4-9[Cc]73-9236[Bb]2[Aa][Dd]0[Ee]8[Ff]\}.*/) OR data_win_eventdata_image:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/ OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Ii][Rr][Aa]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss][\\]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Ii][Rr][Aa]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss][\\]/) AND (data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{305[Cc][Aa]226-[Dd]286-468[Ee]-[Bb]848-2[Bb]2[Ee]8[Ee]697[Bb]74\}\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]/ OR data_win_eventdata_targetObject:/.*\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr]\.[Kk][Ee][Yy][Ff][Ii][Ll][Ee]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]/)) OR (data_win_eventdata_image:/.*[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp].*/ AND data_win_eventdata_image:/.*\\[Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee].*/) OR (data_win_eventdata_image:/.*\\[Tt][Ee][Mm][Pp]\\[Ii][Ss]-.*/ AND data_win_eventdata_image:/.*\\[Tt][Aa][Rr][Gg][Ee][Tt]\.[Tt][Mm][Pp].*/) OR data_win_eventdata_image:/.*\\[Nn][Ii][Nn][Ii][Tt][Ee]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_image:/.*\\[Rr][Ee][Gg]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Cc][Oo][Rr][Dd]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]/) OR (data_win_eventdata_image:/.*\\[Ss][Pp][Oo][Tt][Ii][Ff][Yy]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Ss][Pp][Oo][Tt][Ii][Ff][Yy]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]/) OR (data_win_eventdata_image:/.*[Cc]:\\[Ee][Cc][Ll][Ii][Pp][Ss][Ee]\\[Ee][Cc][Ll][Ii][Pp][Ss][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*_[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Ee][Cc][Ll][Ii][Pp][Ss][Ee]\+.*/) OR (data_win_eventdata_image:/.*\\[Tt][Ee][Mm][Pp].*/ AND data_win_eventdata_image:/.*\\[Tt][Ee][Aa][Mm][Vv][Ii][Ee][Ww][Ee][Rr].*/))

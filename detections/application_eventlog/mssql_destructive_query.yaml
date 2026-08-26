@@ -1,0 +1,151 @@
+name: MSSQL Destructive Query
+id: 00321fee-ca72-4cce-b011-5415af3b9960
+version: 1
+schema_version: "1.0"
+date: "2025-06-04"
+author: Daniel Degasperi '@d4ns4n_'
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 00321fee-ca72-4cce-b011-5415af3b9960
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the invocation of MS SQL transactions that are destructive towards
+  table or database data, such as "DROP TABLE" or "DROP DATABASE". MITRE ATT&CK:
+  T1485.
+
+data_source:
+  - Windows Application Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "MSSQLSERVER$AUDIT"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "33205"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_data:
+                    value: "*statement:TRUNCATE TABLE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_data:
+                    value: "*statement:DROP TABLE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_data:
+                    value: "*statement:DROP DATABASE*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_data
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals 'MSSQLSERVER$AUDIT';
+  data_win_system_eventID equals '33205'; data_win_eventdata_data matches
+  '*statement:TRUNCATE TABLE*', among other conditions.
+
+known_false_positives: >
+  Legitimate transaction from a sysadmin. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-table-transact-sql?view=sql-server-ver16
+  - https://learn.microsoft.com/en-us/sql/t-sql/statements/drop-database-transact-sql?view=sql-server-ver16
+  - https://learn.microsoft.com/en-us/sql/t-sql/statements/truncate-table-transact-sql?view=sql-server-ver16
+  - https://attack.mitre.org/techniques/T1485/
+
+response:
+  message: >
+    MSSQL Destructive Query detected on host $agent_name$. Matched
+    data_win_system_providerName: $data_win_system_providerName$. Matched
+    data_win_eventdata_data: $data_win_eventdata_data$. MITRE ATT&CK: T1485
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_data
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1485
+  custom_tags:
+    - mssql
+    - destructive
+    - query
+    - windows_application
+    - exfiltration
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Mm][Ss][Ss][Qq][Ll][Ss][Ee][Rr][Vv][Ee][Rr]\$[Aa][Uu][Dd][Ii][Tt]/ AND data_win_system_eventID:"33205" AND (data_win_eventdata_data:/.*[Ss][Tt][Aa][Tt][Ee][Mm][Ee][Nn][Tt]:[Tt][Rr][Uu][Nn][Cc][Aa][Tt][Ee] [Tt][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_data:/.*[Ss][Tt][Aa][Tt][Ee][Mm][Ee][Nn][Tt]:[Dd][Rr][Oo][Pp] [Tt][Aa][Bb][Ll][Ee].*/ OR data_win_eventdata_data:/.*[Ss][Tt][Aa][Tt][Ee][Mm][Ee][Nn][Tt]:[Dd][Rr][Oo][Pp] [Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee].*/)

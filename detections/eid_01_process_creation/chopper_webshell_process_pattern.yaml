@@ -1,0 +1,186 @@
+name: Chopper Webshell Process Pattern
+id: fa3c117a-bc0d-416e-a31b-0c0e80653efb
+version: 1
+schema_version: "1.0"
+date: "2022-10-01"
+author: Florian Roth (Nextron Systems), MSTI (query)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fa3c117a-bc0d-416e-a31b-0c0e80653efb
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects patterns found in process executions cause by China Chopper like tiny
+  (ASPX) webshells. MITRE ATT&CK: T1505.003, T1018, T1033, T1087.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\w3wp.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\w3wp.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&ipconfig&echo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&quser&echo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&whoami&echo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&c:&echo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&cd&echo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&dir&echo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&echo [E]*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&echo [S]*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\w3wp.exe'; data_win_eventdata_parentImage matches '*\w3wp.exe';
+  data_win_eventdata_commandLine matches '*&ipconfig&echo*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/security/blog/2022/09/30/analyzing-attacks-using-the-exchange-vulnerabilities-cve-2022-41040-and-cve-2022-41082/
+  - https://attack.mitre.org/techniques/T1505/003/
+  - https://attack.mitre.org/techniques/T1018/
+  - https://attack.mitre.org/techniques/T1033/
+  - https://attack.mitre.org/techniques/T1087/
+
+response:
+  message: >
+    Chopper Webshell Process Pattern detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. MITRE
+    ATT&CK: T1505.003, T1018, T1033, T1087
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1505.003
+    - T1018
+    - T1033
+    - T1087
+  custom_tags:
+    - chopper
+    - webshell
+    - pattern
+    - process_creation
+    - sysmon
+    - persistence
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww]3[Ww][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ww]3[Ww][Pp]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*\&[Ii][Pp][Cc][Oo][Nn][Ff][Ii][Gg]\&[Ee][Cc][Hh][Oo].*/ OR data_win_eventdata_commandLine:/.*\&[Qq][Uu][Ss][Ee][Rr]\&[Ee][Cc][Hh][Oo].*/ OR data_win_eventdata_commandLine:/.*\&[Ww][Hh][Oo][Aa][Mm][Ii]\&[Ee][Cc][Hh][Oo].*/ OR data_win_eventdata_commandLine:/.*\&[Cc]:\&[Ee][Cc][Hh][Oo].*/ OR data_win_eventdata_commandLine:/.*\&[Cc][Dd]\&[Ee][Cc][Hh][Oo].*/ OR data_win_eventdata_commandLine:/.*\&[Dd][Ii][Rr]\&[Ee][Cc][Hh][Oo].*/ OR data_win_eventdata_commandLine:/.*\&[Ee][Cc][Hh][Oo] \[[Ee]\].*/ OR data_win_eventdata_commandLine:/.*\&[Ee][Cc][Hh][Oo] \[[Ss]\].*/)

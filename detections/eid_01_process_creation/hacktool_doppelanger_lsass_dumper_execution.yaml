@@ -1,0 +1,151 @@
+name: HackTool - Doppelanger LSASS Dumper Execution
+id: d474c8fe-bb69-4ea0-b7d9-f682b56d52d3
+version: 1
+schema_version: "1.0"
+date: "2025-07-01"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d474c8fe-bb69-4ea0-b7d9-f682b56d52d3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of the Doppelanger hacktool which is used to dump LSASS
+  memory via process cloning while evading common detection methods. MITRE
+  ATT&CK: T1003.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Doppelganger.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=AB94D5217896ADCD765A06B2D52F0AEB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=65F0EA61156EE0C2A35421926F0C7F78*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\Doppelganger.exe'; data_win_eventdata_hashes matches
+  '*IMPHASH=AB94D5217896ADCD765A06B2D52F0AEB*'; data_win_eventdata_hashes
+  matches '*IMPHASH=65F0EA61156EE0C2A35421926F0C7F78*'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://labs.yarix.com/2025/06/doppelganger-an-advanced-lsass-dumper-with-process-cloning/
+  - https://github.com/vari-sh/RedTeamGrimoire/tree/668e0357072546065729ad623f8c02f7be21bb08/Doppelganger
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    HackTool - Doppelanger LSASS Dumper Execution detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. MITRE ATT&CK:
+    T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.001
+  custom_tags:
+    - hacktool
+    - doppelanger
+    - lsass
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Dd][Oo][Pp][Pp][Ee][Ll][Gg][Aa][Nn][Gg][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa][Bb]94[Dd]5217896[Aa][Dd][Cc][Dd]765[Aa]06[Bb]2[Dd]52[Ff]0[Aa][Ee][Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=65[Ff]0[Ee][Aa]61156[Ee][Ee]0[Cc]2[Aa]35421926[Ff]0[Cc]7[Ff]78.*/)

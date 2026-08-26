@@ -1,0 +1,207 @@
+name: PUA - Process Hacker Execution
+id: 811e0002-b13b-4a15-9d00-a613fce66e42
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 811e0002-b13b-4a15-9d00-a613fce66e42
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of Process Hacker based on binary metadata information
+  (Image, Hash, Imphash, etc). Process Hacker is a tool to view and manipulate
+  processes, kernel options and other low level options. Threat actors abused
+  older vulnerable versions to manipulate system processes. MITRE ATT&CK: T1622,
+  T1564, T1543.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ProcessHacker_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ProcessHacker.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "ProcessHacker.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "Process Hacker"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "Process Hacker"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_product:
+                    value: "Process Hacker"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*MD5=68F9B52895F4D34E74112F3129B3B00D*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*MD5=B365AF317AE730A67C936F21432B9C71*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=A0BDFAC3CE1880B32FF9B696458327CE352E3B1D*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=C5E2018BF7C0F314FED4FD7FE7E69FA2E648359E*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=D4A0FE56316A2C45B9BA9AC1005363309A3EDC7ACF9E4DF64D326A0FF273E80F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=BD2C2CF0631D881ED382817AFCCE2B093F4E412FFB170A719E2762F250ABFEA4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=3695333C60DEDECDCAFF1590409AA462*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=04DE0AD9C37EB7BD52043D2ECAC958DF*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_description
+    - data_win_eventdata_product
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\ProcessHacker_*'; data_win_eventdata_image matches '*\ProcessHacker.exe';
+  data_win_eventdata_originalFileName equals 'ProcessHacker.exe', among other
+  conditions.
+
+known_false_positives: >
+  While sometimes 'Process Hacker is used by legitimate administrators, the
+  execution of Process Hacker must be investigated and allowed on a case by case
+  basis. Baseline expected activity in your environment and tune this detection
+  before relying on it for automated response.
+
+references:
+  - https://processhacker.sourceforge.io/
+  - https://www.crowdstrike.com/blog/falcon-overwatch-report-finds-increase-in-ecrime/
+  - https://attack.mitre.org/techniques/T1622/
+  - https://attack.mitre.org/techniques/T1564/
+  - https://attack.mitre.org/techniques/T1543/
+
+response:
+  message: >
+    PUA - Process Hacker Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1622, T1564, T1543
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1622
+    - T1564
+    - T1543
+  custom_tags:
+    - hacker
+    - process_creation
+    - sysmon
+    - discovery
+    - persistence
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Hh][Aa][Cc][Kk][Ee][Rr]_.*/ OR data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Hh][Aa][Cc][Kk][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Rr][Oo][Cc][Ee][Ss][Ss][Hh][Aa][Cc][Kk][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Rr][Oo][Cc][Ee][Ss][Ss] [Hh][Aa][Cc][Kk][Ee][Rr]/ OR data_win_eventdata_description:/[Pp][Rr][Oo][Cc][Ee][Ss][Ss] [Hh][Aa][Cc][Kk][Ee][Rr]/ OR data_win_eventdata_product:/[Pp][Rr][Oo][Cc][Ee][Ss][Ss] [Hh][Aa][Cc][Kk][Ee][Rr]/ OR data_win_eventdata_hashes:/.*[Mm][Dd]5=68[Ff]9[Bb]52895[Ff]4[Dd]34[Ee]74112[Ff]3129[Bb]3[Bb]00[Dd].*/ OR data_win_eventdata_hashes:/.*[Mm][Dd]5=[Bb]365[Aa][Ff]317[Aa][Ee]730[Aa]67[Cc]936[Ff]21432[Bb]9[Cc]71.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Aa]0[Bb][Dd][Ff][Aa][Cc]3[Cc][Ee]1880[Bb]32[Ff][Ff]9[Bb]696458327[Cc][Ee]352[Ee]3[Bb]1[Dd].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Cc]5[Ee]2018[Bb][Ff]7[Cc]0[Ff]314[Ff][Ee][Dd]4[Ff][Dd]7[Ff][Ee]7[Ee]69[Ff][Aa]2[Ee]648359[Ee].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Dd]4[Aa]0[Ff][Ee]56316[Aa]2[Cc]45[Bb]9[Bb][Aa]9[Aa][Cc]1005363309[Aa]3[Ee][Dd][Cc]7[Aa][Cc][Ff]9[Ee]4[Dd][Ff]64[Dd]326[Aa]0[Ff][Ff]273[Ee]80[Ff].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Bb][Dd]2[Cc]2[Cc][Ff]0631[Dd]881[Ee][Dd]382817[Aa][Ff][Cc][Cc][Ee]2[Bb]093[Ff]4[Ee]412[Ff][Ff][Bb]170[Aa]719[Ee]2762[Ff]250[Aa][Bb][Ff][Ee][Aa]4.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3695333[Cc]60[Dd][Ee][Dd][Ee][Cc][Dd][Cc][Aa][Ff][Ff]1590409[Aa][Aa]462.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=04[Dd][Ee]0[Aa][Dd]9[Cc]37[Ee][Bb]7[Bb][Dd]52043[Dd]2[Ee][Cc][Aa][Cc]958[Dd][Ff].*/)

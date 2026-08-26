@@ -1,0 +1,185 @@
+name: PPL Tampering Via WerFaultSecure
+id: 1f0b4cac-9c81-41f4-95d0-8475ff46b3e2
+version: 1
+schema_version: "1.0"
+date: "2025-11-23"
+author: Jason (https://github.com/0xbcf)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1f0b4cac-9c81-41f4-95d0-8475ff46b3e2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential abuse of WerFaultSecure.exe to dump Protected Process Light
+  (PPL) processes like LSASS or to freeze security solutions (EDR/antivirus).
+  This technique is used by tools such as EDR-Freeze and WSASS to bypass PPL
+  protections and access sensitive information or disable security software.
+  Distinct command line patterns help identify the specific tool: - WSASS usage
+  typically shows: "WSASS.exe WerFaultSecure.exe [PID]" in ParentCommandLine -
+  EDR-Freeze usage typically shows: "EDR-Freeze_[version].exe [PID] [timeout]"
+  in ParentCommandLine Legitimate debugging operations using WerFaultSecure are
+  rare in production environments and should be investigated. MITRE ATT&CK:
+  T1685, T1003.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\WerFaultSecure.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "WerFaultSecure.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* /h *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* /pid *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* /tid *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* /encfile *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* /cancel *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* /type *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine: "* 268310*"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\WerFaultSecure.exe'; data_win_eventdata_originalFileName equals
+  'WerFaultSecure.exe'; data_win_eventdata_commandLine matches '* /h *', among
+  other conditions.
+
+known_false_positives: >
+  Legitimate usage of WerFaultSecure for debugging purposes. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://www.zerosalarium.com/2025/09/EDR-Freeze-Puts-EDRs-Antivirus-Into-Coma.html
+  - https://github.com/TwoSevenOneT/EDR-Freeze/blob/a7f61030b36fbde89871f393488f7075d2aa89f6/EDR-Freeze.cpp#L53
+  - https://www.zerosalarium.com/2025/09/Dumping-LSASS-With-WER-On-Modern-Windows-11.html
+  - https://github.com/TwoSevenOneT/WSASS/blob/2c8fd9fa32143e7bc9f066e9511c6f8a57bc64b5/WSASS.cpp#L251
+  - https://attack.mitre.org/techniques/T1685/
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    PPL Tampering Via WerFaultSecure detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1685, T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+    - T1003.001
+  custom_tags:
+    - tampering
+    - werfaultsecure
+    - process_creation
+    - sysmon
+    - defense_impairment
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww][Ee][Rr][Ff][Aa][Uu][Ll][Tt][Ss][Ee][Cc][Uu][Rr][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ee][Rr][Ff][Aa][Uu][Ll][Tt][Ss][Ee][Cc][Uu][Rr][Ee]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.* \/[Hh] .*/ AND data_win_eventdata_commandLine:/.* \/[Pp][Ii][Dd] .*/ AND data_win_eventdata_commandLine:/.* \/[Tt][Ii][Dd] .*/ AND data_win_eventdata_commandLine:/.* \/[Ee][Nn][Cc][Ff][Ii][Ll][Ee] .*/ AND data_win_eventdata_commandLine:/.* \/[Cc][Aa][Nn][Cc][Ee][Ll] .*/ AND data_win_eventdata_commandLine:/.* \/[Tt][Yy][Pp][Ee] .*/ AND data_win_eventdata_commandLine:/.* 268310.*/

@@ -1,0 +1,169 @@
+name: Uncommon System Information Discovery Via Wmic.EXE
+id: 9d5a1274-922a-49d0-87f3-8c653483b909
+version: 1
+schema_version: "1.0"
+date: "2023-12-19"
+author: TropChaud
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9d5a1274-922a-49d0-87f3-8c653483b909
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of the WMI command-line (WMIC) utility to identify and display
+  various system information, including OS, CPU, GPU, and disk drive names;
+  memory capacity; display resolution; and baseboard, BIOS, and GPU driver
+  products/versions. Some of these commands were used by Aurora Stealer in late
+  2022/early 2023. MITRE ATT&CK: T1082.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_description:
+                    value: "WMI Commandline Utility"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "wmic.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\WMIC.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*LOGICALDISK get Name,Size,FreeSpace*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*os get Caption,OSArchitecture,Version*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_description
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_description equals 'WMI
+  Commandline Utility'; data_win_eventdata_originalFileName equals 'wmic.exe';
+  data_win_eventdata_image matches '*\WMIC.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/a2ccd19c37d0278b4ffa8583add3cf52060a5418/atomics/T1082/T1082.md#atomic-test-25---system-information-discovery-with-wmic
+  - https://nwgat.ninja/getting-system-information-with-wmic-on-windows/
+  - https://blog.sekoia.io/aurora-a-rising-stealer-flying-under-the-radar
+  - https://blog.cyble.com/2023/01/18/aurora-a-stealer-using-shapeshifting-tactics/
+  - https://app.any.run/tasks/a6aa0057-82ec-451f-8f99-55650ca537da/
+  - https://www.virustotal.com/gui/file/d6f6bc10ae0e634ed4301d584f61418cee18e5d58ad9af72f8aa552dc4aaeca3/behavior
+  - https://attack.mitre.org/techniques/T1082/
+
+response:
+  message: >
+    Uncommon System Information Discovery Via Wmic.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_description:
+    $data_win_eventdata_description$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1082
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_description
+      type: other
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1082
+  custom_tags:
+    - uncommon
+    - system
+    - information
+    - process_creation
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_description:/[Ww][Mm][Ii] [Cc][Oo][Mm][Mm][Aa][Nn][Dd][Ll][Ii][Nn][Ee] [Uu][Tt][Ii][Ll][Ii][Tt][Yy]/ OR data_win_eventdata_originalFileName:/[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Ll][Oo][Gg][Ii][Cc][Aa][Ll][Dd][Ii][Ss][Kk] [Gg][Ee][Tt] [Nn][Aa][Mm][Ee],[Ss][Ii][Zz][Ee],[Ff][Rr][Ee][Ee][Ss][Pp][Aa][Cc][Ee].*/ OR data_win_eventdata_commandLine:/.*[Oo][Ss] [Gg][Ee][Tt] [Cc][Aa][Pp][Tt][Ii][Oo][Nn],[Oo][Ss][Aa][Rr][Cc][Hh][Ii][Tt][Ee][Cc][Tt][Uu][Rr][Ee],[Vv][Ee][Rr][Ss][Ii][Oo][Nn].*/)

@@ -1,0 +1,152 @@
+name: Potential Defense Evasion Via Right-to-Left Override
+id: ad691d92-15f2-4181-9aa4-723c74f9ddc3
+version: 1
+schema_version: "1.0"
+date: "2026-03-20"
+author: Micah Babinski, @micahbabinski, Swachchhanda Shrawan Poudel (Nextron Systems), Luc Génaux
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ad691d92-15f2-4181-9aa4-723c74f9ddc3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the presence of the "u202+E" character, which causes a terminal,
+  browser, or operating system to render text in a right-to-left sequence. This
+  character is used as an obfuscation and masquerading techniques by adversaries
+  to trick users into opening malicious files. MITRE ATT&CK: T1036.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\u202e*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*[U+202E]*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine: "*‮*"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*\u202e*'; data_win_eventdata_commandLine matches '*[U+202E]*';
+  data_win_eventdata_commandLine matches '*‮*'.
+
+known_false_positives: >
+  Commandlines that contains scriptures such as arabic or hebrew might make use
+  of this character. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://redcanary.com/blog/right-to-left-override/
+  - https://www.malwarebytes.com/blog/news/2014/01/the-rtlo-method
+  - https://unicode-explorer.com/c/202E
+  - https://tria.ge/241015-l98snsyeje/behavioral2
+  - https://unprotect.it/technique/right-to-left-override-rlo-extension-spoofing/
+  - https://attack.mitre.org/techniques/T1036/002/
+
+response:
+  message: >
+    Potential Defense Evasion Via Right-to-Left Override detected on host
+    $agent_name$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1036.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036.002
+  custom_tags:
+    - defense
+    - evasion
+    - right
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*\\[Uu]202[Ee].*/ OR data_win_eventdata_commandLine:/.*\[[Uu]\+202[Ee]\].*/ OR data_win_eventdata_commandLine:/.*‮.*/)

@@ -1,0 +1,194 @@
+name: PUA - System Informer Driver Load
+id: 10cb6535-b31d-4512-9962-513dcbc42cc1
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 10cb6535-b31d-4512-9962-513dcbc42cc1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects driver load of the System Informer tool. MITRE ATT&CK: T1543.
+
+data_source:
+  - Sysmon EventID 6 - Driver Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "6"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\SystemInformer.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=8B9AD98944AC9886EA4CB07700E71B78BE4A2740934BB7E46CA3B56A7C59AD24*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=A41348BEC147CA4D9EA2869817527EB5CEA2E20202AF599D2B30625433BCF454*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=38EE0A88AF8535A11EFE8D8DA9C6812AA07067B75A64D99705A742589BDD846D*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=A773891ACF203A7EB0C0D30942FB1347648F1CD918AE2BFD9A4857B4DCF5081B*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=4C3B81AC88A987BBDF7D41FA0AECC2CEDF5B9BD2F45E7A21F376D05345FC211D*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=3241BC14BEC51CE6A691B9A3562E5C1D52E9D057D27A3D67FD0B245C350B6D34*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=047C42E9BBA28366868847C7DAFC1E043FB038C796422D37220493517D68EE89*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=18931DC81E95D0020466FA091E16869DBE824E543A4C2C8FE644FA71A0F44FEB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=B4C2EF76C204273132FDE38F0DED641C2C5EE767652E64E4C4071A4A973B6C1B*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=640954AFC268565F7DAA6E6F81A8EE05311E33E34332B501A3C3FE5B22ADEA97*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=251BE949F662C838718F8AA0A5F8211FB90346D02BD63FF91E6B224E0E01B656*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=E2606F272F7BA054DF16BE464FDA57211EF0D14A0D959F9C8DCB0575DF1186E4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=3A9E1D17BEEB514F1B9B3BACAEE7420285DE5CBDCE89C5319A992C6CBD1DE138*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_hashes
+    - data_win_eventdata_signature
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 6 (driver loaded) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\SystemInformer.sys'; data_win_eventdata_hashes matches
+  '*SHA256=8B9AD98944AC9886EA4CB07700E71B78BE4A2740934BB7E46CA3B56A7C59AD24*';
+  data_win_eventdata_hashes matches
+  '*SHA256=A41348BEC147CA4D9EA2869817527EB5CEA2E20202AF599D2B30625433BCF454*',
+  among other conditions.
+
+known_false_positives: >
+  System Informer is regularly used legitimately by system administrators or
+  developers. Apply additional filters accordingly. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://systeminformer.sourceforge.io/
+  - https://github.com/winsiderss/systeminformer
+  - https://attack.mitre.org/techniques/T1543/
+
+response:
+  message: >
+    PUA - System Informer Driver Load detected on host $agent_name$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. MITRE ATT&CK: T1543
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543
+  custom_tags:
+    - system
+    - informer
+    - driver
+    - driver_load
+    - sysmon
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"6" AND (data_win_eventdata_imageLoaded:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm][Ii][Nn][Ff][Oo][Rr][Mm][Ee][Rr]\.[Ss][Yy][Ss]/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=8[Bb]9[Aa][Dd]98944[Aa][Cc]9886[Ee][Aa]4[Cc][Bb]07700[Ee]71[Bb]78[Bb][Ee]4[Aa]2740934[Bb][Bb]7[Ee]46[Cc][Aa]3[Bb]56[Aa]7[Cc]59[Aa][Dd]24.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Aa]41348[Bb][Ee][Cc]147[Cc][Aa]4[Dd]9[Ee][Aa]2869817527[Ee][Bb]5[Cc][Ee][Aa]2[Ee]20202[Aa][Ff]599[Dd]2[Bb]30625433[Bb][Cc][Ff]454.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=38[Ee][Ee]0[Aa]88[Aa][Ff]8535[Aa]11[Ee][Ff][Ee]8[Dd]8[Dd][Aa]9[Cc]6812[Aa][Aa]07067[Bb]75[Aa]64[Dd]99705[Aa]742589[Bb][Dd][Dd]846[Dd].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Aa]773891[Aa][Cc][Ff]203[Aa]7[Ee][Bb]0[Cc]0[Dd]30942[Ff][Bb]1347648[Ff]1[Cc][Dd]918[Aa][Ee]2[Bb][Ff][Dd]9[Aa]4857[Bb]4[Dd][Cc][Ff]5081[Bb].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=4[Cc]3[Bb]81[Aa][Cc]88[Aa]987[Bb][Bb][Dd][Ff]7[Dd]41[Ff][Aa]0[Aa][Ee][Cc][Cc]2[Cc][Ee][Dd][Ff]5[Bb]9[Bb][Dd]2[Ff]45[Ee]7[Aa]21[Ff]376[Dd]05345[Ff][Cc]211[Dd].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=3241[Bb][Cc]14[Bb][Ee][Cc]51[Cc][Ee]6[Aa]691[Bb]9[Aa]3562[Ee]5[Cc]1[Dd]52[Ee]9[Dd]057[Dd]27[Aa]3[Dd]67[Ff][Dd]0[Bb]245[Cc]350[Bb]6[Dd]34.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=047[Cc]42[Ee]9[Bb][Bb][Aa]28366868847[Cc]7[Dd][Aa][Ff][Cc]1[Ee]043[Ff][Bb]038[Cc]796422[Dd]37220493517[Dd]68[Ee][Ee]89.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=18931[Dd][Cc]81[Ee]95[Dd]0020466[Ff][Aa]091[Ee]16869[Dd][Bb][Ee]824[Ee]543[Aa]4[Cc]2[Cc]8[Ff][Ee]644[Ff][Aa]71[Aa]0[Ff]44[Ff][Ee][Bb].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Bb]4[Cc]2[Ee][Ff]76[Cc]204273132[Ff][Dd][Ee]38[Ff]0[Dd][Ee][Dd]641[Cc]2[Cc]5[Ee][Ee]767652[Ee]64[Ee]4[Cc]4071[Aa]4[Aa]973[Bb]6[Cc]1[Bb].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=640954[Aa][Ff][Cc]268565[Ff]7[Dd][Aa][Aa]6[Ee]6[Ff]81[Aa]8[Ee][Ee]05311[Ee]33[Ee]34332[Bb]501[Aa]3[Cc]3[Ff][Ee]5[Bb]22[Aa][Dd][Ee][Aa]97.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=251[Bb][Ee]949[Ff]662[Cc]838718[Ff]8[Aa][Aa]0[Aa]5[Ff]8211[Ff][Bb]90346[Dd]02[Bb][Dd]63[Ff][Ff]91[Ee]6[Bb]224[Ee]0[Ee]01[Bb]656.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Ee]2606[Ff]272[Ff]7[Bb][Aa]054[Dd][Ff]16[Bb][Ee]464[Ff][Dd][Aa]57211[Ee][Ff]0[Dd]14[Aa]0[Dd]959[Ff]9[Cc]8[Dd][Cc][Bb]0575[Dd][Ff]1186[Ee]4.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=3[Aa]9[Ee]1[Dd]17[Bb][Ee][Ee][Bb]514[Ff]1[Bb]9[Bb]3[Bb][Aa][Cc][Aa][Ee][Ee]7420285[Dd][Ee]5[Cc][Bb][Dd][Cc][Ee]89[Cc]5319[Aa]992[Cc]6[Cc][Bb][Dd]1[Dd][Ee]138.*/)

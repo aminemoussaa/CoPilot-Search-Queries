@@ -1,0 +1,205 @@
+name: Internet Explorer Autorun Keys Modification
+id: a80f662f-022f-4429-9b8c-b1a41aaa6688
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Victor Sergeev, Daniil Yugoslavskiy, Gleb Sukhodolskiy, Timur Zinniatullin, oscd.community, Tim Shelton, frack113 (split)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a80f662f-022f-4429-9b8c-b1a41aaa6688
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects modification of autostart extensibility point (ASEP) in registry.
+  MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Wow6432Node\\\\Microsoft\\\\Internet Explorer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Software\\\\Microsoft\\\\Internet Explorer*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Toolbar*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Extensions*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Explorer Bars*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_details"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_details:
+                          value: "(Empty)"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Extensions\\\\{2670000A-7350-4f3c-8081-5663EE0C6C49}*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Extensions\\\\{31D09BA0-12F5-4CCE-BE8A-2923E76605DA}*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Extensions\\\\{789FE86F-6FC4-46A1-9849-EDE0DB0C95CA}*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Extensions\\\\{A95fe080-8f5d-11d2-a20b-00aa003c157a}*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Toolbar\\\\ShellBrowser\\\\ITBar7Layout"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Toolbar\\\\ShowDiscussionButton"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Toolbar\\\\Locked"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Software\Wow6432Node\Microsoft\Internet Explorer*';
+  data_win_eventdata_targetObject matches '*\Software\Microsoft\Internet
+  Explorer*'; data_win_eventdata_targetObject matches '*\Toolbar*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate software automatically (mostly, during installation) sets up
+  autorun keys for legitimate reason. Legitimate administrator sets up autorun
+  keys for legitimate reason. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1547.001/T1547.001.md
+  - https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns
+  - https://gist.github.com/GlebSukhodolskiy/0fc5fa5f482903064b448890db1eaf9d
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Internet Explorer Autorun Keys Modification detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_details: $data_win_eventdata_details$. MITRE
+    ATT&CK: T1547.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - internet
+    - explorer
+    - autorun
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ww][Oo][Ww]6432[Nn][Oo][Dd][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt] [Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt] [Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr].*/) AND (data_win_eventdata_targetObject:/.*\\[Tt][Oo][Oo][Ll][Bb][Aa][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr] [Bb][Aa][Rr][Ss].*/) AND _exists_:data_win_eventdata_details AND _exists_:data_win_eventdata_targetObject AND NOT (data_win_eventdata_details:/\([Ee][Mm][Pp][Tt][Yy]\)/ OR data_win_eventdata_targetObject:/.*\\[Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\\{2670000[Aa]-7350-4[Ff]3[Cc]-8081-5663[Ee][Ee]0[Cc]6[Cc]49\}.*/ OR data_win_eventdata_targetObject:/.*\\[Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\\{31[Dd]09[Bb][Aa]0-12[Ff]5-4[Cc][Cc][Ee]-[Bb][Ee]8[Aa]-2923[Ee]76605[Dd][Aa]\}.*/ OR data_win_eventdata_targetObject:/.*\\[Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\\{789[Ff][Ee]86[Ff]-6[Ff][Cc]4-46[Aa]1-9849-[Ee][Dd][Ee]0[Dd][Bb]0[Cc]95[Cc][Aa]\}.*/ OR data_win_eventdata_targetObject:/.*\\[Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\\{[Aa]95[Ff][Ee]080-8[Ff]5[Dd]-11[Dd]2-[Aa]20[Bb]-00[Aa][Aa]003[Cc]157[Aa]\}.*/ OR data_win_eventdata_targetObject:/.*\\[Tt][Oo][Oo][Ll][Bb][Aa][Rr]\\[Ss][Hh][Ee][Ll][Ll][Bb][Rr][Oo][Ww][Ss][Ee][Rr]\\[Ii][Tt][Bb][Aa][Rr]7[Ll][Aa][Yy][Oo][Uu][Tt]/ OR data_win_eventdata_targetObject:/.*\\[Tt][Oo][Oo][Ll][Bb][Aa][Rr]\\[Ss][Hh][Oo][Ww][Dd][Ii][Ss][Cc][Uu][Ss][Ss][Ii][Oo][Nn][Bb][Uu][Tt][Tt][Oo][Nn]/ OR data_win_eventdata_targetObject:/.*\\[Tt][Oo][Oo][Ll][Bb][Aa][Rr]\\[Ll][Oo][Cc][Kk][Ee][Dd]/)

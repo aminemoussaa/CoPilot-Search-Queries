@@ -1,0 +1,252 @@
+name: Bad Opsec Defaults Sacrificial Processes With Improper Arguments
+id: a7c3d773-caef-227e-a7e7-c2f13c622329
+version: 1
+schema_version: "1.0"
+date: "2024-08-15"
+author: Oleg Kolesnikov @securonix invrep_de, oscd.community, Florian Roth (Nextron Systems), Christian Burkard (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a7c3d773-caef-227e-a7e7-c2f13c622329
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects attackers using tooling with bad opsec defaults. E.g. spawning a
+  sacrificial process to inject a capability into the process without taking
+  into account how the process is normally run. One trivial example of this is
+  using rundll32.exe without arguments as a sacrificial process (default in CS,
+  now highlighted by c2lint), running WerFault without arguments (Kraken -
+  credit am0nsec), and other examples. MITRE ATT&CK: T1218.011.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\WerFault.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*WerFault.exe"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\rundll32.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*rundll32.exe"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\regsvcs.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*regsvcs.exe"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\regasm.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*regasm.exe"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\regsvr32.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*regsvr32.exe"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\EdgeUpdate\\\\Install\\\\{*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\rundll32.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*rundll32.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "*\\\\AppData\\\\Local\\\\BraveSoftware\\\\Brave-Browser\\\\Application\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "*\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\Application\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\Installer\\\\setup.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*--uninstall *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\rundll32.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*rundll32.exe"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\WerFault.exe'; data_win_eventdata_commandLine matches '*WerFault.exe';
+  data_win_eventdata_image matches '*\rundll32.exe', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blog.malwarebytes.com/malwarebytes-news/2020/10/kraken-attack-abuses-wer-service/
+  - https://www.cobaltstrike.com/help-opsec
+  - https://twitter.com/CyberRaiju/status/1251492025678983169
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/regsvr32
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/rundll32
+  - https://learn.microsoft.com/en-us/dotnet/framework/tools/regasm-exe-assembly-registration-tool
+  - https://learn.microsoft.com/en-us/dotnet/framework/tools/regsvcs-exe-net-services-installation-tool
+  - https://attack.mitre.org/techniques/T1218/011/
+
+response:
+  message: >
+    Bad Opsec Defaults Sacrificial Processes With Improper Arguments detected on
+    host $agent_name$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. MITRE ATT&CK: T1218.011
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.011
+  custom_tags:
+    - opsec
+    - defaults
+    - sacrificial
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_image:/.*\\[Ww][Ee][Rr][Ff][Aa][Uu][Ll][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Ww][Ee][Rr][Ff][Aa][Uu][Ll][Tt]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/) OR (data_win_eventdata_image:/.*\\[Rr][Ee][Gg][Ss][Vv][Cc][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Rr][Ee][Gg][Ss][Vv][Cc][Ss]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_image:/.*\\[Rr][Ee][Gg][Aa][Ss][Mm]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Rr][Ee][Gg][Aa][Ss][Mm]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_image:/.*\\[Rr][Ee][Gg][Ss][Vv][Rr]32\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Rr][Ee][Gg][Ss][Vv][Rr]32\.[Ee][Xx][Ee]/)) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND _exists_:data_win_eventdata_parentCommandLine AND NOT ((data_win_eventdata_parentImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll]\\\{.*/ AND data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/) OR ((data_win_eventdata_parentImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Bb][Rr][Aa][Vv][Ee][Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Bb][Rr][Aa][Vv][Ee]-[Bb][Rr][Oo][Ww][Ss][Ee][Rr]\\[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn]\\.*/ OR data_win_eventdata_parentImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Gg][Oo][Oo][Gg][Ll][Ee]\\[Cc][Hh][Rr][Oo][Mm][Ee]\\[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn]\\.*/) AND data_win_eventdata_parentImage:/.*\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\[Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*--[Uu][Nn][Ii][Nn][Ss][Tt][Aa][Ll][Ll] .*/ AND data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/))

@@ -1,0 +1,139 @@
+name: CosmicDuke Service Installation
+id: cb062102-587e-4414-8efa-dbe3c7bf19c6
+version: 1
+schema_version: "1.0"
+date: "2022-10-09"
+author: Florian Roth (Nextron Systems), Daniil Yugoslavskiy, oscd.community (update)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cb062102-587e-4414-8efa-dbe3c7bf19c6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the installation of a service named "javamtsup" on the system. The
+  CosmicDuke info stealer uses Windows services typically named "javamtsup" for
+  persistence. MITRE ATT&CK: T1543.003, T1569.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4697"
+        - term:
+            data_win_eventdata_serviceName:
+              value: "javamtsup"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_serviceName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4697'; data_win_eventdata_serviceName equals
+  'javamtsup'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blog.f-secure.com/wp-content/uploads/2019/10/CosmicDuke.pdf
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://attack.mitre.org/techniques/T1569/002/
+
+response:
+  message: >
+    CosmicDuke Service Installation detected on host $agent_name$. Matched
+    data_win_eventdata_serviceName: $data_win_eventdata_serviceName$. Matched
+    data_win_eventdata_subjectUserName: $data_win_eventdata_subjectUserName$.
+    MITRE ATT&CK: T1543.003, T1569.002
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_serviceName
+      type: service
+    - field: data_win_eventdata_subjectUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+    - T1569.002
+  custom_tags:
+    - cosmicduke
+    - service
+    - installation
+    - windows_security
+    - privilege_escalation
+    - execution
+    - persistence
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4697" AND data_win_eventdata_serviceName:/[Jj][Aa][Vv][Aa][Mm][Tt][Ss][Uu][Pp]/

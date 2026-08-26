@@ -1,0 +1,183 @@
+name: HackTool - Covenant PowerShell Launcher
+id: c260b6db-48ba-4b4a-a76f-2f67644e99d2
+version: 1
+schema_version: "1.0"
+date: "2023-02-21"
+author: Florian Roth (Nextron Systems), Jonhnathan Ribeiro, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c260b6db-48ba-4b4a-a76f-2f67644e99d2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious command lines used in Covenant luanchers. MITRE ATT&CK:
+  T1059.001, T1564.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-Sta*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-Nop*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-Window*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Hidden*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-Command*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-EncodedCommand*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*sv o (New-Object IO.MemorySteam);sv d *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*mshta file.hta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GruntHTTP*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-EncodedCommand cwB2ACAAbwAgA*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*-Sta*'; data_win_eventdata_commandLine matches '*-Nop*';
+  data_win_eventdata_commandLine matches '*-Window*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://posts.specterops.io/covenant-v0-5-eee0507b85ba
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1564/003/
+
+response:
+  message: >
+    HackTool - Covenant PowerShell Launcher detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1059.001, T1564.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1564.003
+  custom_tags:
+    - hacktool
+    - covenant
+    - powershell
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*-[Ss][Tt][Aa].*/ AND data_win_eventdata_commandLine:/.*-[Nn][Oo][Pp].*/ AND data_win_eventdata_commandLine:/.*-[Ww][Ii][Nn][Dd][Oo][Ww].*/ AND data_win_eventdata_commandLine:/.*[Hh][Ii][Dd][Dd][Ee][Nn].*/ AND (data_win_eventdata_commandLine:/.*-[Cc][Oo][Mm][Mm][Aa][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*-[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn][Dd].*/)) OR data_win_eventdata_commandLine:/.*[Ss][Vv] [Oo] \([Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt] [Ii][Oo]\.[Mm][Ee][Mm][Oo][Rr][Yy][Ss][Tt][Ee][Aa][Mm]\);[Ss][Vv] [Dd] .*/ OR data_win_eventdata_commandLine:/.*[Mm][Ss][Hh][Tt][Aa] [Ff][Ii][Ll][Ee]\.[Hh][Tt][Aa].*/ OR data_win_eventdata_commandLine:/.*[Gg][Rr][Uu][Nn][Tt][Hh][Tt][Tt][Pp].*/ OR data_win_eventdata_commandLine:/.*-[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn][Dd] [Cc][Ww][Bb]2[Aa][Cc][Aa][Aa][Bb][Ww][Aa][Gg][Aa].*/)

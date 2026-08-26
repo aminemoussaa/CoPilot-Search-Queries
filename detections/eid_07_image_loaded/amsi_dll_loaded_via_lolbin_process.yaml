@@ -1,0 +1,145 @@
+name: Amsi.DLL Loaded Via LOLBIN Process
+id: 6ec86d9e-912e-4726-91a2-209359b999b9
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6ec86d9e-912e-4726-91a2-209359b999b9
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects loading of "Amsi.dll" by a living of the land process. This could be
+  an indication of a "PowerShell without PowerShell" attack.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_imageLoaded:
+              value: "*\\\\amsi.dll"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ExtExport.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\odbcconf.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\rundll32.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_image
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\amsi.dll'; data_win_eventdata_image matches '*\ExtExport.exe';
+  data_win_eventdata_image matches '*\odbcconf.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - Internal Research
+  - https://www.paloaltonetworks.com/blog/security-operations/stopping-powershell-without-powershell/
+
+response:
+  message: >
+    Amsi.DLL Loaded Via LOLBIN Process detected on host $agent_name$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - lolbin
+    - image_load
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_imageLoaded:/.*\\[Aa][Mm][Ss][Ii]\.[Dd][Ll][Ll]/ AND (data_win_eventdata_image:/.*\\[Ee][Xx][Tt][Ee][Xx][Pp][Oo][Rr][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Oo][Dd][Bb][Cc][Cc][Oo][Nn][Ff]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/)

@@ -1,0 +1,137 @@
+name: Triple Cross eBPF Rootkit Execve Hijack
+id: 0326c3c8-7803-4a0f-8c5c-368f747f7c3e
+version: 1
+schema_version: "1.0"
+date: "2022-07-05"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0326c3c8-7803-4a0f-8c5c-368f747f7c3e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of a the file "execve_hijack" which is used by the Triple
+  Cross rootkit as a way to elevate privileges.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/sudo"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*execve_hijack*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/sudo';
+  data_process_exec_process_arguments matches '*execve_hijack*'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/h3xduck/TripleCross/blob/1f1c3e0958af8ad9f6ebe10ab442e75de33e91de/src/helpers/execve_hijack.c#L275
+
+response:
+  message: >
+    Triple Cross eBPF Rootkit Execve Hijack detected on host $agent_name$.
+    Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - triple
+    - cross
+    - rootkit
+    - linux
+    - tetragon
+    - process_creation
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Ss][Uu][Dd][Oo]/ AND data_process_exec_process_arguments:/.*[Ee][Xx][Ee][Cc][Vv][Ee]_[Hh][Ii][Jj][Aa][Cc][Kk].*/

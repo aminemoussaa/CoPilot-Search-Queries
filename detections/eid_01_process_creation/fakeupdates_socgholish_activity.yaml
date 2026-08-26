@@ -1,0 +1,197 @@
+name: FakeUpdates/SocGholish Activity
+id: 97805087-93ab-4203-b5cb-287cda6aecaa
+version: 1
+schema_version: "1.0"
+date: "2024-08-23"
+author: "@kostastsale"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 97805087-93ab-4203-b5cb-287cda6aecaa
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects initial execution of FakeUpdates/SocGholish malware via wscript that
+  later executes commands via cmd or powershell. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\wscript.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*\\\\AppData\\\\Local\\\\Temp*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*.zip*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*update*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*.js*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*Chrome*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*Edge*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*Firefox*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*Opera*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*Brave*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*Vivaldi*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\cmd.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\wscript.exe'; data_win_eventdata_parentCommandLine matches
+  '*\AppData\Local\Temp*'; data_win_eventdata_parentCommandLine matches
+  '*.zip*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/th3_protoCOL/status/1536788652889497600
+  - https://twitter.com/1ZRR4H/status/1537501582727778304
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    FakeUpdates/SocGholish Activity detected on host $agent_name$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_parentCommandLine:
+    $data_win_eventdata_parentCommandLine$. MITRE ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_parentCommandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - fakeupdates
+    - socgholish
+    - process_creation
+    - sysmon
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Ww][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp].*/ AND data_win_eventdata_parentCommandLine:/.*\.[Zz][Ii][Pp].*/ AND data_win_eventdata_parentCommandLine:/.*[Uu][Pp][Dd][Aa][Tt][Ee].*/ AND data_win_eventdata_parentCommandLine:/.*\.[Jj][Ss].*/ AND (data_win_eventdata_parentCommandLine:/.*[Cc][Hh][Rr][Oo][Mm][Ee].*/ OR data_win_eventdata_parentCommandLine:/.*[Ee][Dd][Gg][Ee].*/ OR data_win_eventdata_parentCommandLine:/.*[Ff][Ii][Rr][Ee][Ff][Oo][Xx].*/ OR data_win_eventdata_parentCommandLine:/.*[Oo][Pp][Ee][Rr][Aa].*/ OR data_win_eventdata_parentCommandLine:/.*[Bb][Rr][Aa][Vv][Ee].*/ OR data_win_eventdata_parentCommandLine:/.*[Vv][Ii][Vv][Aa][Ll][Dd][Ii].*/) AND (data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/)

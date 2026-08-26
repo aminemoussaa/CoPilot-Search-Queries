@@ -1,0 +1,311 @@
+name: Disabling Security Tools
+id: e3a8a052-111f-4606-9aee-f28ebeb76776
+version: 1
+schema_version: "1.0"
+date: "2022-10-09"
+author: Ömer Günal, Alejandro Ortuno, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e3a8a052-111f-4606-9aee-f28ebeb76776
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects disabling security tools. MITRE ATT&CK: T1686.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/service"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*iptables*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/service"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*ip6tables*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/chkconfig"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*iptables*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/chkconfig"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*ip6tables*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/systemctl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*firewalld*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/systemctl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*firewalld*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*disable*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/service"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*cbdaemon*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/chkconfig"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*cbdaemon*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*off*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/systemctl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*cbdaemon*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/systemctl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*cbdaemon*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*disable*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/setenforce"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments: "*0*"
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/systemctl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*stop*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*falcon-sensor*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/systemctl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*disable*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*falcon-sensor*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/service';
+  data_process_exec_process_arguments matches '*iptables*';
+  data_process_exec_process_arguments matches '*stop*', among other conditions.
+
+known_false_positives: >
+  Legitimate administration activities. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1562.004/T1562.004.md
+  - https://attack.mitre.org/techniques/T1686/
+
+response:
+  message: >
+    Disabling Security Tools detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1686
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1686
+  custom_tags:
+    - disabling
+    - security
+    - tools
+    - linux
+    - tetragon
+    - process_creation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_process_exec_process_binary:/.*\/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ AND data_process_exec_process_arguments:/.*[Ii][Pp][Tt][Aa][Bb][Ll][Ee][Ss].*/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ AND data_process_exec_process_arguments:/.*[Ii][Pp]6[Tt][Aa][Bb][Ll][Ee][Ss].*/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/) OR (data_process_exec_process_binary:/.*\/[Cc][Hh][Kk][Cc][Oo][Nn][Ff][Ii][Gg]/ AND data_process_exec_process_arguments:/.*[Ii][Pp][Tt][Aa][Bb][Ll][Ee][Ss].*/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/) OR (data_process_exec_process_binary:/.*\/[Cc][Hh][Kk][Cc][Oo][Nn][Ff][Ii][Gg]/ AND data_process_exec_process_arguments:/.*[Ii][Pp]6[Tt][Aa][Bb][Ll][Ee][Ss].*/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_process_arguments:/.*[Ff][Ii][Rr][Ee][Ww][Aa][Ll][Ll][Dd].*/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_process_arguments:/.*[Ff][Ii][Rr][Ee][Ww][Aa][Ll][Ll][Dd].*/ AND data_process_exec_process_arguments:/.*[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ AND data_process_exec_process_arguments:/.*[Cc][Bb][Dd][Aa][Ee][Mm][Oo][Nn].*/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/) OR (data_process_exec_process_binary:/.*\/[Cc][Hh][Kk][Cc][Oo][Nn][Ff][Ii][Gg]/ AND data_process_exec_process_arguments:/.*[Cc][Bb][Dd][Aa][Ee][Mm][Oo][Nn].*/ AND data_process_exec_process_arguments:/.*[Oo][Ff][Ff].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_process_arguments:/.*[Cc][Bb][Dd][Aa][Ee][Mm][Oo][Nn].*/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_process_arguments:/.*[Cc][Bb][Dd][Aa][Ee][Mm][Oo][Nn].*/ AND data_process_exec_process_arguments:/.*[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Ee][Tt][Ee][Nn][Ff][Oo][Rr][Cc][Ee]/ AND data_process_exec_process_arguments:/.*0.*/) OR (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_process_arguments:/.*[Ss][Tt][Oo][Pp].*/ AND data_process_exec_process_arguments:/.*[Ff][Aa][Ll][Cc][Oo][Nn]-[Ss][Ee][Nn][Ss][Oo][Rr].*/) OR (data_process_exec_process_binary:/.*\/[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll]/ AND data_process_exec_process_arguments:/.*[Dd][Ii][Ss][Aa][Bb][Ll][Ee].*/ AND data_process_exec_process_arguments:/.*[Ff][Aa][Ll][Cc][Oo][Nn]-[Ss][Ee][Nn][Ss][Oo][Rr].*/))

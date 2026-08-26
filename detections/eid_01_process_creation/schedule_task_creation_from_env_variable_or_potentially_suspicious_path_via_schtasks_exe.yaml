@@ -1,0 +1,323 @@
+name: Schedule Task Creation From Env Variable Or Potentially Suspicious Path Via Schtasks.EXE
+id: 81325ce1-be01-4250-944f-b4789644556f
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 81325ce1-be01-4250-944f-b4789644556f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Schtask creations that point to a suspicious folder or an environment
+  variable often used by malware. MITRE ATT&CK: T1053.005.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\schtasks.exe"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* –create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* —create *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* ―create *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Perflogs*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Users\\\\All Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Users\\\\Default\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Users\\\\Public*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Windows\\\\Temp*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\AppData\\\\Local\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\AppData\\\\Roaming\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*%AppData%*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*%Public%*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\svchost.exe -k netsvcs -p -s Schedule"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Perflogs*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Windows\\\\Temp*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\Users\\\\Public*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*%Public%*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*unattended.ini*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*update_task.xml*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/Create /TN TVInstallRestore /TR*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/Create /Xml *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\Temp\\\\.CR.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\Avira_Security_Installation.xml*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/Create /F /TN*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/Xml *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Avira_*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.tmp\\\\UpdateFallbackTask.xml*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.tmp\\\\WatchdogServiceControlManagerTimeout.xml*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.tmp\\\\SystrayAutostart.xml*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.tmp\\\\MaintenanceTask.xml*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/Create /TN \"klcp_update\" /XML *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\klcp_update_task.xml*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\schtasks.exe'; data_win_eventdata_commandLine matches '* -create *';
+  data_win_eventdata_commandLine matches '* /create *', among other conditions.
+
+known_false_positives: >
+  Benign scheduled tasks creations or executions that happen often during
+  software installations. Software that uses the AppData folder and scheduled
+  tasks to update the software in the AppData folders. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://www.welivesecurity.com/2022/01/18/donot-go-do-not-respawn/
+  - https://www.joesandbox.com/analysis/514608/0/html#324415FF7D8324231381BAD48A052F85DF04
+  - https://blog.talosintelligence.com/gophish-powerrat-dcrat/
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Schedule Task Creation From Env Variable Or Potentially Suspicious Path Via
+    Schtasks.EXE detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1053.005
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053.005
+  custom_tags:
+    - schedule
+    - variable
+    - schtasks
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.* -[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* –[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* —[Cc][Rr][Ee][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.* ―[Cc][Rr][Ee][Aa][Tt][Ee] .*/) AND (data_win_eventdata_commandLine:/.*:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss].*/ OR data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Aa][Ll][Ll] [Uu][Ss][Ee][Rr][Ss]\\.*/ OR data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Dd][Ee][Ff][Aa][Uu][Ll][Tt]\\.*/ OR data_win_eventdata_commandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc].*/ OR data_win_eventdata_commandLine:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\.*/ OR data_win_eventdata_commandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\.*/ OR data_win_eventdata_commandLine:/.*%[Aa][Pp][Pp][Dd][Aa][Tt][Aa]%.*/ OR data_win_eventdata_commandLine:/.*%[Pp][Uu][Bb][Ll][Ii][Cc]%.*/)) OR (data_win_eventdata_parentCommandLine:/.*\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee] -[Kk] [Nn][Ee][Tt][Ss][Vv][Cc][Ss] -[Pp] -[Ss] [Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee]/ AND (data_win_eventdata_commandLine:/.*:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss].*/ OR data_win_eventdata_commandLine:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc].*/ OR data_win_eventdata_commandLine:/.*%[Pp][Uu][Bb][Ll][Ii][Cc]%.*/))) AND _exists_:data_win_eventdata_parentCommandLine AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_parentCommandLine:/.*[Uu][Nn][Aa][Tt][Tt][Ee][Nn][Dd][Ee][Dd]\.[Ii][Nn][Ii].*/ OR data_win_eventdata_commandLine:/.*[Uu][Pp][Dd][Aa][Tt][Ee]_[Tt][Aa][Ss][Kk]\.[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*\/[Cc][Rr][Ee][Aa][Tt][Ee] \/[Tt][Nn] [Tt][Vv][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Rr][Ee][Ss][Tt][Oo][Rr][Ee] \/[Tt][Rr].*/ OR (data_win_eventdata_commandLine:/.*\/[Cc][Rr][Ee][Aa][Tt][Ee] \/[Xx][Mm][Ll] .*/ AND data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\\.[Cc][Rr]\..*/ AND data_win_eventdata_commandLine:/.*\\[Aa][Vv][Ii][Rr][Aa]_[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy]_[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Aa][Tt][Ii][Oo][Nn]\.[Xx][Mm][Ll].*/) OR (data_win_eventdata_commandLine:/.*\/[Cc][Rr][Ee][Aa][Tt][Ee] \/[Ff] \/[Tt][Nn].*/ AND data_win_eventdata_commandLine:/.*\/[Xx][Mm][Ll] .*/ AND data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\.*/ AND data_win_eventdata_commandLine:/.*[Aa][Vv][Ii][Rr][Aa]_.*/ AND (data_win_eventdata_commandLine:/.*\.[Tt][Mm][Pp]\\[Uu][Pp][Dd][Aa][Tt][Ee][Ff][Aa][Ll][Ll][Bb][Aa][Cc][Kk][Tt][Aa][Ss][Kk]\.[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Mm][Pp]\\[Ww][Aa][Tt][Cc][Hh][Dd][Oo][Gg][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Mm][Aa][Nn][Aa][Gg][Ee][Rr][Tt][Ii][Mm][Ee][Oo][Uu][Tt]\.[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Mm][Pp]\\[Ss][Yy][Ss][Tt][Rr][Aa][Yy][Aa][Uu][Tt][Oo][Ss][Tt][Aa][Rr][Tt]\.[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*\.[Tt][Mm][Pp]\\[Mm][Aa][Ii][Nn][Tt][Ee][Nn][Aa][Nn][Cc][Ee][Tt][Aa][Ss][Kk]\.[Xx][Mm][Ll].*/)) OR (data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\.*/ AND data_win_eventdata_commandLine:/.*\/[Cc][Rr][Ee][Aa][Tt][Ee] \/[Tt][Nn] \"[Kk][Ll][Cc][Pp]_[Uu][Pp][Dd][Aa][Tt][Ee]\" \/[Xx][Mm][Ll] .*/ AND data_win_eventdata_commandLine:/.*\\[Kk][Ll][Cc][Pp]_[Uu][Pp][Dd][Aa][Tt][Ee]_[Tt][Aa][Ss][Kk]\.[Xx][Mm][Ll].*/))

@@ -1,0 +1,155 @@
+name: PDQ Deploy Remote Adminstartion Tool Execution
+id: d679950c-abb7-43a6-80fb-2a480c4fc450
+version: 1
+schema_version: "1.0"
+date: "2023-01-30"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d679950c-abb7-43a6-80fb-2a480c4fc450
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect use of PDQ Deploy remote admin tool. MITRE ATT&CK: T1072.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_description:
+                    value: "PDQ Deploy Console"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_product:
+                    value: "PDQ Deploy"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_company:
+                    value: "PDQ.com"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PDQDeployConsole.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_description
+    - data_win_eventdata_product
+    - data_win_eventdata_company
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_description equals 'PDQ
+  Deploy Console'; data_win_eventdata_product equals 'PDQ Deploy';
+  data_win_eventdata_company equals 'PDQ.com', among other conditions.
+
+known_false_positives: >
+  Legitimate use. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/9e5b12c4912c07562aec7500447b11fa3e17e254/atomics/T1072/T1072.md
+  - https://www.pdq.com/pdq-deploy/
+  - https://attack.mitre.org/techniques/T1072/
+
+response:
+  message: >
+    PDQ Deploy Remote Adminstartion Tool Execution detected on host
+    $agent_name$. Matched data_win_eventdata_description:
+    $data_win_eventdata_description$. Matched data_win_eventdata_product:
+    $data_win_eventdata_product$. MITRE ATT&CK: T1072
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_description
+      type: other
+    - field: data_win_eventdata_product
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1072
+  custom_tags:
+    - deploy
+    - adminstartion
+    - process_creation
+    - sysmon
+    - execution
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_description:/[Pp][Dd][Qq] [Dd][Ee][Pp][Ll][Oo][Yy] [Cc][Oo][Nn][Ss][Oo][Ll][Ee]/ OR data_win_eventdata_product:/[Pp][Dd][Qq] [Dd][Ee][Pp][Ll][Oo][Yy]/ OR data_win_eventdata_company:/[Pp][Dd][Qq]\.[Cc][Oo][Mm]/ OR data_win_eventdata_originalFileName:/[Pp][Dd][Qq][Dd][Ee][Pp][Ll][Oo][Yy][Cc][Oo][Nn][Ss][Oo][Ll][Ee]\.[Ee][Xx][Ee]/)

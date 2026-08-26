@@ -1,0 +1,186 @@
+name: Computer Discovery And Export Via Get-ADComputer Cmdlet
+id: 435e10e4-992a-4281-96f3-38b11106adde
+version: 1
+schema_version: "1.0"
+date: "2022-11-17"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 435e10e4-992a-4281-96f3-38b11106adde
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of the Get-ADComputer cmdlet to collect computer information and
+  output it to a file. MITRE ATT&CK: T1033.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PowerShell.EXE"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "pwsh.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*Get-ADComputer *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* -Filter \\**"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine: "* > *"
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* | Select *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Out-File*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Set-Content*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Add-Content*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell.exe'; data_win_eventdata_image matches '*\pwsh.exe';
+  data_win_eventdata_originalFileName equals 'PowerShell.EXE', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate admin scripts may use the same technique, it's better to exclude
+  specific computers or users who execute these commands or scripts often.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - http://blog.talosintelligence.com/2022/09/lazarus-three-rats.html
+  - https://www.microsoft.com/en-us/security/blog/2022/10/18/defenders-beware-a-case-for-post-ransomware-investigations/
+  - https://www.cisa.gov/uscert/sites/default/files/publications/aa22-320a_joint_csa_iranian_government-sponsored_apt_actors_compromise_federal%20network_deploy_crypto%20miner_credential_harvester.pdf
+  - https://attack.mitre.org/techniques/T1033/
+
+response:
+  message: >
+    Computer Discovery And Export Via Get-ADComputer Cmdlet detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1033
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1033
+  custom_tags:
+    - computer
+    - export
+    - adcomputer
+    - process_creation
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ww][Ss][Hh]\.[Dd][Ll][Ll]/) AND data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Aa][Dd][Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr] .*/ AND data_win_eventdata_commandLine:/.* -[Ff][Ii][Ll][Tt][Ee][Rr] \*.*/ AND (data_win_eventdata_commandLine:/.* \> .*/ OR data_win_eventdata_commandLine:/.* \| [Ss][Ee][Ll][Ee][Cc][Tt] .*/ OR data_win_eventdata_commandLine:/.*[Oo][Uu][Tt]-[Ff][Ii][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Tt]-[Cc][Oo][Nn][Tt][Ee][Nn][Tt].*/ OR data_win_eventdata_commandLine:/.*[Aa][Dd][Dd]-[Cc][Oo][Nn][Tt][Ee][Nn][Tt].*/)

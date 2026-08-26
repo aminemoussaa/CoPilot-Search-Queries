@@ -1,0 +1,149 @@
+name: New Custom Shim Database Created
+id: ee63c85c-6d51-4d12-ad09-04e25877a947
+version: 1
+schema_version: "1.0"
+date: "2023-12-06"
+author: frack113, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ee63c85c-6d51-4d12-ad09-04e25877a947
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may establish persistence and/or elevate privileges by executing
+  malicious content triggered by application shims. The Microsoft Windows
+  Application Compatibility Infrastructure/Framework (Application Shim) was
+  created to allow for backward compatibility of software as the operating
+  system codebase changes over time. MITRE ATT&CK: T1547.009.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\Windows\\\\apppatch\\\\Custom\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\Windows\\\\apppatch\\\\CustomSDB\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*:\Windows\apppatch\Custom\*'; data_win_eventdata_targetFilename matches
+  '*:\Windows\apppatch\CustomSDB\*'.
+
+known_false_positives: >
+  Legitimate custom SHIM installations will also trigger this rule. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1546.011/T1546.011.md#atomic-test-2---new-shim-database-files-created-in-the-default-shim-database-directory
+  - https://www.mandiant.com/resources/blog/fin7-shim-databases-persistence
+  - https://liberty-shell.com/sec/2020/02/25/shim-persistence/
+  - https://andreafortuna.org/2018/11/12/process-injection-and-persistence-using-application-shimming/
+  - https://attack.mitre.org/techniques/T1547/009/
+
+response:
+  message: >
+    New Custom Shim Database Created detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1547.009
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.009
+  custom_tags:
+    - custom
+    - database
+    - file_event
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Aa][Pp][Pp][Pp][Aa][Tt][Cc][Hh]\\[Cc][Uu][Ss][Tt][Oo][Mm]\\.*/ OR data_win_eventdata_targetFilename:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Aa][Pp][Pp][Pp][Aa][Tt][Cc][Hh]\\[Cc][Uu][Ss][Tt][Oo][Mm][Ss][Dd][Bb]\\.*/)

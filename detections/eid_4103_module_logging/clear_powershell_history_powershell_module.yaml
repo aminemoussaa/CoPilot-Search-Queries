@@ -1,0 +1,182 @@
+name: Clear PowerShell History - PowerShell Module
+id: f99276ad-d122-4989-a09a-d00904a5f9d2
+version: 1
+schema_version: "1.0"
+date: "2022-12-02"
+author: Ilyas Ochkov, Jonhnathan Ribeiro, Daniil Yugoslavskiy, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f99276ad-d122-4989-a09a-d00904a5f9d2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects keywords that could indicate clearing PowerShell history. MITRE
+  ATT&CK: T1070.003.
+
+data_source:
+  - PowerShell Module Logging EventID 4103
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4103"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_payload:
+                          value: "*Set-PSReadlineOption*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_payload:
+                          value: "*–HistorySaveStyle*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_payload:
+                          value: "*SaveNothing*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_payload:
+                          value: "*Set-PSReadlineOption*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_payload:
+                          value: "*-HistorySaveStyle*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_payload:
+                          value: "*SaveNothing*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_payload:
+                                value: "*del*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_payload:
+                                value: "*Remove-Item*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_payload:
+                                value: "*rm*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_payload:
+                          value: "*(Get-PSReadlineOption).HistorySavePath*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_payload
+    - data_win_eventdata_contextInfo
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Module Logging (EventID 4103) enabled via GPO and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where data_win_eventdata_payload
+  matches '*Set-PSReadlineOption*'; data_win_eventdata_payload matches
+  '*–HistorySaveStyle*'; data_win_eventdata_payload matches '*SaveNothing*',
+  among other conditions.
+
+known_false_positives: >
+  Legitimate PowerShell scripts. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://gist.github.com/hook-s3c/7363a856c3cdbadeb71085147f042c1a
+  - https://attack.mitre.org/techniques/T1070/003/
+
+response:
+  message: >
+    Clear PowerShell History - PowerShell Module detected on host $agent_name$.
+    Matched data_win_eventdata_payload: $data_win_eventdata_payload$. Matched
+    data_win_eventdata_contextInfo: $data_win_eventdata_contextInfo$. MITRE
+    ATT&CK: T1070.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_payload
+      type: powershell_script
+    - field: data_win_eventdata_contextInfo
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1070.003
+  custom_tags:
+    - clear
+    - powershell
+    - history
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4103" AND ((data_win_eventdata_payload:/.*[Ss][Ee][Tt]-[Pp][Ss][Rr][Ee][Aa][Dd][Ll][Ii][Nn][Ee][Oo][Pp][Tt][Ii][Oo][Nn].*/ AND data_win_eventdata_payload:/.*–[Hh][Ii][Ss][Tt][Oo][Rr][Yy][Ss][Aa][Vv][Ee][Ss][Tt][Yy][Ll][Ee].*/ AND data_win_eventdata_payload:/.*[Ss][Aa][Vv][Ee][Nn][Oo][Tt][Hh][Ii][Nn][Gg].*/) OR (data_win_eventdata_payload:/.*[Ss][Ee][Tt]-[Pp][Ss][Rr][Ee][Aa][Dd][Ll][Ii][Nn][Ee][Oo][Pp][Tt][Ii][Oo][Nn].*/ AND data_win_eventdata_payload:/.*-[Hh][Ii][Ss][Tt][Oo][Rr][Yy][Ss][Aa][Vv][Ee][Ss][Tt][Yy][Ll][Ee].*/ AND data_win_eventdata_payload:/.*[Ss][Aa][Vv][Ee][Nn][Oo][Tt][Hh][Ii][Nn][Gg].*/) OR ((data_win_eventdata_payload:/.*[Dd][Ee][Ll].*/ OR data_win_eventdata_payload:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Ii][Tt][Ee][Mm].*/ OR data_win_eventdata_payload:/.*[Rr][Mm].*/) AND data_win_eventdata_payload:/.*\([Gg][Ee][Tt]-[Pp][Ss][Rr][Ee][Aa][Dd][Ll][Ii][Nn][Ee][Oo][Pp][Tt][Ii][Oo][Nn]\)\.[Hh][Ii][Ss][Tt][Oo][Rr][Yy][Ss][Aa][Vv][Ee][Pp][Aa][Tt][Hh].*/))

@@ -1,0 +1,180 @@
+name: PUA - Sysinternals Tools Execution - Registry
+id: c7da8edc-49ae-45a2-9e61-9fd860e4e73d
+version: 1
+schema_version: "1.0"
+date: "2025-10-26"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c7da8edc-49ae-45a2-9e61-9fd860e4e73d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of some potentially unwanted tools such as PsExec,
+  Procdump, etc. (part of the Sysinternals suite) via the creation of the
+  "accepteula" registry key. MITRE ATT&CK: T1588.002.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Active Directory Explorer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Handle*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\LiveKd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Process Explorer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\ProcDump*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\PsExec*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\PsLoglist*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\PsPasswd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SDelete*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Sysinternals*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\EulaAccepted"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Active Directory Explorer*'; data_win_eventdata_targetObject matches
+  '*\Handle*'; data_win_eventdata_targetObject matches '*\LiveKd*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate use of SysInternals tools. Filter the legitimate paths used in your
+  environment. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/Moti_B/status/1008587936735035392
+  - https://attack.mitre.org/techniques/T1588/002/
+
+response:
+  message: >
+    PUA - Sysinternals Tools Execution - Registry detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1588.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1588.002
+  custom_tags:
+    - sysinternals
+    - tools
+    - registry
+    - sysmon
+    - resource_development
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Aa][Cc][Tt][Ii][Vv][Ee] [Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy] [Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee].*/ OR data_win_eventdata_targetObject:/.*\\[Ll][Ii][Vv][Ee][Kk][Dd].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Rr][Oo][Cc][Ee][Ss][Ss] [Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Rr][Oo][Cc][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Ss][Ee][Xx][Ee][Cc].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Ss][Ll][Oo][Gg][Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Ss][Pp][Aa][Ss][Ss][Ww][Dd].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Dd][Ee][Ll][Ee][Tt][Ee].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Yy][Ss][Ii][Nn][Tt][Ee][Rr][Nn][Aa][Ll][Ss].*/) AND data_win_eventdata_targetObject:/.*\\[Ee][Uu][Ll][Aa][Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]/

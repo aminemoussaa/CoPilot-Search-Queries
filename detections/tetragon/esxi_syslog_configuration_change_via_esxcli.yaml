@@ -1,0 +1,161 @@
+name: ESXi Syslog Configuration Change Via ESXCLI
+id: 38eb1dbb-011f-40b1-a126-cf03a0210563
+version: 1
+schema_version: "1.0"
+date: "2023-09-04"
+author: Cedric Maurugeon
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 38eb1dbb-011f-40b1-a126-cf03a0210563
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to the ESXi syslog configuration via "esxcli". MITRE ATT&CK:
+  T1685, T1690, T1059.012.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/esxcli"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*system*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*syslog*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*config*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "* set*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/esxcli';
+  data_process_exec_process_arguments matches '*system*';
+  data_process_exec_process_arguments matches '*syslog*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate administrative activities. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://support.solarwinds.com/SuccessCenter/s/article/Configure-ESXi-Syslog-to-LEM?language=en_US
+  - https://developer.broadcom.com/xapis/esxcli-command-reference/7.0.0/namespace/esxcli_system.html
+  - https://attack.mitre.org/techniques/T1685/
+  - https://attack.mitre.org/techniques/T1690/
+  - https://attack.mitre.org/techniques/T1059/012/
+
+response:
+  message: >
+    ESXi Syslog Configuration Change Via ESXCLI detected on host $agent_name$.
+    Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1685, T1690, T1059.012
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+    - T1690
+    - T1059.012
+  custom_tags:
+    - syslog
+    - configuration
+    - change
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Ee][Ss][Xx][Cc][Ll][Ii]/ AND data_process_exec_process_arguments:/.*[Ss][Yy][Ss][Tt][Ee][Mm].*/ AND data_process_exec_process_arguments:/.*[Ss][Yy][Ss][Ll][Oo][Gg].*/ AND data_process_exec_process_arguments:/.*[Cc][Oo][Nn][Ff][Ii][Gg].*/ AND data_process_exec_process_arguments:/.* [Ss][Ee][Tt].*/

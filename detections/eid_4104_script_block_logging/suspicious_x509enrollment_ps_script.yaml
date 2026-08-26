@@ -1,0 +1,143 @@
+name: Suspicious X509Enrollment - Ps Script
+id: 504d63cb-0dba-4d02-8531-e72981aace2c
+version: 1
+schema_version: "1.0"
+date: "2022-12-23"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 504d63cb-0dba-4d02-8531-e72981aace2c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect use of X509Enrollment. MITRE ATT&CK: T1553.004.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*X509Enrollment.CBinaryConverter*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*884e2002-217d-11da-b2a4-000e7bbb2b09*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches
+  '*X509Enrollment.CBinaryConverter*'; data_win_eventdata_scriptBlockText
+  matches '*884e2002-217d-11da-b2a4-000e7bbb2b09*'.
+
+known_false_positives: >
+  Legitimate administrative script. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://speakerdeck.com/heirhabarov/hunting-for-powershell-abuse?slide=42
+  - https://speakerdeck.com/heirhabarov/hunting-for-powershell-abuse?slide=41
+  - https://learn.microsoft.com/en-us/dotnet/api/microsoft.hpc.scheduler.store.cx509enrollmentwebclassfactoryclass?view=hpc-sdk-5.1.6115
+  - https://attack.mitre.org/techniques/T1553/004/
+
+response:
+  message: >
+    Suspicious X509Enrollment - Ps Script detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1553.004
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1553.004
+  custom_tags:
+    - x509enrollment
+    - powershell
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Xx]509[Ee][Nn][Rr][Oo][Ll][Ll][Mm][Ee][Nn][Tt]\.[Cc][Bb][Ii][Nn][Aa][Rr][Yy][Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*884[Ee]2002-217[Dd]-11[Dd][Aa]-[Bb]2[Aa]4-000[Ee]7[Bb][Bb][Bb]2[Bb]09.*/)

@@ -1,0 +1,184 @@
+name: PUA - Netcat Suspicious Execution
+id: e31033fc-33f0-4020-9a16-faf9b31cbf08
+version: 1
+schema_version: "1.0"
+date: "2023-02-08"
+author: frack113, Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e31033fc-33f0-4020-9a16-faf9b31cbf08
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of Netcat. Adversaries may use a non-application layer
+  protocol for communication between host and C2 server or among infected hosts
+  within a network. MITRE ATT&CK: T1095.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\nc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ncat.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\netcat.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -lvp *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -lvnp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -l -v -p *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -lv -p *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -l --proxy-type http *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -vnl --exec *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -vnl -e *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --lua-exec *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --sh-exec *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\nc.exe';
+  data_win_eventdata_image matches '*\ncat.exe'; data_win_eventdata_image
+  matches '*\netcat.exe', among other conditions.
+
+known_false_positives: >
+  Legitimate ncat use. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://nmap.org/ncat/
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1095/T1095.md
+  - https://www.revshells.com/
+  - https://attack.mitre.org/techniques/T1095/
+
+response:
+  message: >
+    PUA - Netcat Suspicious Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1095
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1095
+  custom_tags:
+    - netcat
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Nn][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Cc][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ee][Tt][Cc][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.* -[Ll][Vv][Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Ll][Vv][Nn][Pp].*/ OR data_win_eventdata_commandLine:/.* -[Ll] -[Vv] -[Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Ll][Vv] -[Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Ll] --[Pp][Rr][Oo][Xx][Yy]-[Tt][Yy][Pp][Ee] [Hh][Tt][Tt][Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Vv][Nn][Ll] --[Ee][Xx][Ee][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Vv][Nn][Ll] -[Ee] .*/ OR data_win_eventdata_commandLine:/.* --[Ll][Uu][Aa]-[Ee][Xx][Ee][Cc] .*/ OR data_win_eventdata_commandLine:/.* --[Ss][Hh]-[Ee][Xx][Ee][Cc] .*/)

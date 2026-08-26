@@ -1,0 +1,176 @@
+name: OpenEDR Spawning Command Shell
+id: 7f3a9c2d-4e8b-4a7f-9d3e-5c6f8a9b2e1d
+version: 1
+schema_version: "1.0"
+date: "2026-02-19"
+author: "@kostastsale"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7f3a9c2d-4e8b-4a7f-9d3e-5c6f8a9b2e1d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the OpenEDR ssh-shellhost.exe spawning a command shell (cmd.exe) or
+  PowerShell with PTY (pseudo-terminal) capabilities. This may indicate remote
+  command execution through OpenEDR's remote management features, which could be
+  legitimate administrative activity or potential abuse of the remote access
+  tool. Threat actors may leverage OpenEDR's remote shell capabilities to
+  execute commands on compromised systems, facilitating lateral movement or
+  other command-and-control operations. MITRE ATT&CK: T1059.003, T1021.004,
+  T1219.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\ITSMService.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\ssh-shellhost.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*--pty*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*bash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cmd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*powershell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*pwsh*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\ITSMService.exe'; data_win_eventdata_image matches '*\ssh-shellhost.exe';
+  data_win_eventdata_commandLine matches '*--pty*', among other conditions.
+
+known_false_positives: >
+  Legitimate use of OpenEDR for remote command execution. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://kostas-ts.medium.com/detecting-abuse-of-openedrs-permissive-edr-trial-a-security-researcher-s-perspective-fc55bf53972c
+  - https://attack.mitre.org/techniques/T1059/003/
+  - https://attack.mitre.org/techniques/T1021/004/
+  - https://attack.mitre.org/techniques/T1219/
+
+response:
+  message: >
+    OpenEDR Spawning Command Shell detected on host $agent_name$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1059.003, T1021.004, T1219
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.003
+    - T1021.004
+    - T1219
+  custom_tags:
+    - openedr
+    - spawning
+    - shell
+    - process_creation
+    - sysmon
+    - execution
+    - lateral_movement
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Ii][Tt][Ss][Mm][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_image:/.*\\[Ss][Ss][Hh]-[Ss][Hh][Ee][Ll][Ll][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*--[Pp][Tt][Yy].*/ AND (data_win_eventdata_commandLine:/.*[Bb][Aa][Ss][Hh].*/ OR data_win_eventdata_commandLine:/.*[Cc][Mm][Dd].*/ OR data_win_eventdata_commandLine:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*[Pp][Ww][Ss][Hh].*/)

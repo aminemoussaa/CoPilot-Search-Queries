@@ -1,0 +1,190 @@
+name: Silence.EDA Detection
+id: 3ceb2083-a27f-449a-be33-14ec1b7cc973
+version: 1
+schema_version: "1.0"
+date: "2023-04-03"
+author: Alina Stepchenkova, Group-IB, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3ceb2083-a27f-449a-be33-14ec1b7cc973
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Silence EmpireDNSAgent as described in the Group-IP report. MITRE
+  ATT&CK: T1059.001, T1071.004, T1572, T1529.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*System.Diagnostics.Process*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Stop-Computer*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Restart-Computer*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Exception in execution*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*$cmdargs*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Close-Dnscat2Tunnel*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*set type=$LookupType`nserver*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*$Command | nslookup 2>&1 | Out-String*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*New-RandomDNSField*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*[Convert]::ToString($SYNOptions, 16)*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*$Session.Dead = $True*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*$Session[\"Driver\"] -eq*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*System.Diagnostics.Process*';
+  data_win_eventdata_scriptBlockText matches '*Stop-Computer*';
+  data_win_eventdata_scriptBlockText matches '*Restart-Computer*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.group-ib.com/resources/threat-research/silence_2.0.going_global.pdf
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1071/004/
+  - https://attack.mitre.org/techniques/T1572/
+  - https://attack.mitre.org/techniques/T1529/
+
+response:
+  message: >
+    Silence.EDA Detection detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1059.001, T1071.004,
+    T1572, T1529
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1071.004
+    - T1572
+    - T1529
+  custom_tags:
+    - silence
+    - powershell
+    - execution
+    - command_and_control
+    - impact
+    - g0091
+    - s0363
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Dd][Ii][Aa][Gg][Nn][Oo][Ss][Tt][Ii][Cc][Ss]\.[Pp][Rr][Oo][Cc][Ee][Ss][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*[Ss][Tt][Oo][Pp]-[Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr].*/ AND data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Ss][Tt][Aa][Rr][Tt]-[Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr].*/ AND data_win_eventdata_scriptBlockText:/.*[Ee][Xx][Cc][Ee][Pp][Tt][Ii][Oo][Nn] [Ii][Nn] [Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn].*/ AND data_win_eventdata_scriptBlockText:/.*\$[Cc][Mm][Dd][Aa][Rr][Gg][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*[Cc][Ll][Oo][Ss][Ee]-[Dd][Nn][Ss][Cc][Aa][Tt]2[Tt][Uu][Nn][Nn][Ee][Ll].*/ AND data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt] [Tt][Yy][Pp][Ee]=\$[Ll][Oo][Oo][Kk][Uu][Pp][Tt][Yy][Pp][Ee]`[Nn][Ss][Ee][Rr][Vv][Ee][Rr].*/ AND data_win_eventdata_scriptBlockText:/.*\$[Cc][Oo][Mm][Mm][Aa][Nn][Dd] \| [Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp] 2\>\&1 \| [Oo][Uu][Tt]-[Ss][Tt][Rr][Ii][Nn][Gg].*/ AND data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Rr][Aa][Nn][Dd][Oo][Mm][Dd][Nn][Ss][Ff][Ii][Ee][Ll][Dd].*/ AND data_win_eventdata_scriptBlockText:/.*\[[Cc][Oo][Nn][Vv][Ee][Rr][Tt]\]::[Tt][Oo][Ss][Tt][Rr][Ii][Nn][Gg]\(\$[Ss][Yy][Nn][Oo][Pp][Tt][Ii][Oo][Nn][Ss], 16\).*/ AND data_win_eventdata_scriptBlockText:/.*\$[Ss][Ee][Ss][Ss][Ii][Oo][Nn]\.[Dd][Ee][Aa][Dd] = \$[Tt][Rr][Uu][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*\$[Ss][Ee][Ss][Ss][Ii][Oo][Nn]\[\"[Dd][Rr][Ii][Vv][Ee][Rr]\"\] -[Ee][Qq].*/

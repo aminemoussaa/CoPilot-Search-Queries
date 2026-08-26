@@ -1,0 +1,229 @@
+name: Remote Access Tool Services Have Been Installed - System
+id: 1a31b18a-f00c-4061-9900-f735b96c99fc
+version: 1
+schema_version: "1.0"
+date: "2023-06-22"
+author: Connor Martin, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1a31b18a-f00c-4061-9900-f735b96c99fc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects service installation of different remote access tools software. These
+  software are often abused by threat actors to perform. MITRE ATT&CK:
+  T1543.003, T1569.002.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "Service Control Manager"
+              case_insensitive: true
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "7045"
+              - term:
+                  data_win_system_eventID: "7036"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*AmmyyAdmin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*Atera*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*BASupportExpressSrvcUpdater*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*BASupportExpressStandaloneService*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*chromoting*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*GoToAssist*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*GoToMyPC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*jumpcloud*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*LMIGuardianSvc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*LogMeIn*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*monblanking*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*Parsec*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*RManService*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*RPCPerformanceService*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*RPCService*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*SplashtopRemoteService*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*SSUService*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*TeamViewer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*TightVNC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*vncserver*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceName:
+                    value: "*Zoho*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_serviceName
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals 'Service Control Manager';
+  data_win_system_eventID equals '7045'; data_win_system_eventID equals '7036',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://redcanary.com/blog/misbehaving-rats/
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://attack.mitre.org/techniques/T1569/002/
+
+response:
+  message: >
+    Remote Access Tool Services Have Been Installed - System detected on host
+    $agent_name$. Matched data_win_system_providerName:
+    $data_win_system_providerName$. Matched data_win_eventdata_serviceName:
+    $data_win_eventdata_serviceName$. MITRE ATT&CK: T1543.003, T1569.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_serviceName
+      type: service
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+    - T1569.002
+  custom_tags:
+    - services
+    - installed
+    - system
+    - windows_system
+    - privilege_escalation
+    - persistence
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Mm][Aa][Nn][Aa][Gg][Ee][Rr]/ AND (data_win_system_eventID:"7045" OR data_win_system_eventID:"7036") AND (data_win_eventdata_serviceName:/.*[Aa][Mm][Mm][Yy][Yy][Aa][Dd][Mm][Ii][Nn].*/ OR data_win_eventdata_serviceName:/.*[Aa][Tt][Ee][Rr][Aa].*/ OR data_win_eventdata_serviceName:/.*[Bb][Aa][Ss][Uu][Pp][Pp][Oo][Rr][Tt][Ee][Xx][Pp][Rr][Ee][Ss][Ss][Ss][Rr][Vv][Cc][Uu][Pp][Dd][Aa][Tt][Ee][Rr].*/ OR data_win_eventdata_serviceName:/.*[Bb][Aa][Ss][Uu][Pp][Pp][Oo][Rr][Tt][Ee][Xx][Pp][Rr][Ee][Ss][Ss][Ss][Tt][Aa][Nn][Dd][Aa][Ll][Oo][Nn][Ee][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_serviceName:/.*[Cc][Hh][Rr][Oo][Mm][Oo][Tt][Ii][Nn][Gg].*/ OR data_win_eventdata_serviceName:/.*[Gg][Oo][Tt][Oo][Aa][Ss][Ss][Ii][Ss][Tt].*/ OR data_win_eventdata_serviceName:/.*[Gg][Oo][Tt][Oo][Mm][Yy][Pp][Cc].*/ OR data_win_eventdata_serviceName:/.*[Jj][Uu][Mm][Pp][Cc][Ll][Oo][Uu][Dd].*/ OR data_win_eventdata_serviceName:/.*[Ll][Mm][Ii][Gg][Uu][Aa][Rr][Dd][Ii][Aa][Nn][Ss][Vv][Cc].*/ OR data_win_eventdata_serviceName:/.*[Ll][Oo][Gg][Mm][Ee][Ii][Nn].*/ OR data_win_eventdata_serviceName:/.*[Mm][Oo][Nn][Bb][Ll][Aa][Nn][Kk][Ii][Nn][Gg].*/ OR data_win_eventdata_serviceName:/.*[Pp][Aa][Rr][Ss][Ee][Cc].*/ OR data_win_eventdata_serviceName:/.*[Rr][Mm][Aa][Nn][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_serviceName:/.*[Rr][Pp][Cc][Pp][Ee][Rr][Ff][Oo][Rr][Mm][Aa][Nn][Cc][Ee][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_serviceName:/.*[Rr][Pp][Cc][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_serviceName:/.*[Ss][Pp][Ll][Aa][Ss][Hh][Tt][Oo][Pp][Rr][Ee][Mm][Oo][Tt][Ee][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_serviceName:/.*[Ss][Ss][Uu][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_serviceName:/.*[Tt][Ee][Aa][Mm][Vv][Ii][Ee][Ww][Ee][Rr].*/ OR data_win_eventdata_serviceName:/.*[Tt][Ii][Gg][Hh][Tt][Vv][Nn][Cc].*/ OR data_win_eventdata_serviceName:/.*[Vv][Nn][Cc][Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_win_eventdata_serviceName:/.*[Zz][Oo][Hh][Oo].*/)

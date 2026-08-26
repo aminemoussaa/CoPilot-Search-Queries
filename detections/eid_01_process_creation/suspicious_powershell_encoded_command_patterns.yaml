@@ -1,0 +1,219 @@
+name: Suspicious PowerShell Encoded Command Patterns
+id: b9d9cc83-380b-4ba3-8d8f-60c0e7e2930c
+version: 1
+schema_version: "1.0"
+date: "2023-01-05"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b9d9cc83-380b-4ba3-8d8f-60c0e7e2930c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects PowerShell command line patterns in combincation with encoded commands
+  that often appear in malware infection chains. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PowerShell.Exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "pwsh.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -en *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -enc *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -enco*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* JAB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* SUVYI*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* SQBFAFgA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* aWV4I*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* IAB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* PAA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* aQBlAHgA*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*C:\\\\Packages\\\\Plugins\\\\Microsoft.GuestConfiguration.ConfigurationforWindows\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*\\\\gc_worker.exe*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell.exe'; data_win_eventdata_image matches '*\pwsh.exe';
+  data_win_eventdata_originalFileName equals 'PowerShell.Exe', among other
+  conditions.
+
+known_false_positives: >
+  Other tools that work with encoded scripts in the command line instead of
+  script files. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://app.any.run/tasks/b9040c63-c140-479b-ad59-f1bb56ce7a97/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Suspicious PowerShell Encoded Command Patterns detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - powershell
+    - encoded
+    - patterns
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ww][Ss][Hh]\.[Dd][Ll][Ll]/) AND (data_win_eventdata_commandLine:/.* -[Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo].*/) AND (data_win_eventdata_commandLine:/.* [Jj][Aa][Bb].*/ OR data_win_eventdata_commandLine:/.* [Ss][Uu][Vv][Yy][Ii].*/ OR data_win_eventdata_commandLine:/.* [Ss][Qq][Bb][Ff][Aa][Ff][Gg][Aa].*/ OR data_win_eventdata_commandLine:/.* [Aa][Ww][Vv]4[Ii].*/ OR data_win_eventdata_commandLine:/.* [Ii][Aa][Bb].*/ OR data_win_eventdata_commandLine:/.* [Pp][Aa][Aa].*/ OR data_win_eventdata_commandLine:/.* [Aa][Qq][Bb][Ll][Aa][Hh][Gg][Aa].*/) AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_parentImage:/.*[Cc]:\\[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss]\\[Pp][Ll][Uu][Gg][Ii][Nn][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Gg][Uu][Ee][Ss][Tt][Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Aa][Tt][Ii][Oo][Nn]\.[Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Aa][Tt][Ii][Oo][Nn][Ff][Oo][Rr][Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\.*/ OR data_win_eventdata_parentImage:/.*\\[Gg][Cc]_[Ww][Oo][Rr][Kk][Ee][Rr]\.[Ee][Xx][Ee].*/)

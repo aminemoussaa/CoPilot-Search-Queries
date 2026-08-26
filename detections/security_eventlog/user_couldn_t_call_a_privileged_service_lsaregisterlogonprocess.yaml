@@ -1,0 +1,143 @@
+name: User Couldn't Call a Privileged Service 'LsaRegisterLogonProcess'
+id: 6daac7fc-77d1-449a-a71a-e6b4d59a0e54
+version: 1
+schema_version: "1.0"
+date: "2022-12-25"
+author: Roberto Rodriguez (source), Ilyas Ochkov (rule), oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6daac7fc-77d1-449a-a71a-e6b4d59a0e54
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  The 'LsaRegisterLogonProcess' function verifies that the application making
+  the function call is a logon process by checking that it has the
+  SeTcbPrivilege privilege set. Possible Rubeus tries to get a handle to LSA.
+  MITRE ATT&CK: T1558.003.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4673"
+        - term:
+            data_win_eventdata_service:
+              value: "LsaRegisterLogonProcess()"
+              case_insensitive: true
+        - term:
+            data_win_system_keywords:
+              value: "0x8010000000000000"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_service
+    - data_win_system_keywords
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4673'; data_win_eventdata_service equals
+  'LsaRegisterLogonProcess()'; data_win_system_keywords equals
+  '0x8010000000000000'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://posts.specterops.io/hunting-in-active-directory-unconstrained-delegation-forests-trusts-71f2b33688e1
+  - https://attack.mitre.org/techniques/T1558/003/
+
+response:
+  message: >
+    User Couldn't Call a Privileged Service 'LsaRegisterLogonProcess' detected
+    on host $agent_name$. Matched data_win_eventdata_service:
+    $data_win_eventdata_service$. Matched data_win_system_keywords:
+    $data_win_system_keywords$. MITRE ATT&CK: T1558.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_service
+      type: other
+    - field: data_win_system_keywords
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1558.003
+  custom_tags:
+    - couldn
+    - privileged
+    - service
+    - windows_security
+    - credential_access
+    - lateral_movement
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4673" AND data_win_eventdata_service:/[Ll][Ss][Aa][Rr][Ee][Gg][Ii][Ss][Tt][Ee][Rr][Ll][Oo][Gg][Oo][Nn][Pp][Rr][Oo][Cc][Ee][Ss][Ss]\(\)/ AND data_win_system_keywords:/0[Xx]8010000000000000/

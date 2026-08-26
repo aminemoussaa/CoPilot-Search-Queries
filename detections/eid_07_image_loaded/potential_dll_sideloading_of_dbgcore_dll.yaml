@@ -1,0 +1,194 @@
+name: Potential DLL Sideloading Of DBGCORE.DLL
+id: 9ca2bf31-0570-44d8-a543-534c47c33ed7
+version: 1
+schema_version: "1.0"
+date: "2025-10-06"
+author: Nasreddine Bencherchali (Nextron Systems), Wietze Beukema (project and research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9ca2bf31-0570-44d8-a543-534c47c33ed7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects DLL sideloading of "dbgcore.dll". MITRE ATT&CK: T1574.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_imageLoaded:
+              value: "*\\\\dbgcore.dll"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files (x86)\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\SoftwareDistribution\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\SystemTemp\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\WinSxS\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "*\\\\Steam\\\\bin\\\\cef\\\\cef.win7x64\\\\dbgcore.dll"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_imageLoaded:
+                                value: "*opera\\\\Opera Installer Temp\\\\opera_package*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_imageLoaded:
+                                value: "*\\\\assistant\\\\dbgcore.dll"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_image
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\dbgcore.dll'; data_win_eventdata_imageLoaded matches 'C:\Program Files
+  (x86)\*'; data_win_eventdata_imageLoaded matches 'C:\Program Files\*', among
+  other conditions.
+
+known_false_positives: >
+  Legitimate applications loading their own versions of the DLL mentioned in
+  this rule. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://hijacklibs.net/
+  - https://attack.mitre.org/techniques/T1574/001/
+
+response:
+  message: >
+    Potential DLL Sideloading Of DBGCORE.DLL detected on host $agent_name$.
+    Matched data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1574.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.001
+  custom_tags:
+    - sideloading
+    - dbgcore
+    - image_load
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_imageLoaded:/.*\\[Dd][Bb][Gg][Cc][Oo][Rr][Ee]\.[Dd][Ll][Ll]/ AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee][Dd][Ii][Ss][Tt][Rr][Ii][Bb][Uu][Tt][Ii][Oo][Nn]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm][Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Xx][Ss]\\.*/) AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/.*\\[Ss][Tt][Ee][Aa][Mm]\\[Bb][Ii][Nn]\\[Cc][Ee][Ff]\\[Cc][Ee][Ff]\.[Ww][Ii][Nn]7[Xx]64\\[Dd][Bb][Gg][Cc][Oo][Rr][Ee]\.[Dd][Ll][Ll]/ OR (data_win_eventdata_imageLoaded:/.*[Oo][Pp][Ee][Rr][Aa]\\[Oo][Pp][Ee][Rr][Aa] [Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr] [Tt][Ee][Mm][Pp]\\[Oo][Pp][Ee][Rr][Aa]_[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*/ AND data_win_eventdata_imageLoaded:/.*\\[Aa][Ss][Ss][Ii][Ss][Tt][Aa][Nn][Tt]\\[Dd][Bb][Gg][Cc][Oo][Rr][Ee]\.[Dd][Ll][Ll]/))

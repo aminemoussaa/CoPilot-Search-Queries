@@ -1,0 +1,313 @@
+name: Wlrmdr.EXE Uncommon Argument Or Child Process
+id: 9cfc00b6-bfb7-49ce-9781-ef78503154bb
+version: 1
+schema_version: "1.0"
+date: "2025-10-31"
+author: frack113, manasmbellani
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9cfc00b6-bfb7-49ce-9781-ef78503154bb
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of "Wlrmdr.exe" with the "-u" command line flag which
+  allows anything passed to it to be an argument of the ShellExecute API, which
+  would allow an attacker to execute arbitrary binaries. This detection also
+  focuses on any uncommon child processes spawned from "Wlrmdr.exe" as a
+  supplement for those that posses "ParentImage" telemetry. MITRE ATT&CK: T1218.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\wlrmdr.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\wlrmdr.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "WLRMNDR.EXE"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-s *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/s *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–s *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—s *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―s *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-f *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/f *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–f *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—f *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―f *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-t *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/t *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–t *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—t *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―t *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-m *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/m *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–m *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—m *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―m *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-a *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/a *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–a *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—a *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―a *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-u *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/u *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–u *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—u *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―u *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_parentImage:
+                                      value: "C:\\Windows\\System32\\winlogon.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_parentImage: ""
+                                - term:
+                                    data_win_eventdata_parentImage: "-"
+                                - bool:
+                                    must_not:
+                                      - exists:
+                                          field: "data_win_eventdata_parentImage"
+                              minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\wlrmdr.exe'; data_win_eventdata_image matches '*\wlrmdr.exe';
+  data_win_eventdata_originalFileName equals 'WLRMNDR.EXE', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/0gtweet/status/1493963591745220608?s=20&t=xUg9DsZhJy1q9bPTUWgeIQ
+  - https://lolbas-project.github.io/lolbas/Binaries/Wlrmdr/
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Wlrmdr.EXE Uncommon Argument Or Child Process detected on host $agent_name$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1218
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+  custom_tags:
+    - wlrmdr
+    - uncommon
+    - argument
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Ww][Ll][Rr][Mm][Dd][Rr]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/.*\\[Ww][Ll][Rr][Mm][Dd][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ll][Rr][Mm][Nn][Dd][Rr]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*-[Ss] .*/ OR data_win_eventdata_commandLine:/.*\/[Ss] .*/ OR data_win_eventdata_commandLine:/.*–[Ss] .*/ OR data_win_eventdata_commandLine:/.*—[Ss] .*/ OR data_win_eventdata_commandLine:/.*―[Ss] .*/) AND (data_win_eventdata_commandLine:/.*-[Ff] .*/ OR data_win_eventdata_commandLine:/.*\/[Ff] .*/ OR data_win_eventdata_commandLine:/.*–[Ff] .*/ OR data_win_eventdata_commandLine:/.*—[Ff] .*/ OR data_win_eventdata_commandLine:/.*―[Ff] .*/) AND (data_win_eventdata_commandLine:/.*-[Tt] .*/ OR data_win_eventdata_commandLine:/.*\/[Tt] .*/ OR data_win_eventdata_commandLine:/.*–[Tt] .*/ OR data_win_eventdata_commandLine:/.*—[Tt] .*/ OR data_win_eventdata_commandLine:/.*―[Tt] .*/) AND (data_win_eventdata_commandLine:/.*-[Mm] .*/ OR data_win_eventdata_commandLine:/.*\/[Mm] .*/ OR data_win_eventdata_commandLine:/.*–[Mm] .*/ OR data_win_eventdata_commandLine:/.*—[Mm] .*/ OR data_win_eventdata_commandLine:/.*―[Mm] .*/) AND (data_win_eventdata_commandLine:/.*-[Aa] .*/ OR data_win_eventdata_commandLine:/.*\/[Aa] .*/ OR data_win_eventdata_commandLine:/.*–[Aa] .*/ OR data_win_eventdata_commandLine:/.*—[Aa] .*/ OR data_win_eventdata_commandLine:/.*―[Aa] .*/) AND (data_win_eventdata_commandLine:/.*-[Uu] .*/ OR data_win_eventdata_commandLine:/.*\/[Uu] .*/ OR data_win_eventdata_commandLine:/.*–[Uu] .*/ OR data_win_eventdata_commandLine:/.*—[Uu] .*/ OR data_win_eventdata_commandLine:/.*―[Uu] .*/) AND NOT (data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:"" OR data_win_eventdata_parentImage:"-" OR NOT _exists_:data_win_eventdata_parentImage)))

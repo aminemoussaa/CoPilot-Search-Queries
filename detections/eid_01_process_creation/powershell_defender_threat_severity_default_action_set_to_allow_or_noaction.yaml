@@ -1,0 +1,196 @@
+name: PowerShell Defender Threat Severity Default Action Set to 'Allow' or 'NoAction'
+id: 1e8a9b4d-3c2a-4f9b-8d1e-7c6a5b4f3d2e
+version: 1
+schema_version: "1.0"
+date: "2025-07-11"
+author: Matt Anderson (Huntress)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1e8a9b4d-3c2a-4f9b-8d1e-7c6a5b4f3d2e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of PowerShell to execute the 'Set-MpPreference' cmdlet to
+  configure Windows Defender's threat severity default action to 'Allow' (value
+  '6') or 'NoAction' (value '9'). This is a highly suspicious configuration
+  change that effectively disables Defender's ability to automatically mitigate
+  threats of a certain severity level. An attacker might use this technique via
+  the command line to bypass defenses before executing payloads. MITRE ATT&CK:
+  T1685.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*Set-MpPreference*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-LowThreatDefaultAction*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-ModerateThreatDefaultAction*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-HighThreatDefaultAction*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-SevereThreatDefaultAction*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-ltdefac *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-mtdefac *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-htdefac *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-stdefac *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Allow*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine: "*6*"
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*NoAction*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine: "*9*"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*Set-MpPreference*'; data_win_eventdata_commandLine matches
+  '*-LowThreatDefaultAction*'; data_win_eventdata_commandLine matches
+  '*-ModerateThreatDefaultAction*', among other conditions.
+
+known_false_positives: >
+  Highly unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/powershell/module/defender/set-mppreference
+  - https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/security-malware-windows-defender-threatseveritydefaultaction
+  - https://research.splunk.com/endpoint/7215831c-8252-4ae3-8d43-db588e82f952
+  - https://gist.github.com/Dump-GUY/8daef859f382b895ac6fd0cf094555d2
+  - https://thedfirreport.com/2021/10/18/icedid-to-xinglocker-ransomware-in-24-hours/
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    PowerShell Defender Threat Severity Default Action Set to 'Allow' or
+    'NoAction' detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - powershell
+    - defender
+    - threat
+    - process_creation
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_commandLine:/.*[Ss][Ee][Tt]-[Mm][Pp][Pp][Rr][Ee][Ff][Ee][Rr][Ee][Nn][Cc][Ee].*/ AND (data_win_eventdata_commandLine:/.*-[Ll][Oo][Ww][Tt][Hh][Rr][Ee][Aa][Tt][Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Mm][Oo][Dd][Ee][Rr][Aa][Tt][Ee][Tt][Hh][Rr][Ee][Aa][Tt][Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Hh][Ii][Gg][Hh][Tt][Hh][Rr][Ee][Aa][Tt][Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Ss][Ee][Vv][Ee][Rr][Ee][Tt][Hh][Rr][Ee][Aa][Tt][Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*-[Ll][Tt][Dd][Ee][Ff][Aa][Cc] .*/ OR data_win_eventdata_commandLine:/.*-[Mm][Tt][Dd][Ee][Ff][Aa][Cc] .*/ OR data_win_eventdata_commandLine:/.*-[Hh][Tt][Dd][Ee][Ff][Aa][Cc] .*/ OR data_win_eventdata_commandLine:/.*-[Ss][Tt][Dd][Ee][Ff][Aa][Cc] .*/) AND (data_win_eventdata_commandLine:/.*[Aa][Ll][Ll][Oo][Ww].*/ OR data_win_eventdata_commandLine:/.*6.*/ OR data_win_eventdata_commandLine:/.*[Nn][Oo][Aa][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*9.*/)

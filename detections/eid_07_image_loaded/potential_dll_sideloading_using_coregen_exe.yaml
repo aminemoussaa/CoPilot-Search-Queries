@@ -1,0 +1,161 @@
+name: Potential DLL Sideloading Using Coregen.exe
+id: 0fa66f66-e3f6-4a9c-93f8-4f2610b00171
+version: 1
+schema_version: "1.0"
+date: "2022-12-31"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0fa66f66-e3f6-4a9c-93f8-4f2610b00171
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect usage of the "coregen.exe" (Microsoft CoreCLR Native Image Generator)
+  binary to sideload arbitrary DLLs. MITRE ATT&CK: T1218, T1055.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\coregen.exe"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files (x86)\\\\Microsoft Silverlight\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files\\\\Microsoft Silverlight\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\coregen.exe'; data_win_eventdata_imageLoaded matches 'C:\Program Files
+  (x86)\Microsoft Silverlight\*'; data_win_eventdata_imageLoaded matches
+  'C:\Program Files\Microsoft Silverlight\*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://lolbas-project.github.io/lolbas/OtherMSBinaries/Coregen/
+  - https://attack.mitre.org/techniques/T1218/
+  - https://attack.mitre.org/techniques/T1055/
+
+response:
+  message: >
+    Potential DLL Sideloading Using Coregen.exe detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. MITRE
+    ATT&CK: T1218, T1055
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_imageLoaded
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+    - T1055
+  custom_tags:
+    - sideloading
+    - coregen
+    - image_load
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_image:/.*\\[Cc][Oo][Rr][Ee][Gg][Ee][Nn]\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Ii][Ll][Vv][Ee][Rr][Ll][Ii][Gg][Hh][Tt]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Ii][Ll][Vv][Ee][Rr][Ll][Ii][Gg][Hh][Tt]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/)

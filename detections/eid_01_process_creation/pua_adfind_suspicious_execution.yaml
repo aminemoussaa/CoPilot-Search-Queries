@@ -1,0 +1,222 @@
+name: PUA - AdFind Suspicious Execution
+id: 9a132afa-654e-11eb-ae93-0242ac130002
+version: 1
+schema_version: "1.0"
+date: "2025-10-24"
+author: Janantha Marasinghe (https://github.com/blueteam0ps), FPT.EagleEye Team, omkar72, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9a132afa-654e-11eb-ae93-0242ac130002
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects AdFind execution with common flags seen used during attacks. MITRE
+  ATT&CK: T1018, T1087.002, T1482, T1069.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*domainlist*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*trustdmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dcmodes*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*adinfo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-sc dclist*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*computer_pwdnotreqd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*objectcategory=*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-subnets -f*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*name=\"Domain Admins\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-sc u:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*domainncs*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dompol*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* oudmp *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*subnetdmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*gpodmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*fspdmp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*users_noexpire*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*computers_active*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*computers_pwdnotreqd*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*domainlist*'; data_win_eventdata_commandLine matches '*trustdmp*';
+  data_win_eventdata_commandLine matches '*dcmodes*', among other conditions.
+
+known_false_positives: >
+  Legitimate admin activity. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://www.joeware.net/freetools/tools/adfind/
+  - https://thedfirreport.com/2020/05/08/adfind-recon/
+  - https://thedfirreport.com/2021/01/11/trickbot-still-alive-and-well/
+  - https://www.microsoft.com/security/blog/2021/01/20/deep-dive-into-the-solorigate-second-stage-activation-from-sunburst-to-teardrop-and-raindrop/
+  - https://social.technet.microsoft.com/wiki/contents/articles/7535.adfind-command-examples.aspx
+  - https://github.com/center-for-threat-informed-defense/adversary_emulation_library/blob/bf62ece1c679b07b5fb49c4bae947fe24c81811f/fin6/Emulation_Plan/Phase1.md
+  - https://github.com/redcanaryco/atomic-red-team/blob/0f229c0e42bfe7ca736a14023836d65baa941ed2/atomics/T1087.002/T1087.002.md#atomic-test-7---adfind---enumerate-active-directory-user-objects
+  - https://attack.mitre.org/techniques/T1018/
+  - https://attack.mitre.org/techniques/T1087/002/
+  - https://attack.mitre.org/techniques/T1482/
+  - https://attack.mitre.org/techniques/T1069/002/
+
+response:
+  message: >
+    PUA - AdFind Suspicious Execution detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1018,
+    T1087.002, T1482, T1069.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1018
+    - T1087.002
+    - T1482
+    - T1069.002
+  custom_tags:
+    - adfind
+    - process_creation
+    - sysmon
+    - discovery
+    - stp_1u
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Dd][Oo][Mm][Aa][Ii][Nn][Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Tt][Rr][Uu][Ss][Tt][Dd][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*[Dd][Cc][Mm][Oo][Dd][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*[Aa][Dd][Ii][Nn][Ff][Oo].*/ OR data_win_eventdata_commandLine:/.*-[Ss][Cc] [Dd][Cc][Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr]_[Pp][Ww][Dd][Nn][Oo][Tt][Rr][Ee][Qq][Dd].*/ OR data_win_eventdata_commandLine:/.*[Oo][Bb][Jj][Ee][Cc][Tt][Cc][Aa][Tt][Ee][Gg][Oo][Rr][Yy]=.*/ OR data_win_eventdata_commandLine:/.*-[Ss][Uu][Bb][Nn][Ee][Tt][Ss] -[Ff].*/ OR data_win_eventdata_commandLine:/.*[Nn][Aa][Mm][Ee]=\"[Dd][Oo][Mm][Aa][Ii][Nn] [Aa][Dd][Mm][Ii][Nn][Ss]\".*/ OR data_win_eventdata_commandLine:/.*-[Ss][Cc] [Uu]:.*/ OR data_win_eventdata_commandLine:/.*[Dd][Oo][Mm][Aa][Ii][Nn][Nn][Cc][Ss].*/ OR data_win_eventdata_commandLine:/.*[Dd][Oo][Mm][Pp][Oo][Ll].*/ OR data_win_eventdata_commandLine:/.* [Oo][Uu][Dd][Mm][Pp] .*/ OR data_win_eventdata_commandLine:/.*[Ss][Uu][Bb][Nn][Ee][Tt][Dd][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*[Gg][Pp][Oo][Dd][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ss][Pp][Dd][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Ee][Rr][Ss]_[Nn][Oo][Ee][Xx][Pp][Ii][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr][Ss]_[Aa][Cc][Tt][Ii][Vv][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr][Ss]_[Pp][Ww][Dd][Nn][Oo][Tt][Rr][Ee][Qq][Dd].*/)

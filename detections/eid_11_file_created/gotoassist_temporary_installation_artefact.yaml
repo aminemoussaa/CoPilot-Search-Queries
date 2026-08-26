@@ -1,0 +1,140 @@
+name: GoToAssist Temporary Installation Artefact
+id: 5d756aee-ad3e-4306-ad95-cb1abec48de2
+version: 1
+schema_version: "1.0"
+date: "2022-02-13"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5d756aee-ad3e-4306-ad95-cb1abec48de2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  An adversary may use legitimate desktop support and remote access software,
+  such as Team Viewer, Go2Assist, LogMein, AmmyyAdmin, etc, to establish an
+  interactive command and control channel to target systems within networks.
+  These services are commonly used as legitimate technical support software, and
+  may be allowed by application control within a target environment. Remote
+  access tools like VNC, Ammyy, and Teamviewer are used frequently when compared
+  with other legitimate software commonly used by adversaries. (Citation:
+  Symantec Living off the Land). MITRE ATT&CK: T1219.002.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\AppData\\\\Local\\\\Temp\\\\LogMeInInc\\\\GoToAssist Remote Support Expert\\\\*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\AppData\Local\Temp\LogMeInInc\GoToAssist Remote Support Expert\*'.
+
+known_false_positives: >
+  Legitimate use. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1219/T1219.md#atomic-test-4---gotoassist-files-detected-test-on-windows
+  - https://attack.mitre.org/techniques/T1219/002/
+
+response:
+  message: >
+    GoToAssist Temporary Installation Artefact detected on host $agent_name$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1219.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1219.002
+  custom_tags:
+    - gotoassist
+    - temporary
+    - installation
+    - file_event
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\[Ll][Oo][Gg][Mm][Ee][Ii][Nn][Ii][Nn][Cc]\\[Gg][Oo][Tt][Oo][Aa][Ss][Ss][Ii][Ss][Tt] [Rr][Ee][Mm][Oo][Tt][Ee] [Ss][Uu][Pp][Pp][Oo][Rr][Tt] [Ee][Xx][Pp][Ee][Rr][Tt]\\.*/

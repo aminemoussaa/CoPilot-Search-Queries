@@ -1,0 +1,292 @@
+name: Syslog Clearing or Removal Via System Utilities
+id: 3fcc9b35-39e4-44c0-a2ad-9e82b6902b31
+version: 1
+schema_version: "1.0"
+date: "2025-10-15"
+author: Max Altgelt (Nextron Systems), Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research), MSTIC
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3fcc9b35-39e4-44c0-a2ad-9e82b6902b31
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects specific commands commonly used to remove or empty the syslog. Which
+  is a technique often used by attacker as a method to hide their tracks. MITRE
+  ATT&CK: T1685.006.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*/var/log/syslog*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_process_exec_process_binary:
+                                      value: "*/rm"
+                                      case_insensitive: true
+                                - bool:
+                                    should:
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "* -r *"
+                                            case_insensitive: true
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "* -f *"
+                                            case_insensitive: true
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "* -rf *"
+                                            case_insensitive: true
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "*/var/log/syslog*"
+                                            case_insensitive: true
+                                    minimum_should_match: 1
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/unlink"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*/mv"
+                                case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_process_exec_process_binary:
+                                      value: "*/truncate"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_process_exec_process_arguments: "*0 *"
+                                - wildcard:
+                                    data_process_exec_process_arguments:
+                                      value: "*/var/log/syslog*"
+                                      case_insensitive: true
+                                - bool:
+                                    should:
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "*-s *"
+                                            case_insensitive: true
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "*-c *"
+                                            case_insensitive: true
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "*--size*"
+                                            case_insensitive: true
+                                    minimum_should_match: 1
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_process_exec_process_binary:
+                                      value: "*/ln"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_process_exec_process_arguments:
+                                      value: "*/dev/null *"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_process_exec_process_arguments:
+                                      value: "*/var/log/syslog*"
+                                      case_insensitive: true
+                                - bool:
+                                    should:
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "*-sf *"
+                                            case_insensitive: true
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "*-sfn *"
+                                            case_insensitive: true
+                                      - wildcard:
+                                          data_process_exec_process_arguments:
+                                            value: "*-sfT *"
+                                            case_insensitive: true
+                                    minimum_should_match: 1
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_process_exec_process_binary:
+                                      value: "*/cp"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_process_exec_process_arguments:
+                                      value: "*/dev/null*"
+                                      case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_process_exec_process_binary:
+                                      value: "*/shred"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_process_exec_process_arguments:
+                                      value: "*-u *"
+                                      case_insensitive: true
+                        minimum_should_match: 1
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* > /var/log/syslog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* >/var/log/syslog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* >| /var/log/syslog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*: > /var/log/syslog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*:> /var/log/syslog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*:>/var/log/syslog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*>|/var/log/syslog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*journalctl --vacuum*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*journalctl --rotate*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_arguments
+    - data_process_exec_process_binary
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_arguments matches '*/var/log/syslog*';
+  data_process_exec_process_binary matches '*/rm';
+  data_process_exec_process_arguments matches '* -r *', among other conditions.
+
+known_false_positives: >
+  Log rotation.. Maintenance. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1070.002/T1070.002.md
+  - https://www.virustotal.com/gui/file/54d60fd58d7fa3475fa123985bfc1594df26da25c1f5fbc7dfdba15876dd8ac5/behavior
+  - https://attack.mitre.org/techniques/T1685/006/
+
+response:
+  message: >
+    Syslog Clearing or Removal Via System Utilities detected on host
+    $agent_name$. Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$. MITRE
+    ATT&CK: T1685.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_arguments
+      type: other
+    - field: data_process_exec_process_binary
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685.006
+  custom_tags:
+    - syslog
+    - clearing
+    - removal
+    - linux
+    - tetragon
+    - process_creation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: "((data_process_exec_process_arguments:/.*\\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ AND ((data_process_exec_process_binary:/.*\\/[Rr][Mm]/ AND (data_process_exec_process_arguments:/.* -[Rr] .*/ OR data_process_exec_process_arguments:/.* -[Ff] .*/ OR data_process_exec_process_arguments:/.* -[Rr][Ff] .*/ OR data_process_exec_process_arguments:/.*\\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/)) OR data_process_exec_process_binary:/.*\\/[Uu][Nn][Ll][Ii][Nn][Kk]/ OR data_process_exec_process_binary:/.*\\/[Mm][Vv]/ OR (data_process_exec_process_binary:/.*\\/[Tt][Rr][Uu][Nn][Cc][Aa][Tt][Ee]/ AND data_process_exec_process_arguments:/.*0 .*/ AND data_process_exec_process_arguments:/.*\\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ AND (data_process_exec_process_arguments:/.*-[Ss] .*/ OR data_process_exec_process_arguments:/.*-[Cc] .*/ OR data_process_exec_process_arguments:/.*--[Ss][Ii][Zz][Ee].*/)) OR (data_process_exec_process_binary:/.*\\/[Ll][Nn]/ AND data_process_exec_process_arguments:/.*\\/[Dd][Ee][Vv]\\/[Nn][Uu][Ll][Ll] .*/ AND data_process_exec_process_arguments:/.*\\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ AND (data_process_exec_process_arguments:/.*-[Ss][Ff] .*/ OR data_process_exec_process_arguments:/.*-[Ss][Ff][Nn] .*/ OR data_process_exec_process_arguments:/.*-[Ss][Ff][Tt] .*/)) OR (data_process_exec_process_binary:/.*\\/[Cc][Pp]/ AND data_process_exec_process_arguments:/.*\\/[Dd][Ee][Vv]\\/[Nn][Uu][Ll][Ll].*/) OR (data_process_exec_process_binary:/.*\\/[Ss][Hh][Rr][Ee][Dd]/ AND data_process_exec_process_arguments:/.*-[Uu] .*/))) OR data_process_exec_process_arguments:/.* \\> \\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.* \\>\\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.* \\>\\| \\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.*: \\> \\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.*:\\> \\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.*:\\>\\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.*\\>\\|\\/[Vv][Aa][Rr]\\/[Ll][Oo][Gg]\\/[Ss][Yy][Ss][Ll][Oo][Gg].*/ OR data_process_exec_process_arguments:/.*[Jj][Oo][Uu][Rr][Nn][Aa][Ll][Cc][Tt][Ll] --[Vv][Aa][Cc][Uu][Uu][Mm].*/ OR data_process_exec_process_arguments:/.*[Jj][Oo][Uu][Rr][Nn][Aa][Ll][Cc][Tt][Ll] --[Rr][Oo][Tt][Aa][Tt][Ee].*/)"

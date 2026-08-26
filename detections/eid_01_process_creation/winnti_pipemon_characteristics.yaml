@@ -1,0 +1,163 @@
+name: Winnti Pipemon Characteristics
+id: 73d70463-75c9-4258-92c6-17500fe972f2
+version: 1
+schema_version: "1.0"
+date: "2021-11-27"
+author: Florian Roth (Nextron Systems), oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 73d70463-75c9-4258-92c6-17500fe972f2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects specific process characteristics of Winnti Pipemon malware reported by
+  ESET. MITRE ATT&CK: T1574.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*setup0.exe -p*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*setup.exe*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-x:0"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-x:1"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-x:2"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*setup0.exe -p*'; data_win_eventdata_commandLine matches '*setup.exe*';
+  data_win_eventdata_commandLine matches '*-x:0', among other conditions.
+
+known_false_positives: >
+  Legitimate setups that use similar flags. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.welivesecurity.com/2020/05/21/no-game-over-winnti-group/
+  - https://attack.mitre.org/techniques/T1574/001/
+
+response:
+  message: >
+    Winnti Pipemon Characteristics detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1574.001
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.001
+  custom_tags:
+    - winnti
+    - pipemon
+    - characteristics
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Ss][Ee][Tt][Uu][Pp]0\.[Ee][Xx][Ee] -[Pp].*/ OR (data_win_eventdata_commandLine:/.*[Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee].*/ AND (data_win_eventdata_commandLine:/.*-[Xx]:0/ OR data_win_eventdata_commandLine:/.*-[Xx]:1/ OR data_win_eventdata_commandLine:/.*-[Xx]:2/)))

@@ -1,0 +1,178 @@
+name: Linux Shell Pipe to Shell
+id: 880973f3-9708-491c-a77b-2a35a1921158
+version: 1
+schema_version: "1.0"
+date: "2022-07-26"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 880973f3-9708-491c-a77b-2a35a1921158
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious process command line that starts with a shell that executes
+  something and finally gets piped into another shell. MITRE ATT&CK: T1140.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "sh -c *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "bash -c *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*| bash *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*| sh *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*|bash *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*|sh *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*| bash"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*| sh"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*|bash"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* |sh"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_arguments
+    - data_process_exec_process_binary
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_arguments matches 'sh -c *';
+  data_process_exec_process_arguments matches 'bash -c *';
+  data_process_exec_process_arguments matches '*| bash *', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate software that uses these patterns. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - Internal Research
+  - https://attack.mitre.org/techniques/T1140/
+
+response:
+  message: >
+    Linux Shell Pipe to Shell detected on host $agent_name$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. MITRE ATT&CK: T1140
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_arguments
+      type: other
+    - field: data_process_exec_process_binary
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1140
+  custom_tags:
+    - shell
+    - linux
+    - tetragon
+    - process_creation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_arguments:/[Ss][Hh] -[Cc] .*/ OR data_process_exec_process_arguments:/[Bb][Aa][Ss][Hh] -[Cc] .*/) AND (data_process_exec_process_arguments:/.*\| [Bb][Aa][Ss][Hh] .*/ OR data_process_exec_process_arguments:/.*\| [Ss][Hh] .*/ OR data_process_exec_process_arguments:/.*\|[Bb][Aa][Ss][Hh] .*/ OR data_process_exec_process_arguments:/.*\|[Ss][Hh] .*/ OR data_process_exec_process_arguments:/.*\| [Bb][Aa][Ss][Hh]/ OR data_process_exec_process_arguments:/.*\| [Ss][Hh]/ OR data_process_exec_process_arguments:/.*\|[Bb][Aa][Ss][Hh]/ OR data_process_exec_process_arguments:/.* \|[Ss][Hh]/)

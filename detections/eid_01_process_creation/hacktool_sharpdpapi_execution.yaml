@@ -1,0 +1,226 @@
+name: HackTool - SharpDPAPI Execution
+id: c7d33b50-f690-4b51-8cfb-0fb912a31e57
+version: 1
+schema_version: "1.0"
+date: "2024-06-26"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c7d33b50-f690-4b51-8cfb-0fb912a31e57
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of the SharpDPAPI tool based on CommandLine flags and PE
+  metadata. SharpDPAPI is a C# port of some DPAPI functionality from the
+  Mimikatz project. MITRE ATT&CK: T1134.001, T1134.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SharpDPAPI.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "SharpDPAPI.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* backupkey *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* blob *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* certificates *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* credentials *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* keepass *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* masterkeys *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* rdg *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* vaults *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_commandLine: "* {*"
+                                - wildcard:
+                                    data_win_eventdata_commandLine: "*}:*"
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /file:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /machine*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /mkfile:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /password:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /pvk:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /server:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /target:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* /unprotect*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\SharpDPAPI.exe'; data_win_eventdata_originalFileName equals
+  'SharpDPAPI.exe'; data_win_eventdata_commandLine matches '* backupkey *',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/GhostPack/SharpDPAPI
+  - https://attack.mitre.org/techniques/T1134/001/
+  - https://attack.mitre.org/techniques/T1134/003/
+
+response:
+  message: >
+    HackTool - SharpDPAPI Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1134.001, T1134.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1134.001
+    - T1134.003
+  custom_tags:
+    - hacktool
+    - sharpdpapi
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Hh][Aa][Rr][Pp][Dd][Pp][Aa][Pp][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Hh][Aa][Rr][Pp][Dd][Pp][Aa][Pp][Ii]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_commandLine:/.* [Bb][Aa][Cc][Kk][Uu][Pp][Kk][Ee][Yy] .*/ OR data_win_eventdata_commandLine:/.* [Bb][Ll][Oo][Bb] .*/ OR data_win_eventdata_commandLine:/.* [Cc][Ee][Rr][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ee][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Cc][Rr][Ee][Dd][Ee][Nn][Tt][Ii][Aa][Ll][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Kk][Ee][Ee][Pp][Aa][Ss][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Aa][Ss][Tt][Ee][Rr][Kk][Ee][Yy][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Rr][Dd][Gg] .*/ OR data_win_eventdata_commandLine:/.* [Vv][Aa][Uu][Ll][Tt][Ss] .*/) AND ((data_win_eventdata_commandLine:/.* \{.*/ AND data_win_eventdata_commandLine:/.*\}:.*/) OR data_win_eventdata_commandLine:/.* \/[Ff][Ii][Ll][Ee]:.*/ OR data_win_eventdata_commandLine:/.* \/[Mm][Aa][Cc][Hh][Ii][Nn][Ee].*/ OR data_win_eventdata_commandLine:/.* \/[Mm][Kk][Ff][Ii][Ll][Ee]:.*/ OR data_win_eventdata_commandLine:/.* \/[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]:.*/ OR data_win_eventdata_commandLine:/.* \/[Pp][Vv][Kk]:.*/ OR data_win_eventdata_commandLine:/.* \/[Ss][Ee][Rr][Vv][Ee][Rr]:.*/ OR data_win_eventdata_commandLine:/.* \/[Tt][Aa][Rr][Gg][Ee][Tt]:.*/ OR data_win_eventdata_commandLine:/.* \/[Uu][Nn][Pp][Rr][Oo][Tt][Ee][Cc][Tt].*/)))

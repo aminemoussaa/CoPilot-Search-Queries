@@ -1,0 +1,248 @@
+name: Suspicious Double Extension Files
+id: b4926b47-a9d7-434c-b3a0-adc3fa0bd13e
+version: 1
+schema_version: "1.0"
+date: "2026-03-31"
+author: Nasreddine Bencherchali (Nextron Systems), frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b4926b47-a9d7-434c-b3a0-adc3fa0bd13e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects dropped files with double extensions, which is often used by malware
+  as a method to abuse the fact that Windows hide default extensions by default.
+  MITRE ATT&CK: T1036.007.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.iso"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.rar"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.svg"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.zip"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.doc.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.docx.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.gif.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.jpeg.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.jpg.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.mp3.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.mp4.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.pdf.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.png.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.ppt.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.pptx.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.rtf.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.svg.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.txt.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.xls.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.xlsx.*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.rar.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.zip.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "/usr/share/icons/*"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*.exe'; data_win_eventdata_targetFilename matches '*.iso';
+  data_win_eventdata_targetFilename matches '*.rar', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.crowdstrike.com/blog/meet-crowdstrikes-adversary-of-the-month-for-june-mustang-panda/
+  - https://www.anomali.com/blog/china-based-apt-mustang-panda-targets-minority-groups-public-and-private-sector-organizations
+  - https://www.cybereason.com/blog/research/a-bazar-of-tricks-following-team9s-development-cycles
+  - https://twitter.com/malwrhunterteam/status/1235135745611960321
+  - https://twitter.com/luc4m/status/1073181154126254080
+  - https://cloud.google.com/blog/topics/threat-intelligence/cybercriminals-weaponize-fake-ai-websites
+  - https://vipre.com/blog/svg-phishing-attacks-the-new-trick-in-the-cybercriminals-playbook/
+  - https://attack.mitre.org/techniques/T1036/007/
+
+response:
+  message: >
+    Suspicious Double Extension Files detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1036.007
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036.007
+  custom_tags:
+    - double
+    - extension
+    - file_event
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (((data_win_eventdata_targetFilename:/.*\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetFilename:/.*\.[Ii][Ss][Oo]/ OR data_win_eventdata_targetFilename:/.*\.[Rr][Aa][Rr]/ OR data_win_eventdata_targetFilename:/.*\.[Ss][Vv][Gg]/ OR data_win_eventdata_targetFilename:/.*\.[Zz][Ii][Pp]/) AND (data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Cc]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Cc][Xx]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Gg][Ii][Ff]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Pp][Ee][Gg]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Pp][Gg]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Mm][Pp]3\..*/ OR data_win_eventdata_targetFilename:/.*\.[Mm][Pp]4\..*/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Dd][Ff]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Nn][Gg]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Pp][Tt]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Pp][Tt][Xx]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Rr][Tt][Ff]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Ss][Vv][Gg]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Tt][Xx][Tt]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ss]\..*/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ss][Xx]\..*/)) OR data_win_eventdata_targetFilename:/.*\.[Rr][Aa][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetFilename:/.*\.[Zz][Ii][Pp]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_targetFilename:/\/[Uu][Ss][Rr]\/[Ss][Hh][Aa][Rr][Ee]\/[Ii][Cc][Oo][Nn][Ss]\/.*/)

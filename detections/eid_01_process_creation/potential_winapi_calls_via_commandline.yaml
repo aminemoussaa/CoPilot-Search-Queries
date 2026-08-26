@@ -1,0 +1,363 @@
+name: Potential WinAPI Calls Via CommandLine
+id: ba3f5c1b-6272-4119-9dbd-0bc8d21c2702
+version: 1
+schema_version: "1.0"
+date: "2025-03-06"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ba3f5c1b-6272-4119-9dbd-0bc8d21c2702
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of WinAPI Functions via the commandline. As seen used by
+  threat actors via the tool winapiexec. MITRE ATT&CK: T1106.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*AddSecurityPackage*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*AdjustTokenPrivileges*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Advapi32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CloseHandle*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CreateProcessWithToken*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CreatePseudoConsole*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CreateRemoteThread*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CreateThread*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*CreateUserThread*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*DangerousGetHandle*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*DuplicateTokenEx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*EnumerateSecurityPackages*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*FreeHGlobal*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*FreeLibrary*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetDelegateForFunctionPointer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetLogonSessionData*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetModuleHandle*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetProcAddress*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetProcessHandle*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetTokenInformation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ImpersonateLoggedOnUser*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*kernel32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*LoadLibrary*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*memcpy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*MiniDumpWriteDump*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ntdll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OpenDesktop*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OpenProcess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OpenProcessToken*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OpenThreadToken*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*OpenWindowStation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*PtrToString*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*QueueUserApc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ReadProcessMemory*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*RevertToSelf*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*RtlCreateUserThread*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*secur32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*SetThreadToken*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VirtualAlloc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VirtualFree*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*VirtualProtect*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*WaitForSingleObject*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*WriteInt32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*WriteProcessMemory*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ZeroFreeGlobalAllocUnicode*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\MpCmdRun.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*GetLoadLibraryWAddress32*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\CompatTelRunner.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*FreeHGlobal*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*PtrToString*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*kernel32*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*CloseHandle*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*AddSecurityPackage*'; data_win_eventdata_commandLine matches
+  '*AdjustTokenPrivileges*'; data_win_eventdata_commandLine matches
+  '*Advapi32*', among other conditions.
+
+known_false_positives: >
+  Some legitimate action or applications may use these functions. Investigate
+  further to determine the legitimacy of the activity. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://twitter.com/m417z/status/1566674631788007425
+  - https://attack.mitre.org/techniques/T1106/
+
+response:
+  message: >
+    Potential WinAPI Calls Via CommandLine detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1106
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1106
+  custom_tags:
+    - winapi
+    - calls
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Aa][Dd][Dd][Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Pp][Aa][Cc][Kk][Aa][Gg][Ee].*/ OR data_win_eventdata_commandLine:/.*[Aa][Dd][Jj][Uu][Ss][Tt][Tt][Oo][Kk][Ee][Nn][Pp][Rr][Ii][Vv][Ii][Ll][Ee][Gg][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*[Aa][Dd][Vv][Aa][Pp][Ii]32.*/ OR data_win_eventdata_commandLine:/.*[Cc][Ll][Oo][Ss][Ee][Hh][Aa][Nn][Dd][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Ww][Ii][Tt][Hh][Tt][Oo][Kk][Ee][Nn].*/ OR data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Pp][Ss][Ee][Uu][Dd][Oo][Cc][Oo][Nn][Ss][Oo][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Rr][Ee][Mm][Oo][Tt][Ee][Tt][Hh][Rr][Ee][Aa][Dd].*/ OR data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Tt][Hh][Rr][Ee][Aa][Dd].*/ OR data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Uu][Ss][Ee][Rr][Tt][Hh][Rr][Ee][Aa][Dd].*/ OR data_win_eventdata_commandLine:/.*[Dd][Aa][Nn][Gg][Ee][Rr][Oo][Uu][Ss][Gg][Ee][Tt][Hh][Aa][Nn][Dd][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Dd][Uu][Pp][Ll][Ii][Cc][Aa][Tt][Ee][Tt][Oo][Kk][Ee][Nn][Ee][Xx].*/ OR data_win_eventdata_commandLine:/.*[Ee][Nn][Uu][Mm][Ee][Rr][Aa][Tt][Ee][Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ff][Rr][Ee][Ee][Hh][Gg][Ll][Oo][Bb][Aa][Ll].*/ OR data_win_eventdata_commandLine:/.*[Ff][Rr][Ee][Ee][Ll][Ii][Bb][Rr][Aa][Rr][Yy].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Dd][Ee][Ll][Ee][Gg][Aa][Tt][Ee][Ff][Oo][Rr][Ff][Uu][Nn][Cc][Tt][Ii][Oo][Nn][Pp][Oo][Ii][Nn][Tt][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Ll][Oo][Gg][Oo][Nn][Ss][Ee][Ss][Ss][Ii][Oo][Nn][Dd][Aa][Tt][Aa].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Mm][Oo][Dd][Uu][Ll][Ee][Hh][Aa][Nn][Dd][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Pp][Rr][Oo][Cc][Aa][Dd][Dd][Rr][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Hh][Aa][Nn][Dd][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Tt][Oo][Kk][Ee][Nn][Ii][Nn][Ff][Oo][Rr][Mm][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ee][Ll][Oo][Gg][Gg][Ee][Dd][Oo][Nn][Uu][Ss][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Kk][Ee][Rr][Nn][Ee][Ll]32.*/ OR data_win_eventdata_commandLine:/.*[Ll][Oo][Aa][Dd][Ll][Ii][Bb][Rr][Aa][Rr][Yy].*/ OR data_win_eventdata_commandLine:/.*[Mm][Ee][Mm][Cc][Pp][Yy].*/ OR data_win_eventdata_commandLine:/.*[Mm][Ii][Nn][Ii][Dd][Uu][Mm][Pp][Ww][Rr][Ii][Tt][Ee][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_commandLine:/.*[Nn][Tt][Dd][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Dd][Ee][Ss][Kk][Tt][Oo][Pp].*/ OR data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Pp][Rr][Oo][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Tt][Oo][Kk][Ee][Nn].*/ OR data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Tt][Hh][Rr][Ee][Aa][Dd][Tt][Oo][Kk][Ee][Nn].*/ OR data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Pp][Tt][Rr][Tt][Oo][Ss][Tt][Rr][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Qq][Uu][Ee][Uu][Ee][Uu][Ss][Ee][Rr][Aa][Pp][Cc].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Aa][Dd][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Mm][Ee][Mm][Oo][Rr][Yy].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Vv][Ee][Rr][Tt][Tt][Oo][Ss][Ee][Ll][Ff].*/ OR data_win_eventdata_commandLine:/.*[Rr][Tt][Ll][Cc][Rr][Ee][Aa][Tt][Ee][Uu][Ss][Ee][Rr][Tt][Hh][Rr][Ee][Aa][Dd].*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Cc][Uu][Rr]32.*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Tt][Tt][Hh][Rr][Ee][Aa][Dd][Tt][Oo][Kk][Ee][Nn].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ii][Rr][Tt][Uu][Aa][Ll][Aa][Ll][Ll][Oo][Cc].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ii][Rr][Tt][Uu][Aa][Ll][Ff][Rr][Ee][Ee].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ii][Rr][Tt][Uu][Aa][Ll][Pp][Rr][Oo][Tt][Ee][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ww][Aa][Ii][Tt][Ff][Oo][Rr][Ss][Ii][Nn][Gg][Ll][Ee][Oo][Bb][Jj][Ee][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ww][Rr][Ii][Tt][Ee][Ii][Nn][Tt]32.*/ OR data_win_eventdata_commandLine:/.*[Ww][Rr][Ii][Tt][Ee][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Mm][Ee][Mm][Oo][Rr][Yy].*/ OR data_win_eventdata_commandLine:/.*[Zz][Ee][Rr][Oo][Ff][Rr][Ee][Ee][Gg][Ll][Oo][Bb][Aa][Ll][Aa][Ll][Ll][Oo][Cc][Uu][Nn][Ii][Cc][Oo][Dd][Ee].*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND _exists_:data_win_eventdata_parentImage AND NOT ((data_win_eventdata_image:/.*\\[Mm][Pp][Cc][Mm][Dd][Rr][Uu][Nn]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Ll][Oo][Aa][Dd][Ll][Ii][Bb][Rr][Aa][Rr][Yy][Ww][Aa][Dd][Dd][Rr][Ee][Ss][Ss]32.*/) OR (data_win_eventdata_parentImage:/.*\\[Cc][Oo][Mm][Pp][Aa][Tt][Tt][Ee][Ll][Rr][Uu][Nn][Nn][Ee][Rr]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.*[Ff][Rr][Ee][Ee][Hh][Gg][Ll][Oo][Bb][Aa][Ll].*/ OR data_win_eventdata_commandLine:/.*[Pp][Tt][Rr][Tt][Oo][Ss][Tt][Rr][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Kk][Ee][Rr][Nn][Ee][Ll]32.*/ OR data_win_eventdata_commandLine:/.*[Cc][Ll][Oo][Ss][Ee][Hh][Aa][Nn][Dd][Ll][Ee].*/)))

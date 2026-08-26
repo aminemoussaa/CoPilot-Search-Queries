@@ -1,0 +1,191 @@
+name: HackTool - NetExec Execution
+id: 7638e5fe-600c-4289-a968-f49dd537ec7d
+version: 1
+schema_version: "1.0"
+date: "2026-03-29"
+author: Chirag Damani
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7638e5fe-600c-4289-a968-f49dd537ec7d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of the hacktool NetExec. NetExec (formerly CrackMapExec) is
+  a widely used post-exploitation tool designed for Active Directory penetration
+  testing and network enumeration In enterprise environments, the use of NetExec
+  is considered suspicious or potentially malicious because it enables attackers
+  to enumerate hosts, exploit network services, and move laterally across
+  systems. Threat actors and red teams commonly use NetExec to identify
+  vulnerable systems, harvest credentials, and execute commands remotely. MITRE
+  ATT&CK: T1018, T1021.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\nxc.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* ftp *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* ldap *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* mssql *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* nfs *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* rdp *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* smb *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* ssh *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* vnc *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* winrm *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* wmi *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\nxc.exe';
+  data_win_eventdata_commandLine matches '* ftp *';
+  data_win_eventdata_commandLine matches '* ldap *', among other conditions.
+
+known_false_positives: >
+  Legitimate use of NetExec by security professionals or system administrators
+  for network assessment and management. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://thedfirreport.com/2025/12/17/cats-got-your-files-lynx-ransomware/
+  - https://github.com/Pennyw0rth/NetExec
+  - https://www.netexec.wiki/
+  - https://attack.mitre.org/techniques/T1018/
+  - https://attack.mitre.org/techniques/T1021/
+
+response:
+  message: >
+    HackTool - NetExec Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1018, T1021
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1018
+    - T1021
+  custom_tags:
+    - hacktool
+    - netexec
+    - process_creation
+    - sysmon
+    - discovery
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_image:/.*\\[Nn][Xx][Cc]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.* [Ff][Tt][Pp] .*/ OR data_win_eventdata_commandLine:/.* [Ll][Dd][Aa][Pp] .*/ OR data_win_eventdata_commandLine:/.* [Mm][Ss][Ss][Qq][Ll] .*/ OR data_win_eventdata_commandLine:/.* [Nn][Ff][Ss] .*/ OR data_win_eventdata_commandLine:/.* [Rr][Dd][Pp] .*/ OR data_win_eventdata_commandLine:/.* [Ss][Mm][Bb] .*/ OR data_win_eventdata_commandLine:/.* [Ss][Ss][Hh] .*/ OR data_win_eventdata_commandLine:/.* [Vv][Nn][Cc] .*/ OR data_win_eventdata_commandLine:/.* [Ww][Ii][Nn][Rr][Mm] .*/ OR data_win_eventdata_commandLine:/.* [Ww][Mm][Ii] .*/)

@@ -1,0 +1,163 @@
+name: SCR File Write Event
+id: c048f047-7e2a-4888-b302-55f509d4a91d
+version: 1
+schema_version: "1.0"
+date: "2023-08-23"
+author: Christopher Peacock @securepeacock, SCYTHE @scythe_io
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c048f047-7e2a-4888-b302-55f509d4a91d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of screensaver files (.scr) outside of system folders.
+  Attackers may execute an application as an ".SCR" file using "rundll32.exe
+  desk.cpl,InstallScreenSaver" for example. MITRE ATT&CK: T1218.011.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*.scr"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*:\\\\$WINDOWS.~BT\\\\NewOS\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*:\\\\Windows\\\\WinSxS\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*:\\\\WUDownloadCache\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*.scr'; data_win_eventdata_targetFilename matches '*:\$WINDOWS.~BT\NewOS\*';
+  data_win_eventdata_targetFilename matches '*:\Windows\System32\*', among other
+  conditions.
+
+known_false_positives: >
+  The installation of new screen savers by third party software. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://lolbas-project.github.io/lolbas/Libraries/Desk/
+  - https://attack.mitre.org/techniques/T1218/011/
+
+response:
+  message: >
+    SCR File Write Event detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1218.011
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.011
+  custom_tags:
+    - write
+    - file_event
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_targetFilename:/.*\.[Ss][Cc][Rr]/ AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_targetFilename:/.*:\\\$[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.\~[Bb][Tt]\\[Nn][Ee][Ww][Oo][Ss]\\.*/ OR data_win_eventdata_targetFilename:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_targetFilename:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR data_win_eventdata_targetFilename:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Xx][Ss]\\.*/ OR data_win_eventdata_targetFilename:/.*:\\[Ww][Uu][Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Cc][Aa][Cc][Hh][Ee]\\.*/)

@@ -1,0 +1,177 @@
+name: Potential AD User Enumeration From Non-Machine Account
+id: ab6bffca-beff-4baa-af11-6733f296d57a
+version: 1
+schema_version: "1.0"
+date: "2022-11-08"
+author: Maxime Thiebaut (@0xThiebaut)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ab6bffca-beff-4baa-af11-6733f296d57a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects read access to a domain user from a non-machine account. MITRE ATT&CK:
+  T1087.002.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4662"
+        - wildcard:
+            data_win_eventdata_objectType:
+              value: "*bf967aba-0de6-11d0-a285-00aa003049e2*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_accessMask: "*1?"
+              - wildcard:
+                  data_win_eventdata_accessMask: "*3?"
+              - wildcard:
+                  data_win_eventdata_accessMask: "*4?"
+              - wildcard:
+                  data_win_eventdata_accessMask: "*7?"
+              - wildcard:
+                  data_win_eventdata_accessMask: "*9?"
+              - wildcard:
+                  data_win_eventdata_accessMask:
+                    value: "*B?"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_accessMask:
+                    value: "*D?"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_accessMask:
+                    value: "*F?"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_subjectUserName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_subjectUserName: "*$"
+                    - wildcard:
+                        data_win_eventdata_subjectUserName:
+                          value: "MSOL_*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_objectType
+    - data_win_eventdata_accessMask
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4662'; data_win_eventdata_objectType matches
+  '*bf967aba-0de6-11d0-a285-00aa003049e2*'; data_win_eventdata_accessMask
+  matches '*1?', among other conditions.
+
+known_false_positives: >
+  Administrators configuring new users. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.specterops.io/assets/resources/an_ace_up_the_sleeve.pdf
+  - http://www.stuffithoughtiknew.com/2019/02/detecting-bloodhound.html
+  - https://learn.microsoft.com/en-us/windows/win32/adschema/attributes-all
+  - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4662
+  - https://attack.mitre.org/techniques/T1087/002/
+
+response:
+  message: >
+    Potential AD User Enumeration From Non-Machine Account detected on host
+    $agent_name$. Matched data_win_eventdata_objectType:
+    $data_win_eventdata_objectType$. Matched data_win_eventdata_accessMask:
+    $data_win_eventdata_accessMask$. MITRE ATT&CK: T1087.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_objectType
+      type: other
+    - field: data_win_eventdata_accessMask
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1087.002
+  custom_tags:
+    - enumeration
+    - machine
+    - account
+    - windows_security
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4662" AND data_win_eventdata_objectType:/.*[Bb][Ff]967[Aa][Bb][Aa]-0[Dd][Ee]6-11[Dd]0-[Aa]285-00[Aa][Aa]003049[Ee]2.*/ AND (data_win_eventdata_accessMask:/.*1./ OR data_win_eventdata_accessMask:/.*3./ OR data_win_eventdata_accessMask:/.*4./ OR data_win_eventdata_accessMask:/.*7./ OR data_win_eventdata_accessMask:/.*9./ OR data_win_eventdata_accessMask:/.*[Bb]./ OR data_win_eventdata_accessMask:/.*[Dd]./ OR data_win_eventdata_accessMask:/.*[Ff]./) AND _exists_:data_win_eventdata_subjectUserName AND NOT (data_win_eventdata_subjectUserName:/.*\$/ OR data_win_eventdata_subjectUserName:/[Mm][Ss][Oo][Ll]_.*/)

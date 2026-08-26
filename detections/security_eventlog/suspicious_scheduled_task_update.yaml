@@ -1,0 +1,265 @@
+name: Suspicious Scheduled Task Update
+id: 614cf376-6651-47c4-9dcc-6b9527f749f4
+version: 1
+schema_version: "1.0"
+date: "2022-12-05"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 614cf376-6651-47c4-9dcc-6b9527f749f4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects update to a scheduled task event that contain suspicious keywords.
+  MITRE ATT&CK: T1053.005.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4702"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*\\\\AppData\\\\Roaming\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*\\\\Users\\\\Public\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*\\\\WINDOWS\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*C:\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*\\\\Desktop\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*\\\\Downloads\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*\\\\Temporary Internet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*C:\\\\ProgramData\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*C:\\\\Perflogs\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*regsvr32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*rundll32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*cmd.exe</Command>*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*cmd</Command>*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*<Arguments>/c *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*<Arguments>/k *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*<Arguments>/r *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*powershell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*pwsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*mshta*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*wscript*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*cscript*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*certutil*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*bitsadmin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*bash.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*bash *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*scrcons*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*wmic *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*wmic.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*forfiles*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*scriptrunner*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_taskContentNew:
+                    value: "*hh.exe*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_taskContentNew
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4702'; data_win_eventdata_taskContentNew
+  matches '*\AppData\Local\Temp\*'; data_win_eventdata_taskContentNew matches
+  '*\AppData\Roaming\*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4698
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Suspicious Scheduled Task Update detected on host $agent_name$. Matched
+    data_win_eventdata_taskContentNew: $data_win_eventdata_taskContentNew$.
+    Matched data_win_eventdata_subjectUserName:
+    $data_win_eventdata_subjectUserName$. MITRE ATT&CK: T1053.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_taskContentNew
+      type: other
+    - field: data_win_eventdata_subjectUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053.005
+  custom_tags:
+    - scheduled
+    - update
+    - windows_security
+    - execution
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4702" AND (data_win_eventdata_taskContentNew:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_taskContentNew:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\.*/ OR data_win_eventdata_taskContentNew:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_taskContentNew:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_taskContentNew:/.*[Cc]:\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_taskContentNew:/.*\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\.*/ OR data_win_eventdata_taskContentNew:/.*\\[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss]\\.*/ OR data_win_eventdata_taskContentNew:/.*\\[Tt][Ee][Mm][Pp][Oo][Rr][Aa][Rr][Yy] [Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt].*/ OR data_win_eventdata_taskContentNew:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\.*/ OR data_win_eventdata_taskContentNew:/.*[Cc]:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/) AND (data_win_eventdata_taskContentNew:/.*[Rr][Ee][Gg][Ss][Vv][Rr]32.*/ OR data_win_eventdata_taskContentNew:/.*[Rr][Uu][Nn][Dd][Ll][Ll]32.*/ OR data_win_eventdata_taskContentNew:/.*[Cc][Mm][Dd]\.[Ee][Xx][Ee]\<\/[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\>.*/ OR data_win_eventdata_taskContentNew:/.*[Cc][Mm][Dd]\<\/[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\>.*/ OR data_win_eventdata_taskContentNew:/.*\<[Aa][Rr][Gg][Uu][Mm][Ee][Nn][Tt][Ss]\>\/[Cc] .*/ OR data_win_eventdata_taskContentNew:/.*\<[Aa][Rr][Gg][Uu][Mm][Ee][Nn][Tt][Ss]\>\/[Kk] .*/ OR data_win_eventdata_taskContentNew:/.*\<[Aa][Rr][Gg][Uu][Mm][Ee][Nn][Tt][Ss]\>\/[Rr] .*/ OR data_win_eventdata_taskContentNew:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_taskContentNew:/.*[Pp][Ww][Ss][Hh].*/ OR data_win_eventdata_taskContentNew:/.*[Mm][Ss][Hh][Tt][Aa].*/ OR data_win_eventdata_taskContentNew:/.*[Ww][Ss][Cc][Rr][Ii][Pp][Tt].*/ OR data_win_eventdata_taskContentNew:/.*[Cc][Ss][Cc][Rr][Ii][Pp][Tt].*/ OR data_win_eventdata_taskContentNew:/.*[Cc][Ee][Rr][Tt][Uu][Tt][Ii][Ll].*/ OR data_win_eventdata_taskContentNew:/.*[Bb][Ii][Tt][Ss][Aa][Dd][Mm][Ii][Nn].*/ OR data_win_eventdata_taskContentNew:/.*[Bb][Aa][Ss][Hh]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_taskContentNew:/.*[Bb][Aa][Ss][Hh] .*/ OR data_win_eventdata_taskContentNew:/.*[Ss][Cc][Rr][Cc][Oo][Nn][Ss].*/ OR data_win_eventdata_taskContentNew:/.*[Ww][Mm][Ii][Cc] .*/ OR data_win_eventdata_taskContentNew:/.*[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_taskContentNew:/.*[Ff][Oo][Rr][Ff][Ii][Ll][Ee][Ss].*/ OR data_win_eventdata_taskContentNew:/.*[Ss][Cc][Rr][Ii][Pp][Tt][Rr][Uu][Nn][Nn][Ee][Rr].*/ OR data_win_eventdata_taskContentNew:/.*[Hh][Hh]\.[Ee][Xx][Ee].*/)

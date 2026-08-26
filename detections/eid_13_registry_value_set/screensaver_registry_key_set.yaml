@@ -1,0 +1,159 @@
+name: ScreenSaver Registry Key Set
+id: 40b6e656-4e11-4c0c-8772-c1cc6dae34ce
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Jose Luis Sanchez Martinez (@Joseliyo_Jstnk)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 40b6e656-4e11-4c0c-8772-c1cc6dae34ce
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects registry key established after masqueraded .scr file execution using
+  Rundll32 through desk.cpl. MITRE ATT&CK: T1218.011.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\rundll32.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Control Panel\\\\Desktop\\\\SCRNSAVE.EXE*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_details:
+              value: "*.scr"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*C:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*C:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\rundll32.exe'; data_win_eventdata_targetObject matches '*\Control
+  Panel\Desktop\SCRNSAVE.EXE*'; data_win_eventdata_details matches '*.scr',
+  among other conditions.
+
+known_false_positives: >
+  Legitimate use of screen saver. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/VakninHai/status/1517027824984547329
+  - https://twitter.com/pabraeken/status/998627081360695297
+  - https://jstnk9.github.io/jstnk9/research/InstallScreenSaver-SCR-files
+  - https://attack.mitre.org/techniques/T1218/011/
+
+response:
+  message: >
+    ScreenSaver Registry Key Set detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. MITRE
+    ATT&CK: T1218.011
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.011
+  custom_tags:
+    - screensaver
+    - registry
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Pp][Aa][Nn][Ee][Ll]\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\[Ss][Cc][Rr][Nn][Ss][Aa][Vv][Ee]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_details:/.*\.[Ss][Cc][Rr]/ AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_details:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_details:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/)

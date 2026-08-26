@@ -1,0 +1,274 @@
+name: Rundll32 Execution With Uncommon DLL Extension
+id: c3a99af4-35a9-4668-879e-c09aeb4f2bdf
+version: 1
+schema_version: "1.0"
+date: "2024-04-04"
+author: Tim Shelton, Florian Roth (Nextron Systems), Yassine Oukessou
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c3a99af4-35a9-4668-879e-c09aeb4f2bdf
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of rundll32 with a command line that doesn't contain a
+  common extension. MITRE ATT&CK: T1218.011.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\rundll32.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "RUNDLL32.EXE"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_commandLine"
+                    - term:
+                        data_win_eventdata_commandLine: ""
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.cpl *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.cpl,*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.cpl\"*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.cpl'*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.dll *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.dll,*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.dll\"*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.dll'*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.inf *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.inf,*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.inf\"*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.inf'*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.cpl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.dll"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.inf"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -localserver *"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\msiexec.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*:\\\\Windows\\\\Installer\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.tmp*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*zzzzInvokeManagedCustomActionOutOfProc*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\EdgeUpdate\\\\Install\\\\{*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\EDGEMITMP_*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*.tmp\\\\setup.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*--install-archive=*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*--previous-version=*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*--msedgewebview --verbose-logging --do-not-launch-msedge --user-level*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\rundll32.exe'; data_win_eventdata_originalFileName equals 'RUNDLL32.EXE';
+  data_win_eventdata_commandLine is absent, among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/mrd0x/status/1481630810495139841?s=12
+  - https://attack.mitre.org/techniques/T1218/011/
+
+response:
+  message: >
+    Rundll32 Execution With Uncommon DLL Extension detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1218.011
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.011
+  custom_tags:
+    - rundll32
+    - uncommon
+    - extension
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_parentImage AND NOT (NOT _exists_:data_win_eventdata_commandLine OR data_win_eventdata_commandLine:"" OR data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll] .*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll],.*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll]\".*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll]'.*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll] .*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll],.*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll]\".*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll]'.*/ OR data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ff] .*/ OR data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ff],.*/ OR data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ff]\".*/ OR data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ff]'.*/ OR data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll]/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll]/ OR data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ff]/ OR data_win_eventdata_commandLine:/.* -[Ll][Oo][Cc][Aa][Ll][Ss][Ee][Rr][Vv][Ee][Rr] .*/ OR (data_win_eventdata_parentImage:/.*\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\.*/ AND data_win_eventdata_commandLine:/.*\.[Tt][Mm][Pp].*/ AND data_win_eventdata_commandLine:/.*[Zz][Zz][Zz][Zz][Ii][Nn][Vv][Oo][Kk][Ee][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Cc][Uu][Ss][Tt][Oo][Mm][Aa][Cc][Tt][Ii][Oo][Nn][Oo][Uu][Tt][Oo][Ff][Pp][Rr][Oo][Cc].*/)) AND _exists_:data_win_eventdata_parentCommandLine AND NOT (data_win_eventdata_parentCommandLine:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_parentCommandLine:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll]\\\{.*/ AND data_win_eventdata_parentCommandLine:/.*\\[Ee][Dd][Gg][Ee][Mm][Ii][Tt][Mm][Pp]_.*/ AND data_win_eventdata_parentCommandLine:/.*\.[Tt][Mm][Pp]\\[Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_parentCommandLine:/.*--[Ii][Nn][Ss][Tt][Aa][Ll][Ll]-[Aa][Rr][Cc][Hh][Ii][Vv][Ee]=.*/ AND data_win_eventdata_parentCommandLine:/.*--[Pp][Rr][Ee][Vv][Ii][Oo][Uu][Ss]-[Vv][Ee][Rr][Ss][Ii][Oo][Nn]=.*/ AND data_win_eventdata_parentCommandLine:/.*--[Mm][Ss][Ee][Dd][Gg][Ee][Ww][Ee][Bb][Vv][Ii][Ee][Ww] --[Vv][Ee][Rr][Bb][Oo][Ss][Ee]-[Ll][Oo][Gg][Gg][Ii][Nn][Gg] --[Dd][Oo]-[Nn][Oo][Tt]-[Ll][Aa][Uu][Nn][Cc][Hh]-[Mm][Ss][Ee][Dd][Gg][Ee] --[Uu][Ss][Ee][Rr]-[Ll][Ee][Vv][Ee][Ll].*/)

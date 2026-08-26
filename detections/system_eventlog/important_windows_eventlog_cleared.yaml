@@ -1,0 +1,163 @@
+name: Important Windows Eventlog Cleared
+id: 100ef69e-3327-481c-8e5c-6d80d9507556
+version: 1
+schema_version: "1.0"
+date: "2023-11-15"
+author: Florian Roth (Nextron Systems), Tim Shelton, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 100ef69e-3327-481c-8e5c-6d80d9507556
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the clearing of one of the Windows Core Eventlogs. e.g. caused by
+  "wevtutil cl" command execution. MITRE ATT&CK: T1685.005.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "104"
+        - term:
+            data_win_system_providerName:
+              value: "Microsoft-Windows-Eventlog"
+              case_insensitive: true
+        - bool:
+            should:
+              - term:
+                  data_win_system_channel:
+                    value: "Microsoft-Windows-PowerShell/Operational"
+                    case_insensitive: true
+              - term:
+                  data_win_system_channel:
+                    value: "Microsoft-Windows-Sysmon/Operational"
+                    case_insensitive: true
+              - term:
+                  data_win_system_channel:
+                    value: "PowerShellCore/Operational"
+                    case_insensitive: true
+              - term:
+                  data_win_system_channel:
+                    value: "Security"
+                    case_insensitive: true
+              - term:
+                  data_win_system_channel:
+                    value: "System"
+                    case_insensitive: true
+              - term:
+                  data_win_system_channel:
+                    value: "Windows PowerShell"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_system_channel
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_eventID equals '104';
+  data_win_system_providerName equals 'Microsoft-Windows-Eventlog';
+  data_win_system_channel equals 'Microsoft-Windows-PowerShell/Operational',
+  among other conditions.
+
+known_false_positives: >
+  Rollout of log collection agents (the setup routine often includes a reset of
+  the local Eventlog). System provisioning (system reset before the golden image
+  creation). Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/deviouspolack/status/832535435960209408
+  - https://www.hybrid-analysis.com/sample/027cc450ef5f8c5f653329641ec1fed91f694e0d229928963b30f6b0d7d3a745?environmentId=100
+  - https://attack.mitre.org/techniques/T1685/005/
+
+response:
+  message: >
+    Important Windows Eventlog Cleared detected on host $agent_name$. Matched
+    data_win_system_providerName: $data_win_system_providerName$. Matched
+    data_win_system_channel: $data_win_system_channel$. MITRE ATT&CK: T1685.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_system_channel
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685.005
+  custom_tags:
+    - important
+    - eventlog
+    - cleared
+    - windows_system
+    - defense_impairment
+    - car_2016_04_002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"104" AND data_win_system_providerName:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg]/ AND (data_win_system_channel:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\/[Oo][Pp][Ee][Rr][Aa][Tt][Ii][Oo][Nn][Aa][Ll]/ OR data_win_system_channel:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Ss][Yy][Ss][Mm][Oo][Nn]\/[Oo][Pp][Ee][Rr][Aa][Tt][Ii][Oo][Nn][Aa][Ll]/ OR data_win_system_channel:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll][Cc][Oo][Rr][Ee]\/[Oo][Pp][Ee][Rr][Aa][Tt][Ii][Oo][Nn][Aa][Ll]/ OR data_win_system_channel:/[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy]/ OR data_win_system_channel:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_system_channel:/[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]/)

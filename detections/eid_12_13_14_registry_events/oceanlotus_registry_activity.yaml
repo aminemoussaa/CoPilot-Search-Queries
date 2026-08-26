@@ -1,0 +1,196 @@
+name: OceanLotus Registry Activity
+id: 4ac5fc44-a601-4c06-955b-309df8c4e9d4
+version: 1
+schema_version: "1.0"
+date: "2023-09-28"
+author: megan201296, Jonhnathan Ribeiro
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4ac5fc44-a601-4c06-955b-309df8c4e9d4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects registry keys created in OceanLotus (also known as APT32) attacks.
+  MITRE ATT&CK: T1112.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\SOFTWARE\\\\Classes\\\\CLSID\\\\{E08A0F4B-1F65-4D4D-9A09-BD4625B9C5A1}\\\\Model*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*Classes\\\\AppXc52346ec40fb4061ad96be0e6cb7d16a\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*Classes\\\\AppX3bbba44c6cae4d9695755183472171e2\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*Classes\\\\CLSID\\\\{E3517E26-8E93-458D-A6DF-8030BC80528B}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*Classes\\\\CLSID\\\\{E08A0F4B-1F65-4D4D-9A09-BD4625B9C5A1}\\\\Model*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\SOFTWARE\\\\App\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*AppXbf13d4ea2945444d8b13e2121cb6b663\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*AppX70162486c7554f7f80f481985d67586d\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*AppX37cc7fdccd644b4f85f4b22d5a3f105a\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*Application"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*DefaultIcon"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Classes\CLSID\{E08A0F4B-1F65-4D4D-9A09-BD4625B9C5A1}\Model*';
+  data_win_eventdata_targetObject matches
+  '*Classes\AppXc52346ec40fb4061ad96be0e6cb7d16a\*';
+  data_win_eventdata_targetObject matches
+  '*Classes\AppX3bbba44c6cae4d9695755183472171e2\*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.welivesecurity.com/2019/03/20/fake-or-fake-keeping-up-with-oceanlotus-decoys/
+  - https://github.com/eset/malware-ioc/tree/master/oceanlotus
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    OceanLotus Registry Activity detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1112
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+  custom_tags:
+    - oceanlotus
+    - registry
+    - sysmon
+    - persistence
+    - defense_impairment
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Cc][Ll][Ss][Ii][Dd]\\\{[Ee]08[Aa]0[Ff]4[Bb]-1[Ff]65-4[Dd]4[Dd]-9[Aa]09-[Bb][Dd]4625[Bb]9[Cc]5[Aa]1\}\\[Mm][Oo][Dd][Ee][Ll].*/ OR data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Aa][Pp][Pp][Xx][Cc]52346[Ee][Cc]40[Ff][Bb]4061[Aa][Dd]96[Bb][Ee]0[Ee]6[Cc][Bb]7[Dd]16[Aa]\\.*/ OR data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Aa][Pp][Pp][Xx]3[Bb][Bb][Bb][Aa]44[Cc]6[Cc][Aa][Ee]4[Dd]9695755183472171[Ee]2\\.*/ OR data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Cc][Ll][Ss][Ii][Dd]\\\{[Ee]3517[Ee]26-8[Ee]93-458[Dd]-[Aa]6[Dd][Ff]-8030[Bb][Cc]80528[Bb]\}\\.*/ OR data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Cc][Ll][Ss][Ii][Dd]\\\{[Ee]08[Aa]0[Ff]4[Bb]-1[Ff]65-4[Dd]4[Dd]-9[Aa]09-[Bb][Dd]4625[Bb]9[Cc]5[Aa]1\}\\[Mm][Oo][Dd][Ee][Ll].*/ OR (data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Pp][Pp]\\.*/ AND (data_win_eventdata_targetObject:/.*[Aa][Pp][Pp][Xx][Bb][Ff]13[Dd]4[Ee][Aa]2945444[Dd]8[Bb]13[Ee]2121[Cc][Bb]6[Bb]663\\.*/ OR data_win_eventdata_targetObject:/.*[Aa][Pp][Pp][Xx]70162486[Cc]7554[Ff]7[Ff]80[Ff]481985[Dd]67586[Dd]\\.*/ OR data_win_eventdata_targetObject:/.*[Aa][Pp][Pp][Xx]37[Cc][Cc]7[Ff][Dd][Cc][Cc][Dd]644[Bb]4[Ff]85[Ff]4[Bb]22[Dd]5[Aa]3[Ff]105[Aa]\\.*/) AND (data_win_eventdata_targetObject:/.*[Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_targetObject:/.*[Dd][Ee][Ff][Aa][Uu][Ll][Tt][Ii][Cc][Oo][Nn]/)))

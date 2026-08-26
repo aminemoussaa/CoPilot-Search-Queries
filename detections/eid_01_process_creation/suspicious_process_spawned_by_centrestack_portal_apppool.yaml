@@ -1,0 +1,156 @@
+name: Suspicious Process Spawned by CentreStack Portal AppPool
+id: 2d79e371-2a27-42de-87a4-b4213fc72a6a
+version: 1
+schema_version: "1.0"
+date: "2025-04-17"
+author: Jason Rathbun (Blackpoint Cyber)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2d79e371-2a27-42de-87a4-b4213fc72a6a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects unexpected command shell execution (cmd.exe) from w3wp.exe when tied
+  to CentreStack's portal.config, indicating potential exploitation (e.g.,
+  CVE-2025-30406). MITRE ATT&CK: T1059.003, T1505.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\w3wp.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*\\\\portal\\\\portal.config*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\cmd.exe"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\w3wp.exe'; data_win_eventdata_parentCommandLine matches
+  '*\portal\portal.config*'; data_win_eventdata_image matches '*\cmd.exe'.
+
+known_false_positives: >
+  Potentially if other portal services run on w3wp with a
+  apppool\portal\portal.config, if you want to increase scope you could add user
+  IIS APPPOOL\portal. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://nvd.nist.gov/vuln/detail/CVE-2025-30406
+  - https://blackpointcyber.com/blog/racing-to-exploit-centrestacks-cve-2025-30406/
+  - https://gladinetsupport.s3.us-east-1.amazonaws.com/gladinet/securityadvisory-cve-2005.pdf
+  - https://www.bleepingcomputer.com/news/security/centrestack-rce-exploited-as-zero-day-to-breach-file-sharing-servers/
+  - https://attack.mitre.org/techniques/T1059/003/
+  - https://attack.mitre.org/techniques/T1505/003/
+
+response:
+  message: >
+    Suspicious Process Spawned by CentreStack Portal AppPool detected on host
+    $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_parentCommandLine:
+    $data_win_eventdata_parentCommandLine$. MITRE ATT&CK: T1059.003, T1505.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_parentCommandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.003
+    - T1505.003
+  custom_tags:
+    - spawned
+    - centrestack
+    - portal
+    - process_creation
+    - sysmon
+    - persistence
+    - execution
+    - cve_2025_30406
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Ww]3[Ww][Pp]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*\\[Pp][Oo][Rr][Tt][Aa][Ll]\\[Pp][Oo][Rr][Tt][Aa][Ll]\.[Cc][Oo][Nn][Ff][Ii][Gg].*/ AND data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/

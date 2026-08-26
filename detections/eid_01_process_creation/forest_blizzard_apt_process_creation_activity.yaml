@@ -1,0 +1,213 @@
+name: Forest Blizzard APT - Process Creation Activity
+id: 07db928c-8632-488e-ac7d-3db847489175
+version: 1
+schema_version: "1.0"
+date: "2025-01-22"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 07db928c-8632-488e-ac7d-3db847489175
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of specific processes and command line combination.
+  These were seen being created by Forest Blizzard as described by MSFT.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=6b311c0a977d21e772ac4e99762234da852bbf84293386fbe78622a96c0b052f*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=c60ead92cd376b689d1b4450f2578b36ea0bf64f3963cfa5546279fa4424c2a5*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\schtasks.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Create*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/RU*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*SYSTEM*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\Microsoft\\\\Windows\\\\WinSrv*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*servtask.bat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*execute.bat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*doit.bat*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\schtasks.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Delete*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/F *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\Microsoft\\\\Windows\\\\WinSrv*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Get-ChildItem*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.save*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Compress-Archive -DestinationPath C:\\\\ProgramData\\\\*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_hashes
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_hashes matches
+  '*SHA256=6b311c0a977d21e772ac4e99762234da852bbf84293386fbe78622a96c0b052f*';
+  data_win_eventdata_hashes matches
+  '*SHA256=c60ead92cd376b689d1b4450f2578b36ea0bf64f3963cfa5546279fa4424c2a5*';
+  data_win_eventdata_image matches '*\schtasks.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/en-us/security/blog/2024/04/22/analyzing-forest-blizzards-custom-post-compromise-tool-for-exploiting-cve-2022-38028-to-obtain-credentials/
+
+response:
+  message: >
+    Forest Blizzard APT - Process Creation Activity detected on host
+    $agent_name$. Matched data_win_eventdata_hashes:
+    $data_win_eventdata_hashes$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_hashes
+      type: file_hash
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - forest
+    - blizzard
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=6[Bb]311[Cc]0[Aa]977[Dd]21[Ee]772[Aa][Cc]4[Ee]99762234[Dd][Aa]852[Bb][Bb][Ff]84293386[Ff][Bb][Ee]78622[Aa]96[Cc]0[Bb]052[Ff].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Cc]60[Ee][Aa][Dd]92[Cc][Dd]376[Bb]689[Dd]1[Bb]4450[Ff]2578[Bb]36[Ee][Aa]0[Bb][Ff]64[Ff]3963[Cc][Ff][Aa]5546279[Ff][Aa]4424[Cc]2[Aa]5.*/ OR (data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee].*/ AND data_win_eventdata_commandLine:/.*\/[Rr][Uu].*/ AND data_win_eventdata_commandLine:/.*[Ss][Yy][Ss][Tt][Ee][Mm].*/ AND data_win_eventdata_commandLine:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Rr][Vv].*/ AND (data_win_eventdata_commandLine:/.*[Ss][Ee][Rr][Vv][Tt][Aa][Ss][Kk]\.[Bb][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ee][Xx][Ee][Cc][Uu][Tt][Ee]\.[Bb][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*[Dd][Oo][Ii][Tt]\.[Bb][Aa][Tt].*/)) OR (data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Dd][Ee][Ll][Ee][Tt][Ee].*/ AND data_win_eventdata_commandLine:/.*\/[Ff] .*/ AND data_win_eventdata_commandLine:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Rr][Vv].*/) OR (data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Cc][Hh][Ii][Ll][Dd][Ii][Tt][Ee][Mm].*/ AND data_win_eventdata_commandLine:/.*\.[Ss][Aa][Vv][Ee].*/ AND data_win_eventdata_commandLine:/.*[Cc][Oo][Mm][Pp][Rr][Ee][Ss][Ss]-[Aa][Rr][Cc][Hh][Ii][Vv][Ee] -[Dd][Ee][Ss][Tt][Ii][Nn][Aa][Tt][Ii][Oo][Nn][Pp][Aa][Tt][Hh] [Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\.*/))

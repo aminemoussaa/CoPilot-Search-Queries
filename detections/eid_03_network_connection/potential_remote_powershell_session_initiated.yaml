@@ -1,0 +1,224 @@
+name: Potential Remote PowerShell Session Initiated
+id: c539afac-c12a-46ed-b1bd-5a5567c9f045
+version: 1
+schema_version: "1.0"
+date: "2024-02-02"
+author: Roberto Rodriguez @Cyb3rWard0g
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c539afac-c12a-46ed-b1bd-5a5567c9f045
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a process that initiated a network connection over ports 5985 or 5986
+  from a non-network service account. This could potentially indicates a remote
+  PowerShell connection. MITRE ATT&CK: T1059.001, T1021.006.
+
+data_source:
+  - Sysmon EventID 3 - Network Connection
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "3"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_destinationPort: "5985"
+              - term:
+                  data_win_eventdata_destinationPort: "5986"
+            minimum_should_match: 1
+        - term:
+            data_win_eventdata_initiated:
+              value: "true"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_sourceIsIpv6:
+              value: "false"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_user"
+        - exists:
+            field: "data_win_eventdata_sourceIp"
+        - exists:
+            field: "data_win_eventdata_destinationIp"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_user:
+                          value: "*NETWORK SERVICE*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_user:
+                          value: "*NETZWERKDIENST*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_user:
+                          value: "*SERVICIO DE RED*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_user:
+                          value: "*SERVIZIO DI RETE*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_user:
+                                value: "*SERVICE R*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_user:
+                                value: "*SEAU*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_sourceIp: "::1"
+                                - term:
+                                    data_win_eventdata_sourceIp: "127.0.0.1"
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_destinationIp: "::1"
+                                - term:
+                                    data_win_eventdata_destinationIp: "127.0.0.1"
+                              minimum_should_match: 1
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\Avast Software\\Avast\\AvastSvc.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\Avast Software\\Avast\\AvastSvc.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_destinationPort
+    - data_win_eventdata_initiated
+    - data_win_eventdata_sourceIsIpv6
+    - data_win_eventdata_user
+    - data_win_eventdata_sourceIp
+    - data_win_eventdata_destinationIp
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 3 (network connection) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_destinationPort equals '5985';
+  data_win_eventdata_destinationPort equals '5986'; data_win_eventdata_initiated
+  equals 'true', among other conditions.
+
+known_false_positives: >
+  Legitimate usage of remote PowerShell, e.g. remote administration and
+  monitoring.. Network Service user name of a not-covered localization. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://threathunterplaybook.com/hunts/windows/190511-RemotePwshExecution/notebook.html
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1021/006/
+
+response:
+  message: >
+    Potential Remote PowerShell Session Initiated detected on host $agent_name$.
+    Matched data_win_eventdata_destinationPort:
+    $data_win_eventdata_destinationPort$. Matched data_win_eventdata_initiated:
+    $data_win_eventdata_initiated$. MITRE ATT&CK: T1059.001, T1021.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_destinationPort
+      type: other
+    - field: data_win_eventdata_initiated
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1021.006
+  custom_tags:
+    - powershell
+    - session
+    - initiated
+    - network_connection
+    - sysmon
+    - execution
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"3" AND (data_win_eventdata_destinationPort:"5985" OR data_win_eventdata_destinationPort:"5986") AND data_win_eventdata_initiated:/[Tt][Rr][Uu][Ee]/ AND data_win_eventdata_sourceIsIpv6:/[Ff][Aa][Ll][Ss][Ee]/ AND _exists_:data_win_eventdata_user AND _exists_:data_win_eventdata_sourceIp AND _exists_:data_win_eventdata_destinationIp AND NOT (data_win_eventdata_user:/.*[Nn][Ee][Tt][Ww][Oo][Rr][Kk] [Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_user:/.*[Nn][Ee][Tt][Zz][Ww][Ee][Rr][Kk][Dd][Ii][Ee][Nn][Ss][Tt].*/ OR data_win_eventdata_user:/.*[Ss][Ee][Rr][Vv][Ii][Cc][Ii][Oo] [Dd][Ee] [Rr][Ee][Dd].*/ OR data_win_eventdata_user:/.*[Ss][Ee][Rr][Vv][Ii][Zz][Ii][Oo] [Dd][Ii] [Rr][Ee][Tt][Ee].*/ OR (data_win_eventdata_user:/.*[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Rr].*/ AND data_win_eventdata_user:/.*[Ss][Ee][Aa][Uu].*/) OR ((data_win_eventdata_sourceIp:"::1" OR data_win_eventdata_sourceIp:"127.0.0.1") AND (data_win_eventdata_destinationIp:"::1" OR data_win_eventdata_destinationIp:"127.0.0.1"))) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\[Aa][Vv][Aa][Ss][Tt][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Aa][Ss][Tt] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Aa][Vv][Aa][Ss][Tt]\\[Aa][Vv][Aa][Ss][Tt][Ss][Vv][Cc]\.[Ee][Xx][Ee]/)

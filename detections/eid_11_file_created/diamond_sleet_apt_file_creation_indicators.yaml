@@ -1,0 +1,160 @@
+name: Diamond Sleet APT File Creation Indicators
+id: e1212b32-55ff-4dfb-a595-62b572248056
+version: 1
+schema_version: "1.0"
+date: "2023-10-24"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e1212b32-55ff-4dfb-a595-62b572248056
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects file creation activity that is related to Diamond Sleet APT activity.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\ProgramData\\\\4800-84DC-063A6A41C5C"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\ProgramData\\\\clip.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\ProgramData\\\\DSROLE.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\ProgramData\\\\Forest64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\ProgramData\\\\readme.md"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\ProgramData\\\\Version.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*:\\\\ProgramData\\\\wsmprovhost.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*:\ProgramData\4800-84DC-063A6A41C5C'; data_win_eventdata_targetFilename
+  matches '*:\ProgramData\clip.exe'; data_win_eventdata_targetFilename matches
+  '*:\ProgramData\DSROLE.dll', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/en-us/security/blog/2023/10/18/multiple-north-korean-threat-actors-exploiting-the-teamcity-cve-2023-42793-vulnerability/
+
+response:
+  message: >
+    Diamond Sleet APT File Creation Indicators detected on host $agent_name$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - diamond
+    - sleet
+    - indicators
+    - file_event
+    - sysmon
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\4800-84[Dd][Cc]-063[Aa]6[Aa]41[Cc]5[Cc]/ OR data_win_eventdata_targetFilename:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Cc][Ll][Ii][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetFilename:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Dd][Ss][Rr][Oo][Ll][Ee]\.[Dd][Ll][Ll]/ OR data_win_eventdata_targetFilename:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Ff][Oo][Rr][Ee][Ss][Tt]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetFilename:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Rr][Ee][Aa][Dd][Mm][Ee]\.[Mm][Dd]/ OR data_win_eventdata_targetFilename:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Vv][Ee][Rr][Ss][Ii][Oo][Nn]\.[Dd][Ll][Ll]/ OR data_win_eventdata_targetFilename:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Ww][Ss][Mm][Pp][Rr][Oo][Vv][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/)

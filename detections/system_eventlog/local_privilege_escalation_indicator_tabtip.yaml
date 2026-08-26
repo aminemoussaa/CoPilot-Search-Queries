@@ -1,0 +1,147 @@
+name: Local Privilege Escalation Indicator TabTip
+id: bc2e25ed-b92b-4daa-b074-b502bdd1982b
+version: 1
+schema_version: "1.0"
+date: "2023-04-14"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bc2e25ed-b92b-4daa-b074-b502bdd1982b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the invocation of TabTip via CLSID as seen when JuicyPotatoNG is used
+  on a system in brute force mode. MITRE ATT&CK: T1557.001.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "Microsoft-Windows-DistributedCOM"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "10001"
+        - term:
+            data_win_eventdata_param1:
+              value: "C:\\Program Files\\Common Files\\microsoft shared\\ink\\TabTip.exe"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_param2: "2147943140"
+        - term:
+            data_win_eventdata_param3:
+              value: "{054AAE20-4BEA-4347-8A35-64A533254A9D}"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_param1
+    - data_win_eventdata_param2
+    - data_win_eventdata_param3
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals
+  'Microsoft-Windows-DistributedCOM'; data_win_system_eventID equals '10001';
+  data_win_eventdata_param1 equals 'C:\Program Files\Common Files\microsoft
+  shared\ink\TabTip.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/antonioCoco/JuicyPotatoNG
+  - https://attack.mitre.org/techniques/T1557/001/
+
+response:
+  message: >
+    Local Privilege Escalation Indicator TabTip detected on host $agent_name$.
+    Matched data_win_system_providerName: $data_win_system_providerName$.
+    Matched data_win_eventdata_param1: $data_win_eventdata_param1$. MITRE
+    ATT&CK: T1557.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_param1
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1557.001
+  custom_tags:
+    - local
+    - privilege
+    - escalation
+    - windows_system
+    - collection
+    - execution
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Dd][Ii][Ss][Tt][Rr][Ii][Bb][Uu][Tt][Ee][Dd][Cc][Oo][Mm]/ AND data_win_system_eventID:"10001" AND data_win_eventdata_param1:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Ii][Nn][Kk]\\[Tt][Aa][Bb][Tt][Ii][Pp]\.[Ee][Xx][Ee]/ AND data_win_eventdata_param2:"2147943140" AND data_win_eventdata_param3:/\{054[Aa][Aa][Ee]20-4[Bb][Ee][Aa]-4347-8[Aa]35-64[Aa]533254[Aa]9[Dd]\}/

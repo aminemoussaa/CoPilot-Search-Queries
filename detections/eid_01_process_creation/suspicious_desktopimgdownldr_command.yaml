@@ -1,0 +1,169 @@
+name: Suspicious Desktopimgdownldr Command
+id: bb58aa4a-b80b-415a-a2c0-2f65a4c81009
+version: 1
+schema_version: "1.0"
+date: "2021-11-27"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bb58aa4a-b80b-415a-a2c0-2f65a4c81009
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a suspicious Microsoft desktopimgdownldr execution with parameters
+  used to download files from the Internet. MITRE ATT&CK: T1105.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /lockscreenurl:*"
+                          case_insensitive: true
+                    - exists:
+                        field: "data_win_eventdata_commandLine"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.jpg*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.jpeg*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*.png*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*reg delete*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\PersonalizationCSP*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*
+  /lockscreenurl:*'; data_win_eventdata_commandLine matches '*.jpg*';
+  data_win_eventdata_commandLine matches '*.jpeg*', among other conditions.
+
+known_false_positives: >
+  False positives depend on scripts and administrative tools used in the
+  monitored environment. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://labs.sentinelone.com/living-off-windows-land-a-new-native-file-downldr/
+  - https://twitter.com/SBousseaden/status/1278977301745741825
+  - https://attack.mitre.org/techniques/T1105/
+
+response:
+  message: >
+    Suspicious Desktopimgdownldr Command detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1105
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1105
+  custom_tags:
+    - desktopimgdownldr
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.* \/[Ll][Oo][Cc][Kk][Ss][Cc][Rr][Ee][Ee][Nn][Uu][Rr][Ll]:.*/ AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*\.[Jj][Pp][Gg].*/ OR data_win_eventdata_commandLine:/.*\.[Jj][Pp][Ee][Gg].*/ OR data_win_eventdata_commandLine:/.*\.[Pp][Nn][Gg].*/)) OR (data_win_eventdata_commandLine:/.*[Rr][Ee][Gg] [Dd][Ee][Ll][Ee][Tt][Ee].*/ AND data_win_eventdata_commandLine:/.*\\[Pp][Ee][Rr][Ss][Oo][Nn][Aa][Ll][Ii][Zz][Aa][Tt][Ii][Oo][Nn][Cc][Ss][Pp].*/))

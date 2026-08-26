@@ -1,0 +1,136 @@
+name: Add Windows Capability Via PowerShell Script
+id: 155c7fd5-47b4-49b2-bbeb-eb4fab335429
+version: 1
+schema_version: "1.0"
+date: "2023-05-09"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 155c7fd5-47b4-49b2-bbeb-eb4fab335429
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of the "Add-WindowsCapability" cmdlet to add Windows
+  capabilities. Notable capabilities could be "OpenSSH" and others.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Add-WindowsCapability *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*-Name OpenSSH.*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Add-WindowsCapability *';
+  data_win_eventdata_scriptBlockText matches '*-Name OpenSSH.*'.
+
+known_false_positives: >
+  Legitimate usage of the capabilities by administrators or users. Add
+  additional filters accordingly. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse?tabs=powershell
+  - https://www.virustotal.com/gui/file/af1c82237b6e5a3a7cdbad82cc498d298c67845d92971bada450023d1335e267/content
+
+response:
+  message: >
+    Add Windows Capability Via PowerShell Script detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - capability
+    - powershell
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Aa][Dd][Dd]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Cc][Aa][Pp][Aa][Bb][Ii][Ll][Ii][Tt][Yy] .*/ AND data_win_eventdata_scriptBlockText:/.*-[Nn][Aa][Mm][Ee] [Oo][Pp][Ee][Nn][Ss][Ss][Hh]\..*/

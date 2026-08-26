@@ -1,0 +1,150 @@
+name: Certificate Exported Via PowerShell
+id: 9e716b33-63b2-46da-86a4-bd3c3b9b5dfb
+version: 1
+schema_version: "1.0"
+date: "2023-05-18"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9e716b33-63b2-46da-86a4-bd3c3b9b5dfb
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects calls to cmdlets that are used to export certificates from the local
+  certificate store. Threat actors were seen abusing this to steal private keys
+  from compromised machines. MITRE ATT&CK: T1552.004, T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Export-PfxCertificate *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Export-Certificate *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*Export-PfxCertificate *'; data_win_eventdata_commandLine matches
+  '*Export-Certificate *'.
+
+known_false_positives: >
+  Legitimate certificate exports by administrators. Additional filters might be
+  required. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://us-cert.cisa.gov/ncas/analysis-reports/ar21-112a
+  - https://learn.microsoft.com/en-us/powershell/module/pki/export-pfxcertificate?view=windowsserver2022-ps
+  - https://www.splunk.com/en_us/blog/security/breaking-the-chain-defending-against-certificate-services-abuse.html
+  - https://attack.mitre.org/techniques/T1552/004/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Certificate Exported Via PowerShell detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1552.004, T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1552.004
+    - T1059.001
+  custom_tags:
+    - certificate
+    - exported
+    - powershell
+    - process_creation
+    - sysmon
+    - credential_access
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Ee][Xx][Pp][Oo][Rr][Tt]-[Pp][Ff][Xx][Cc][Ee][Rr][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ee] .*/ OR data_win_eventdata_commandLine:/.*[Ee][Xx][Pp][Oo][Rr][Tt]-[Cc][Ee][Rr][Tt][Ii][Ff][Ii][Cc][Aa][Tt][Ee] .*/)

@@ -1,0 +1,131 @@
+name: DPAPI Domain Master Key Backup Attempt
+id: 39a94fd1-8c9a-4ff6-bf22-c058762f8014
+version: 1
+schema_version: "1.0"
+date: "2023-03-15"
+author: Roberto Rodriguez @Cyb3rWard0g
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 39a94fd1-8c9a-4ff6-bf22-c058762f8014
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects anyone attempting a backup for the DPAPI Master Key. This events gets
+  generated at the source and not the Domain Controller. MITRE ATT&CK:
+  T1003.004.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4692"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4692'.
+
+known_false_positives: >
+  If a computer is a member of a domain, DPAPI has a backup mechanism to allow
+  unprotection of the data. Which will trigger this event. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://threathunterplaybook.com/hunts/windows/190620-DomainDPAPIBackupKeyExtraction/notebook.html
+  - https://attack.mitre.org/techniques/T1003/004/
+
+response:
+  message: >
+    DPAPI Domain Master Key Backup Attempt detected on host $agent_name$.
+    Matched data_win_eventdata_subjectUserName:
+    $data_win_eventdata_subjectUserName$. Matched
+    data_win_eventdata_subjectLogonId: $data_win_eventdata_subjectLogonId$.
+    MITRE ATT&CK: T1003.004
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_subjectUserName
+      type: user
+    - field: data_win_eventdata_subjectLogonId
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.004
+  custom_tags:
+    - dpapi
+    - domain
+    - master
+    - windows_security
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4692"

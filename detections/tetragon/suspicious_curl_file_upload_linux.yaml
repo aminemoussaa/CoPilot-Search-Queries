@@ -1,0 +1,177 @@
+name: Suspicious Curl File Upload - Linux
+id: 00b90cc1-17ec-402c-96ad-3a8117d7a582
+version: 1
+schema_version: "1.0"
+date: "2023-05-02"
+author: Nasreddine Bencherchali (Nextron Systems), Cedric MAURUGEON (Update)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 00b90cc1-17ec-402c-96ad-3a8117d7a582
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a suspicious curl process start the adds a file to a web request.
+  MITRE ATT&CK: T1567, T1105.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/curl"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* --form*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* --upload-file *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* --data *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* --data-*"
+                    case_insensitive: true
+              - regexp:
+                  data_process_exec_process_arguments: ".*([ ]-[FTd][ ]).*"
+            minimum_should_match: 1
+        - exists:
+            field: "data_process_exec_process_arguments"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*://localhost*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments: "*://127.0.0.1*"
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/curl';
+  data_process_exec_process_arguments matches '* --form*';
+  data_process_exec_process_arguments matches '* --upload-file *', among other
+  conditions.
+
+known_false_positives: >
+  Scripts created by developers and admins. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://twitter.com/d1r4c/status/1279042657508081664
+  - https://medium.com/@petehouston/upload-files-with-curl-93064dcccc76
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1105/T1105.md#atomic-test-19---curl-upload-file
+  - https://curl.se/docs/manpage.html
+  - https://www.trendmicro.com/en_us/research/22/i/how-malicious-actors-abuse-native-linux-tools-in-their-attacks.html
+  - https://attack.mitre.org/techniques/T1567/
+  - https://attack.mitre.org/techniques/T1105/
+
+response:
+  message: >
+    Suspicious Curl File Upload - Linux detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1567, T1105
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1567
+    - T1105
+  custom_tags:
+    - upload
+    - linux
+    - tetragon
+    - process_creation
+    - exfiltration
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Cc][Uu][Rr][Ll]/ AND (data_process_exec_process_arguments:/.* --[Ff][Oo][Rr][Mm].*/ OR data_process_exec_process_arguments:/.* --[Uu][Pp][Ll][Oo][Aa][Dd]-[Ff][Ii][Ll][Ee] .*/ OR data_process_exec_process_arguments:/.* --[Dd][Aa][Tt][Aa] .*/ OR data_process_exec_process_arguments:/.* --[Dd][Aa][Tt][Aa]-.*/ OR data_process_exec_process_arguments:/.*([ ]-[FTd][ ]).*/) AND _exists_:data_process_exec_process_arguments AND NOT (data_process_exec_process_arguments:/.*:\/\/[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_process_exec_process_arguments:/.*:\/\/127\.0\.0\.1.*/)

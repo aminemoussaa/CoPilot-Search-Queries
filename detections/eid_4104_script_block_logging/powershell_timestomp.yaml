@@ -1,0 +1,161 @@
+name: Powershell Timestomp
+id: c6438007-e081-42ce-9483-b067fbef33c3
+version: 1
+schema_version: "1.0"
+date: "2022-12-25"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c6438007-e081-42ce-9483-b067fbef33c3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may modify file time attributes to hide new or changes to existing
+  files. Timestomping is a technique that modifies the timestamps of a file (the
+  modify, access, create, and change times), often to mimic files that are in
+  the same folder. MITRE ATT&CK: T1070.006.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*.CreationTime =*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*.LastWriteTime =*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*.LastAccessTime =*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*[IO.File]::SetCreationTime*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*[IO.File]::SetLastAccessTime*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*[IO.File]::SetLastWriteTime*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*.CreationTime =*';
+  data_win_eventdata_scriptBlockText matches '*.LastWriteTime =*';
+  data_win_eventdata_scriptBlockText matches '*.LastAccessTime =*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate admin script. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1070.006/T1070.006.md
+  - https://www.offensive-security.com/metasploit-unleashed/timestomp/
+  - https://attack.mitre.org/techniques/T1070/006/
+
+response:
+  message: >
+    Powershell Timestomp detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1070.006
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1070.006
+  custom_tags:
+    - powershell
+    - timestomp
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*\.[Cc][Rr][Ee][Aa][Tt][Ii][Oo][Nn][Tt][Ii][Mm][Ee] =.*/ OR data_win_eventdata_scriptBlockText:/.*\.[Ll][Aa][Ss][Tt][Ww][Rr][Ii][Tt][Ee][Tt][Ii][Mm][Ee] =.*/ OR data_win_eventdata_scriptBlockText:/.*\.[Ll][Aa][Ss][Tt][Aa][Cc][Cc][Ee][Ss][Ss][Tt][Ii][Mm][Ee] =.*/ OR data_win_eventdata_scriptBlockText:/.*\[[Ii][Oo]\.[Ff][Ii][Ll][Ee]\]::[Ss][Ee][Tt][Cc][Rr][Ee][Aa][Tt][Ii][Oo][Nn][Tt][Ii][Mm][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*\[[Ii][Oo]\.[Ff][Ii][Ll][Ee]\]::[Ss][Ee][Tt][Ll][Aa][Ss][Tt][Aa][Cc][Cc][Ee][Ss][Ss][Tt][Ii][Mm][Ee].*/ OR data_win_eventdata_scriptBlockText:/.*\[[Ii][Oo]\.[Ff][Ii][Ll][Ee]\]::[Ss][Ee][Tt][Ll][Aa][Ss][Tt][Ww][Rr][Ii][Tt][Ee][Tt][Ii][Mm][Ee].*/)

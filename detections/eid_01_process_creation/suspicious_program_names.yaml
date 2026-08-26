@@ -1,0 +1,295 @@
+name: Suspicious Program Names
+id: efdd8dd5-cee8-4e59-9390-7d4d5e4dd6f6
+version: 1
+schema_version: "1.0"
+date: "2023-03-22"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: efdd8dd5-cee8-4e59-9390-7d4d5e4dd6f6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious patterns in program names or folders that are often found
+  in malicious samples or hacktools. MITRE ATT&CK: T1059.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\CVE-202*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\CVE202*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\poc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\artifact.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\artifact64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\artifact_protected.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\artifact32.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\artifact32big.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*obfuscated.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*obfusc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\meterpreter"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*inject.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-CVE*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*pupy.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*payload.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*beacon.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*PowerView.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*bypass.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*obfuscated.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*obfusc.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*obfus.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*obfs.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*evil.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*MiniDogz.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*_enc.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\shell.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\rshell.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*revshell.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\av.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\av_test.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*adrecon.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*mimikatz.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\PowerUp_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*powerup.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Temp\\\\a.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Temp\\\\p.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Temp\\\\1.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Hound.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*encode.ps1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*powercat.ps1*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\CVE-202*'; data_win_eventdata_image matches '*\CVE202*';
+  data_win_eventdata_image matches '*\poc.exe', among other conditions.
+
+known_false_positives: >
+  Legitimate tools that accidentally match on the searched patterns. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1560.001/T1560.001.md
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    Suspicious Program Names detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1059
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+  custom_tags:
+    - program
+    - names
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Cc][Vv][Ee]-202.*/ OR data_win_eventdata_image:/.*\\[Cc][Vv][Ee]202.*/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Rr][Tt][Ii][Ff][Aa][Cc][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Rr][Tt][Ii][Ff][Aa][Cc][Tt]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Rr][Tt][Ii][Ff][Aa][Cc][Tt]_[Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ee][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Rr][Tt][Ii][Ff][Aa][Cc][Tt]32\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Rr][Tt][Ii][Ff][Aa][Cc][Tt]32[Bb][Ii][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Oo][Bb][Ff][Uu][Ss][Cc][Aa][Tt][Ee][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Oo][Bb][Ff][Uu][Ss][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Ee][Tt][Ee][Rr][Pp][Rr][Ee][Tt][Ee][Rr]/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Jj][Ee][Cc][Tt]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Cc][Vv][Ee].*/ OR data_win_eventdata_commandLine:/.*[Pp][Uu][Pp][Yy]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Pp][Aa][Yy][Ll][Oo][Aa][Dd]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Bb][Ee][Aa][Cc][Oo][Nn]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Pp][Oo][Ww][Ee][Rr][Vv][Ii][Ee][Ww]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Bb][Yy][Pp][Aa][Ss][Ss]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Oo][Bb][Ff][Uu][Ss][Cc][Aa][Tt][Ee][Dd]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Oo][Bb][Ff][Uu][Ss][Cc]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Oo][Bb][Ff][Uu][Ss]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Oo][Bb][Ff][Ss]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Ee][Vv][Ii][Ll]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Mm][Ii][Nn][Ii][Dd][Oo][Gg][Zz]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*_[Ee][Nn][Cc]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Ss][Hh][Ee][Ll][Ll]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Rr][Ss][Hh][Ee][Ll][Ll]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Vv][Ss][Hh][Ee][Ll][Ll]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Aa][Vv]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Aa][Vv]_[Tt][Ee][Ss][Tt]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Aa][Dd][Rr][Ee][Cc][Oo][Nn]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Pp][Oo][Ww][Ee][Rr][Uu][Pp]_.*/ OR data_win_eventdata_commandLine:/.*[Pp][Oo][Ww][Ee][Rr][Uu][Pp]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\[Aa]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\[Pp]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*\\[Tt][Ee][Mm][Pp]\\1\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Hh][Oo][Uu][Nn][Dd]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Ee][Nn][Cc][Oo][Dd][Ee]\.[Pp][Ss]1.*/ OR data_win_eventdata_commandLine:/.*[Pp][Oo][Ww][Ee][Rr][Cc][Aa][Tt]\.[Pp][Ss]1.*/)

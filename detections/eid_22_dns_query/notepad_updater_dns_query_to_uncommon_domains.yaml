@@ -1,0 +1,189 @@
+name: Notepad++ Updater DNS Query to Uncommon Domains
+id: 2074e137-1b73-4e2d-88ba-5a3407dbdce0
+version: 1
+schema_version: "1.0"
+date: "2026-03-16"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2074e137-1b73-4e2d-88ba-5a3407dbdce0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when the Notepad++ updater (gup.exe) makes DNS queries to domains that
+  are not part of the known legitimate update infrastructure. This could
+  indicate potential exploitation of the updater mechanism or suspicious network
+  activity that warrants further investigation. MITRE ATT&CK: T1195.002, T1557.
+
+data_source:
+  - Sysmon EventID 22 - DNS Query
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "22"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\gup.exe"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_queryName"
+        - bool:
+            must_not:
+              - term:
+                  data_win_eventdata_queryName:
+                    value: "notepad-plus-plus.org"
+                    case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_queryName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_queryName:
+                          value: "*.sourceforge.net"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_queryName:
+                          value: "*.githubusercontent.com"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_queryName:
+                          value: "github.com"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_queryName:
+                          value: "*.googleapis.com"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_queryName:
+                          value: "*.azurewebsites.net"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_queryName:
+                          value: "*block.opendns.com"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_queryName:
+                          value: "*gateway.zscalerthree.net"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_queryName
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 22 (DNS query) enabled in the Sysmon configuration and
+  the Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent.
+  The detection looks for events where data_win_eventdata_image matches
+  '*\gup.exe'; data_win_eventdata_queryName equals 'notepad-plus-plus.org';
+  data_win_eventdata_queryName matches '*.sourceforge.net', among other
+  conditions.
+
+known_false_positives: >
+  Some legitimate network misconfigurations or proxy issues causing unexpected
+  DNS queries.. Other legitimate query to official domains not listed in the
+  filter, needing tuning. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://notepad-plus-plus.org/news/v889-released/
+  - https://www.heise.de/en/news/Notepad-updater-installed-malware-11109726.html
+  - https://www.rapid7.com/blog/post/tr-chrysalis-backdoor-dive-into-lotus-blossoms-toolkit/
+  - https://www.validin.com/blog/exploring_notepad_plus_plus_network_indicators/
+  - https://securelist.com/notepad-supply-chain-attack/118708/
+  - https://attack.mitre.org/techniques/T1195/002/
+  - https://attack.mitre.org/techniques/T1557/
+
+response:
+  message: >
+    Notepad++ Updater DNS Query to Uncommon Domains detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_queryName: $data_win_eventdata_queryName$. MITRE
+    ATT&CK: T1195.002, T1557
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_queryName
+      type: domain
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1195.002
+    - T1557
+  custom_tags:
+    - notepad
+    - updater
+    - query
+    - dns_query
+    - sysmon
+    - collection
+    - credential_access
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"22" AND data_win_eventdata_image:/.*\\[Gg][Uu][Pp]\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_queryName AND NOT (data_win_eventdata_queryName:/[Nn][Oo][Tt][Ee][Pp][Aa][Dd]-[Pp][Ll][Uu][Ss]-[Pp][Ll][Uu][Ss]\.[Oo][Rr][Gg]/) AND _exists_:data_win_eventdata_queryName AND NOT (data_win_eventdata_queryName:/.*\.[Ss][Oo][Uu][Rr][Cc][Ee][Ff][Oo][Rr][Gg][Ee]\.[Nn][Ee][Tt]/ OR data_win_eventdata_queryName:/.*\.[Gg][Ii][Tt][Hh][Uu][Bb][Uu][Ss][Ee][Rr][Cc][Oo][Nn][Tt][Ee][Nn][Tt]\.[Cc][Oo][Mm]/ OR data_win_eventdata_queryName:/[Gg][Ii][Tt][Hh][Uu][Bb]\.[Cc][Oo][Mm]/ OR data_win_eventdata_queryName:/.*\.[Gg][Oo][Oo][Gg][Ll][Ee][Aa][Pp][Ii][Ss]\.[Cc][Oo][Mm]/ OR data_win_eventdata_queryName:/.*\.[Aa][Zz][Uu][Rr][Ee][Ww][Ee][Bb][Ss][Ii][Tt][Ee][Ss]\.[Nn][Ee][Tt]/ OR data_win_eventdata_queryName:/.*[Bb][Ll][Oo][Cc][Kk]\.[Oo][Pp][Ee][Nn][Dd][Nn][Ss]\.[Cc][Oo][Mm]/ OR data_win_eventdata_queryName:/.*[Gg][Aa][Tt][Ee][Ww][Aa][Yy]\.[Zz][Ss][Cc][Aa][Ll][Ee][Rr][Tt][Hh][Rr][Ee][Ee]\.[Nn][Ee][Tt]/)

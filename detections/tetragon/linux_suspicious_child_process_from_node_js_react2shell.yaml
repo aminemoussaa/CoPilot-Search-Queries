@@ -1,0 +1,609 @@
+name: Linux Suspicious Child Process from Node.js - React2Shell
+id: c70834fa-fb9d-4aa0-9e7d-45ceed36f3f7
+version: 1
+schema_version: "1.0"
+date: "2025-12-05"
+author: Swachchhanda Shrawan Poudel (Nextron Systems), Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c70834fa-fb9d-4aa0-9e7d-45ceed36f3f7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious child processes spawned from Node.js server processes on
+  Linux systems, potentially indicating remote code execution exploitation such
+  as CVE-2025-55182 (React2Shell). This rule particularly looks for exploitation
+  of vulnerability on Node.js Servers where attackers abuse Node.js
+  child_process module to execute arbitrary system commands. When execSync() or
+  exec() is used, the command line often includes a shell invocation followed by
+  suspicious commands or scripts (e.g., /bin/sh -c <malicious-command>). For
+  other methods, the Image field will show the spawned process directly. MITRE
+  ATT&CK: T1059, T1190.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_parent_binary:
+              value: "*/node"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*--experimental-https*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*--experimental-next-config-strip-types*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*/node_modules/next*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*next dev*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*next start*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*node_modules/.bin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*react-scripts start*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_parent_arguments:
+                    value: "*start-server.js*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/busybox"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/cat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/curl"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/dash"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/dig"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/head"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/id"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ifconfig"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ip"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/java"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/less"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/lua"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/more"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nc"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ncat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/netcat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/netstat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nslookup"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/perl"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ping"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python2"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ruby"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/socat"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/tail"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/wget"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/whoami"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/dev/tcp/*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/dev/udp/*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/etc/hosts*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/etc/passwd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/etc/shadow*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*base64*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*cat *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*curl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*dig*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*ifconfig*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*IO::Socket::INET*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*java*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*less *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*lua*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*mkfifo *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*more*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*nc *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*ncat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*netcat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*netstat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*nslookup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*perl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*php*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*ping*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*ps -ef*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*ps aux*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*python*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*rcat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*ruby*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*sh -i 2>&1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*-c id*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*socat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*uname*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*wget*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*whoami*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/sh"
+                          case_insensitive: true
+                    - exists:
+                        field: "data_process_exec_process_binary"
+                    - bool:
+                        must_not:
+                          - wildcard:
+                              data_process_exec_process_binary:
+                                value: "*-c"
+                                case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/sh"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*-c"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*/dev/tcp/*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*/dev/udp/*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*/etc/hosts*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*/etc/passwd*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*/etc/shadow*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*base64*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*cat *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*curl*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*dig*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*ifconfig*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*IO::Socket::INET*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*java*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*less *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*lua*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*mkfifo *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*more*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*nc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*ncat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*netcat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*netstat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*nslookup*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*perl*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*php*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*ping*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*ps -ef*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*ps aux*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*python*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*rcat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*ruby*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*sh -i 2>&1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*-c id*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*socat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*uname*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*wget*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*whoami*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_parent_binary
+    - data_process_exec_parent_arguments
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_parent_binary matches '*/node';
+  data_process_exec_parent_arguments matches '*--experimental-https*';
+  data_process_exec_parent_arguments matches
+  '*--experimental-next-config-strip-types*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/msanft/CVE-2025-55182
+  - https://nodejs.org/api/child_process.html#class-childprocess
+  - https://gist.github.com/swachchhanda000/a0228130f86a2dedfbcebb415b47f870
+  - https://github.com/nasbench/Misc-Research/blob/2f651ede832ab34027a7ba005b63bb78f1ade378/Other/React-Next-Child-Processes-Notes.md
+  - https://attack.mitre.org/techniques/T1059/
+  - https://attack.mitre.org/techniques/T1190/
+
+response:
+  message: >
+    Linux Suspicious Child Process from Node.js - React2Shell detected on host
+    $agent_name$. Matched data_process_exec_parent_binary:
+    $data_process_exec_parent_binary$. Matched
+    data_process_exec_parent_arguments: $data_process_exec_parent_arguments$.
+    MITRE ATT&CK: T1059, T1190
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_parent_binary
+      type: other
+    - field: data_process_exec_parent_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+    - T1190
+  custom_tags:
+    - child
+    - react2shell
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - initial_access
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_parent_binary:/.*\/[Nn][Oo][Dd][Ee]/ AND (data_process_exec_parent_arguments:/.*--[Ee][Xx][Pp][Ee][Rr][Ii][Mm][Ee][Nn][Tt][Aa][Ll]-[Hh][Tt][Tt][Pp][Ss].*/ OR data_process_exec_parent_arguments:/.*--[Ee][Xx][Pp][Ee][Rr][Ii][Mm][Ee][Nn][Tt][Aa][Ll]-[Nn][Ee][Xx][Tt]-[Cc][Oo][Nn][Ff][Ii][Gg]-[Ss][Tt][Rr][Ii][Pp]-[Tt][Yy][Pp][Ee][Ss].*/ OR data_process_exec_parent_arguments:/.*\/[Nn][Oo][Dd][Ee]_[Mm][Oo][Dd][Uu][Ll][Ee][Ss]\/[Nn][Ee][Xx][Tt].*/ OR data_process_exec_parent_arguments:/.*[Nn][Ee][Xx][Tt] [Dd][Ee][Vv].*/ OR data_process_exec_parent_arguments:/.*[Nn][Ee][Xx][Tt] [Ss][Tt][Aa][Rr][Tt].*/ OR data_process_exec_parent_arguments:/.*[Nn][Oo][Dd][Ee]_[Mm][Oo][Dd][Uu][Ll][Ee][Ss]\/\.[Bb][Ii][Nn].*/ OR data_process_exec_parent_arguments:/.*[Rr][Ee][Aa][Cc][Tt]-[Ss][Cc][Rr][Ii][Pp][Tt][Ss] [Ss][Tt][Aa][Rr][Tt].*/ OR data_process_exec_parent_arguments:/.*[Ss][Tt][Aa][Rr][Tt]-[Ss][Ee][Rr][Vv][Ee][Rr]\.[Jj][Ss].*/) AND (data_process_exec_process_binary:/.*\/[Bb][Uu][Ss][Yy][Bb][Oo][Xx]/ OR data_process_exec_process_binary:/.*\/[Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Cc][Uu][Rr][Ll]/ OR data_process_exec_process_binary:/.*\/[Dd][Aa][Ss][Hh]/ OR data_process_exec_process_binary:/.*\/[Dd][Ii][Gg]/ OR data_process_exec_process_binary:/.*\/[Hh][Ee][Aa][Dd]/ OR data_process_exec_process_binary:/.*\/[Ii][Dd]/ OR data_process_exec_process_binary:/.*\/[Ii][Ff][Cc][Oo][Nn][Ff][Ii][Gg]/ OR data_process_exec_process_binary:/.*\/[Ii][Pp]/ OR data_process_exec_process_binary:/.*\/[Jj][Aa][Vv][Aa]/ OR data_process_exec_process_binary:/.*\/[Ll][Ee][Ss][Ss]/ OR data_process_exec_process_binary:/.*\/[Ll][Uu][Aa]/ OR data_process_exec_process_binary:/.*\/[Mm][Oo][Rr][Ee]/ OR data_process_exec_process_binary:/.*\/[Nn][Cc]/ OR data_process_exec_process_binary:/.*\/[Nn][Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Nn][Ee][Tt][Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Nn][Ee][Tt][Ss][Tt][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp]/ OR data_process_exec_process_binary:/.*\/[Pp][Ee][Rr][Ll]/ OR data_process_exec_process_binary:/.*\/[Pp][Ii][Nn][Gg]/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]2/ OR data_process_exec_process_binary:/.*\/[Rr][Uu][Bb][Yy]/ OR data_process_exec_process_binary:/.*\/[Ss][Oo][Cc][Aa][Tt]/ OR data_process_exec_process_binary:/.*\/[Tt][Aa][Ii][Ll]/ OR data_process_exec_process_binary:/.*\/[Ww][Gg][Ee][Tt]/ OR data_process_exec_process_binary:/.*\/[Ww][Hh][Oo][Aa][Mm][Ii]/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn].*/ OR data_process_exec_process_arguments:/.*\/[Dd][Ee][Vv]\/[Tt][Cc][Pp]\/.*/ OR data_process_exec_process_arguments:/.*\/[Dd][Ee][Vv]\/[Uu][Dd][Pp]\/.*/ OR data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/[Hh][Oo][Ss][Tt][Ss].*/ OR data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/[Pp][Aa][Ss][Ss][Ww][Dd].*/ OR data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/[Ss][Hh][Aa][Dd][Oo][Ww].*/ OR data_process_exec_process_arguments:/.*[Bb][Aa][Ss][Ee]64.*/ OR data_process_exec_process_arguments:/.*[Cc][Aa][Tt] .*/ OR data_process_exec_process_arguments:/.*[Cc][Uu][Rr][Ll].*/ OR data_process_exec_process_arguments:/.*[Dd][Ii][Gg].*/ OR data_process_exec_process_arguments:/.*[Ii][Ff][Cc][Oo][Nn][Ff][Ii][Gg].*/ OR data_process_exec_process_arguments:/.*[Ii][Oo]::[Ss][Oo][Cc][Kk][Ee][Tt]::[Ii][Nn][Ee][Tt].*/ OR data_process_exec_process_arguments:/.*[Jj][Aa][Vv][Aa].*/ OR data_process_exec_process_arguments:/.*[Ll][Ee][Ss][Ss] .*/ OR data_process_exec_process_arguments:/.*[Ll][Uu][Aa].*/ OR data_process_exec_process_arguments:/.*[Mm][Kk][Ff][Ii][Ff][Oo] .*/ OR data_process_exec_process_arguments:/.*[Mm][Oo][Rr][Ee].*/ OR data_process_exec_process_arguments:/.*[Nn][Cc] .*/ OR data_process_exec_process_arguments:/.*[Nn][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Nn][Ee][Tt][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Nn][Ee][Tt][Ss][Tt][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp].*/ OR data_process_exec_process_arguments:/.*[Pp][Ee][Rr][Ll].*/ OR data_process_exec_process_arguments:/.*[Pp][Hh][Pp].*/ OR data_process_exec_process_arguments:/.*[Pp][Ii][Nn][Gg].*/ OR data_process_exec_process_arguments:/.*[Pp][Ss] -[Ee][Ff].*/ OR data_process_exec_process_arguments:/.*[Pp][Ss] [Aa][Uu][Xx].*/ OR data_process_exec_process_arguments:/.*[Pp][Yy][Tt][Hh][Oo][Nn].*/ OR data_process_exec_process_arguments:/.*[Rr][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Rr][Uu][Bb][Yy].*/ OR data_process_exec_process_arguments:/.*[Ss][Hh] -[Ii] 2\>\&1.*/ OR data_process_exec_process_arguments:/.*-[Cc] [Ii][Dd].*/ OR data_process_exec_process_arguments:/.*[Ss][Oo][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Uu][Nn][Aa][Mm][Ee].*/ OR data_process_exec_process_arguments:/.*[Ww][Gg][Ee][Tt].*/ OR data_process_exec_process_arguments:/.*[Ww][Hh][Oo][Aa][Mm][Ii].*/ OR (data_process_exec_process_binary:/.*\/[Ss][Hh]/ AND _exists_:data_process_exec_process_binary AND NOT (data_process_exec_process_binary:/.*-[Cc]/)) OR (data_process_exec_process_binary:/.*\/[Ss][Hh]/ AND data_process_exec_process_binary:/.*-[Cc]/ AND (data_process_exec_process_arguments:/.*\/[Dd][Ee][Vv]\/[Tt][Cc][Pp]\/.*/ OR data_process_exec_process_arguments:/.*\/[Dd][Ee][Vv]\/[Uu][Dd][Pp]\/.*/ OR data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/[Hh][Oo][Ss][Tt][Ss].*/ OR data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/[Pp][Aa][Ss][Ss][Ww][Dd].*/ OR data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/[Ss][Hh][Aa][Dd][Oo][Ww].*/ OR data_process_exec_process_arguments:/.*[Bb][Aa][Ss][Ee]64.*/ OR data_process_exec_process_arguments:/.*[Cc][Aa][Tt] .*/ OR data_process_exec_process_arguments:/.*[Cc][Uu][Rr][Ll].*/ OR data_process_exec_process_arguments:/.*[Dd][Ii][Gg].*/ OR data_process_exec_process_arguments:/.*[Ii][Ff][Cc][Oo][Nn][Ff][Ii][Gg].*/ OR data_process_exec_process_arguments:/.*[Ii][Oo]::[Ss][Oo][Cc][Kk][Ee][Tt]::[Ii][Nn][Ee][Tt].*/ OR data_process_exec_process_arguments:/.*[Jj][Aa][Vv][Aa].*/ OR data_process_exec_process_arguments:/.*[Ll][Ee][Ss][Ss] .*/ OR data_process_exec_process_arguments:/.*[Ll][Uu][Aa].*/ OR data_process_exec_process_arguments:/.*[Mm][Kk][Ff][Ii][Ff][Oo] .*/ OR data_process_exec_process_arguments:/.*[Mm][Oo][Rr][Ee].*/ OR data_process_exec_process_arguments:/.*[Nn][Cc] .*/ OR data_process_exec_process_arguments:/.*[Nn][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Nn][Ee][Tt][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Nn][Ee][Tt][Ss][Tt][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp].*/ OR data_process_exec_process_arguments:/.*[Pp][Ee][Rr][Ll].*/ OR data_process_exec_process_arguments:/.*[Pp][Hh][Pp].*/ OR data_process_exec_process_arguments:/.*[Pp][Ii][Nn][Gg].*/ OR data_process_exec_process_arguments:/.*[Pp][Ss] -[Ee][Ff].*/ OR data_process_exec_process_arguments:/.*[Pp][Ss] [Aa][Uu][Xx].*/ OR data_process_exec_process_arguments:/.*[Pp][Yy][Tt][Hh][Oo][Nn].*/ OR data_process_exec_process_arguments:/.*[Rr][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Rr][Uu][Bb][Yy].*/ OR data_process_exec_process_arguments:/.*[Ss][Hh] -[Ii] 2\>\&1.*/ OR data_process_exec_process_arguments:/.*-[Cc] [Ii][Dd].*/ OR data_process_exec_process_arguments:/.*[Ss][Oo][Cc][Aa][Tt].*/ OR data_process_exec_process_arguments:/.*[Uu][Nn][Aa][Mm][Ee].*/ OR data_process_exec_process_arguments:/.*[Ww][Gg][Ee][Tt].*/ OR data_process_exec_process_arguments:/.*[Ww][Hh][Oo][Aa][Mm][Ii].*/)))

@@ -1,0 +1,191 @@
+name: CobaltStrike Named Pipe
+id: d5601f8c-b26f-4ab0-9035-69e11a8d4ad2
+version: 1
+schema_version: "1.0"
+date: "2022-10-31"
+author: Florian Roth (Nextron Systems), Wojciech Lesicki
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d5601f8c-b26f-4ab0-9035-69e11a8d4ad2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a named pipe as used by CobaltStrike. MITRE ATT&CK:
+  T1055.
+
+data_source:
+  - Sysmon EventID 17/18 - Named Pipe
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "17"
+              - term:
+                  data_win_system_eventID: "18"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_pipeName:
+                          value: "*\\\\MSSE-*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_pipeName:
+                          value: "*-server*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\postex_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\status_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\msagent_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\mojo_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\interprocess_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\samr_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\netlogon_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\srvsvc_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\lsarpc_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_pipeName:
+                    value: "\\\\wkssvc_*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_pipeName
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon named pipe logging (EventIDs 17/18) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_pipeName matches '*\MSSE-*'; data_win_eventdata_pipeName
+  matches '*-server*'; data_win_eventdata_pipeName matches '\postex_*', among
+  other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/d4rksystem/status/1357010969264873472
+  - https://labs.f-secure.com/blog/detecting-cobalt-strike-default-modules-via-named-pipe-analysis/
+  - https://github.com/SigmaHQ/sigma/issues/253
+  - https://blog.cobaltstrike.com/2021/02/09/learn-pipe-fitting-for-all-of-your-offense-projects/
+  - https://redcanary.com/threat-detection-report/threats/cobalt-strike/
+  - https://attack.mitre.org/techniques/T1055/
+
+response:
+  message: >
+    CobaltStrike Named Pipe detected on host $agent_name$. Matched
+    data_win_eventdata_pipeName: $data_win_eventdata_pipeName$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1055
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_pipeName
+      type: pipe
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055
+  custom_tags:
+    - cobaltstrike
+    - named
+    - pipe_created
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"17" OR data_win_system_eventID:"18") AND ((data_win_eventdata_pipeName:/.*\\[Mm][Ss][Ss][Ee]-.*/ AND data_win_eventdata_pipeName:/.*-[Ss][Ee][Rr][Vv][Ee][Rr].*/) OR data_win_eventdata_pipeName:/\\[Pp][Oo][Ss][Tt][Ee][Xx]_.*/ OR data_win_eventdata_pipeName:/\\[Ss][Tt][Aa][Tt][Uu][Ss]_.*/ OR data_win_eventdata_pipeName:/\\[Mm][Ss][Aa][Gg][Ee][Nn][Tt]_.*/ OR data_win_eventdata_pipeName:/\\[Mm][Oo][Jj][Oo]_.*/ OR data_win_eventdata_pipeName:/\\[Ii][Nn][Tt][Ee][Rr][Pp][Rr][Oo][Cc][Ee][Ss][Ss]_.*/ OR data_win_eventdata_pipeName:/\\[Ss][Aa][Mm][Rr]_.*/ OR data_win_eventdata_pipeName:/\\[Nn][Ee][Tt][Ll][Oo][Gg][Oo][Nn]_.*/ OR data_win_eventdata_pipeName:/\\[Ss][Rr][Vv][Ss][Vv][Cc]_.*/ OR data_win_eventdata_pipeName:/\\[Ll][Ss][Aa][Rr][Pp][Cc]_.*/ OR data_win_eventdata_pipeName:/\\[Ww][Kk][Ss][Ss][Vv][Cc]_.*/)

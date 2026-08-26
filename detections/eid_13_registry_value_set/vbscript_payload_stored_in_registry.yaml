@@ -1,0 +1,212 @@
+name: VBScript Payload Stored in Registry
+id: 46490193-1b22-4c29-bdd6-5bf63907216f
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 46490193-1b22-4c29-bdd6-5bf63907216f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects VBScript content stored into registry keys as seen being used by
+  UNC2452 group. MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*Software\\\\Microsoft\\\\Windows\\\\CurrentVersion*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*vbscript:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*jscript:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*mshtml,*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*RunHTMLApplication*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*Execute(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*CreateObject*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*window.close*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Run*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\msiexec.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Installer\\\\UserData\\\\*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_details:
+                                      value: "*\\\\Microsoft.NET\\\\Primary Interop Assemblies\\\\Microsoft.mshtml.dll*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_details:
+                                      value: "*<\\\\Microsoft.mshtml,fileVersion=*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_details:
+                                      value: "*_mshtml_dll_*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_details:
+                                      value: "*<\\\\Microsoft.mshtml,culture=*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*Software\Microsoft\Windows\CurrentVersion*'; data_win_eventdata_details
+  matches '*vbscript:*'; data_win_eventdata_details matches '*jscript:*', among
+  other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/security/blog/2021/03/04/goldmax-goldfinder-sibot-analyzing-nobelium-malware/
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    VBScript Payload Stored in Registry detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_details: $data_win_eventdata_details$. MITRE ATT&CK:
+    T1547.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - vbscript
+    - payload
+    - stored
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn].*/ AND (data_win_eventdata_details:/.*[Vv][Bb][Ss][Cc][Rr][Ii][Pp][Tt]:.*/ OR data_win_eventdata_details:/.*[Jj][Ss][Cc][Rr][Ii][Pp][Tt]:.*/ OR data_win_eventdata_details:/.*[Mm][Ss][Hh][Tt][Mm][Ll],.*/ OR data_win_eventdata_details:/.*[Rr][Uu][Nn][Hh][Tt][Mm][Ll][Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_details:/.*[Ee][Xx][Ee][Cc][Uu][Tt][Ee]\(.*/ OR data_win_eventdata_details:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Oo][Bb][Jj][Ee][Cc][Tt].*/ OR data_win_eventdata_details:/.*[Ww][Ii][Nn][Dd][Oo][Ww]\.[Cc][Ll][Oo][Ss][Ee].*/) AND _exists_:data_win_eventdata_targetObject AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn].*/ OR (data_win_eventdata_image:/.*\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\[Uu][Ss][Ee][Rr][Dd][Aa][Tt][Aa]\\.*/ AND (data_win_eventdata_details:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Pp][Rr][Ii][Mm][Aa][Rr][Yy] [Ii][Nn][Tt][Ee][Rr][Oo][Pp] [Aa][Ss][Ss][Ee][Mm][Bb][Ll][Ii][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Mm][Ss][Hh][Tt][Mm][Ll]\.[Dd][Ll][Ll].*/ OR data_win_eventdata_details:/.*\<\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Mm][Ss][Hh][Tt][Mm][Ll],[Ff][Ii][Ll][Ee][Vv][Ee][Rr][Ss][Ii][Oo][Nn]=.*/ OR data_win_eventdata_details:/.*_[Mm][Ss][Hh][Tt][Mm][Ll]_[Dd][Ll][Ll]_.*/ OR data_win_eventdata_details:/.*\<\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Mm][Ss][Hh][Tt][Mm][Ll],[Cc][Uu][Ll][Tt][Uu][Rr][Ee]=.*/)))

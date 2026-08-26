@@ -1,0 +1,226 @@
+name: HackTool - PPID Spoofing SelectMyParent Tool Execution
+id: 52ff7941-8211-46f9-84f8-9903efb7077d
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 52ff7941-8211-46f9-84f8-9903efb7077d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of parent process ID spoofing tools like Didier Stevens tool
+  SelectMyParent. MITRE ATT&CK: T1134.004.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SelectMyParent.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*PPID-spoof*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ppid_spoof*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*spoof-ppid*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*spoof_ppid*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ppidspoof*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*spoofppid*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*spoofedppid*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -spawnto *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_originalFileName:
+                    value: "*PPID-spoof*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_originalFileName:
+                    value: "*ppid_spoof*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_originalFileName:
+                    value: "*spoof-ppid*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_originalFileName:
+                    value: "*spoof_ppid*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_originalFileName:
+                    value: "*ppidspoof*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_originalFileName:
+                    value: "*spoofppid*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_originalFileName:
+                    value: "*spoofedppid*"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "SelectMyParent"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=04D974875BD225F00902B4CAD9AF3FBC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=A782AF154C9E743DDF3F3EB2B8F3D16E*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=89059503D7FBF470E68F7E63313DA3AD*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=CA28337632625C8281AB8A130B3D6BAD*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_description
+    - data_win_eventdata_hashes
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\SelectMyParent.exe'; data_win_eventdata_commandLine matches '*PPID-spoof*';
+  data_win_eventdata_commandLine matches '*ppid_spoof*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://pentestlab.blog/2020/02/24/parent-pid-spoofing/
+  - https://www.picussecurity.com/resource/blog/how-to-detect-parent-pid-ppid-spoofing-attacks
+  - https://www.ired.team/offensive-security/defense-evasion/parent-process-id-ppid-spoofing
+  - https://www.virustotal.com/gui/search/filename%253A*spoof*%2520filename%253A*ppid*/files
+  - https://attack.mitre.org/techniques/T1134/004/
+
+response:
+  message: >
+    HackTool - PPID Spoofing SelectMyParent Tool Execution detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1134.004
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1134.004
+  custom_tags:
+    - hacktool
+    - spoofing
+    - selectmyparent
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Ee][Ll][Ee][Cc][Tt][Mm][Yy][Pp][Aa][Rr][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*[Pp][Pp][Ii][Dd]-[Ss][Pp][Oo][Oo][Ff].*/ OR data_win_eventdata_commandLine:/.*[Pp][Pp][Ii][Dd]_[Ss][Pp][Oo][Oo][Ff].*/ OR data_win_eventdata_commandLine:/.*[Ss][Pp][Oo][Oo][Ff]-[Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_commandLine:/.*[Ss][Pp][Oo][Oo][Ff]_[Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_commandLine:/.*[Pp][Pp][Ii][Dd][Ss][Pp][Oo][Oo][Ff].*/ OR data_win_eventdata_commandLine:/.*[Ss][Pp][Oo][Oo][Ff][Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_commandLine:/.*[Ss][Pp][Oo][Oo][Ff][Ee][Dd][Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_commandLine:/.* -[Ss][Pp][Aa][Ww][Nn][Tt][Oo] .*/ OR data_win_eventdata_originalFileName:/.*[Pp][Pp][Ii][Dd]-[Ss][Pp][Oo][Oo][Ff].*/ OR data_win_eventdata_originalFileName:/.*[Pp][Pp][Ii][Dd]_[Ss][Pp][Oo][Oo][Ff].*/ OR data_win_eventdata_originalFileName:/.*[Ss][Pp][Oo][Oo][Ff]-[Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_originalFileName:/.*[Ss][Pp][Oo][Oo][Ff]_[Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_originalFileName:/.*[Pp][Pp][Ii][Dd][Ss][Pp][Oo][Oo][Ff].*/ OR data_win_eventdata_originalFileName:/.*[Ss][Pp][Oo][Oo][Ff][Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_originalFileName:/.*[Ss][Pp][Oo][Oo][Ff][Ee][Dd][Pp][Pp][Ii][Dd].*/ OR data_win_eventdata_description:/[Ss][Ee][Ll][Ee][Cc][Tt][Mm][Yy][Pp][Aa][Rr][Ee][Nn][Tt]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=04[Dd]974875[Bb][Dd]225[Ff]00902[Bb]4[Cc][Aa][Dd]9[Aa][Ff]3[Ff][Bb][Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa]782[Aa][Ff]154[Cc]9[Ee]743[Dd][Dd][Ff]3[Ff]3[Ee][Bb]2[Bb]8[Ff]3[Dd]16[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=89059503[Dd]7[Ff][Bb][Ff]470[Ee]68[Ff]7[Ee]63313[Dd][Aa]3[Aa][Dd].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Cc][Aa]28337632625[Cc]8281[Aa][Bb]8[Aa]130[Bb]3[Dd]6[Bb][Aa][Dd].*/)

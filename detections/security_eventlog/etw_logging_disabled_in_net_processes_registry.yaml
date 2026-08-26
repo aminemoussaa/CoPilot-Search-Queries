@@ -1,0 +1,179 @@
+name: ETW Logging Disabled In .NET Processes - Registry
+id: a4c90ea1-2634-4ca0-adbb-35eae169b6fc
+version: 1
+schema_version: "1.0"
+date: "2022-12-20"
+author: Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a4c90ea1-2634-4ca0-adbb-35eae169b6fc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Potential adversaries stopping ETW providers recording loaded .NET assemblies.
+  MITRE ATT&CK: T1112, T1685.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4657"
+                    - wildcard:
+                        data_win_eventdata_objectName:
+                          value: "*\\\\SOFTWARE\\\\Microsoft\\\\.NETFramework"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_objectValueName:
+                          value: "ETWEnabled"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_newValue: "0"
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4657"
+                    - wildcard:
+                        data_win_eventdata_objectName:
+                          value: "*\\\\Environment*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_objectValueName:
+                                value: "COMPlus_ETWEnabled"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_objectValueName:
+                                value: "COMPlus_ETWFlags"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - term:
+                        data_win_eventdata_newValue: "0"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_objectName
+    - data_win_eventdata_objectValueName
+    - data_win_eventdata_newValue
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4657'; data_win_eventdata_objectName matches
+  '*\SOFTWARE\Microsoft\.NETFramework'; data_win_eventdata_objectValueName
+  equals 'ETWEnabled', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/_xpn_/status/1268712093928378368
+  - https://social.msdn.microsoft.com/Forums/vstudio/en-US/0878832e-39d7-4eaf-8e16-a729c4c40975/what-can-i-use-e13c0d23ccbc4e12931bd9cc2eee27e4-for?forum=clr
+  - https://github.com/dotnet/runtime/blob/ee2355c801d892f2894b0f7b14a20e6cc50e0e54/docs/design/coreclr/jit/viewing-jit-dumps.md#setting-configuration-variables
+  - https://github.com/dotnet/runtime/blob/f62e93416a1799aecc6b0947adad55a0d9870732/src/coreclr/src/inc/clrconfigvalues.h#L35-L38
+  - https://github.com/dotnet/runtime/blob/7abe42dc1123722ed385218268bb9fe04556e3d3/src/coreclr/src/inc/clrconfig.h#L33-L39
+  - https://github.com/dotnet/runtime/search?p=1&q=COMPlus_&unscoped_q=COMPlus_
+  - https://bunnyinside.com/?term=f71e8cb9c76a
+  - http://managed670.rssing.com/chan-5590147/all_p1.html
+  - https://github.com/dotnet/runtime/blob/4f9ae42d861fcb4be2fcd5d3d55d5f227d30e723/docs/coding-guidelines/clr-jit-coding-conventions.md#1412-disabling-code
+  - https://i.blackhat.com/EU-21/Wednesday/EU-21-Teodorescu-Veni-No-Vidi-No-Vici-Attacks-On-ETW-Blind-EDRs.pdf
+  - https://attack.mitre.org/techniques/T1112/
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    ETW Logging Disabled In .NET Processes - Registry detected on host
+    $agent_name$. Matched data_win_eventdata_objectName:
+    $data_win_eventdata_objectName$. Matched data_win_eventdata_objectValueName:
+    $data_win_eventdata_objectValueName$. MITRE ATT&CK: T1112, T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_objectName
+      type: other
+    - field: data_win_eventdata_objectValueName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+    - T1685
+  custom_tags:
+    - logging
+    - registry
+    - windows_security
+    - persistence
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_win_system_eventID:"4657" AND data_win_eventdata_objectName:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\\.[Nn][Ee][Tt][Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]/ AND data_win_eventdata_objectValueName:/[Ee][Tt][Ww][Ee][Nn][Aa][Bb][Ll][Ee][Dd]/ AND data_win_eventdata_newValue:"0") OR (data_win_system_eventID:"4657" AND data_win_eventdata_objectName:/.*\\[Ee][Nn][Vv][Ii][Rr][Oo][Nn][Mm][Ee][Nn][Tt].*/ AND (data_win_eventdata_objectValueName:/[Cc][Oo][Mm][Pp][Ll][Uu][Ss]_[Ee][Tt][Ww][Ee][Nn][Aa][Bb][Ll][Ee][Dd]/ OR data_win_eventdata_objectValueName:/[Cc][Oo][Mm][Pp][Ll][Uu][Ss]_[Ee][Tt][Ww][Ff][Ll][Aa][Gg][Ss]/) AND data_win_eventdata_newValue:"0"))

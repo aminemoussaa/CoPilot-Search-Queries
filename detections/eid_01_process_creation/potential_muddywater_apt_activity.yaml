@@ -1,0 +1,190 @@
+name: Potential MuddyWater APT Activity
+id: 36222790-0d43-4fe8-86e4-674b27809543
+version: 1
+schema_version: "1.0"
+date: "2023-03-10"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 36222790-0d43-4fe8-86e4-674b27809543
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential Muddywater APT activity.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*vbscript:Close(Execute(\"CreateObject(*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*powershell*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-w 1 -exec Bypass*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\ProgramData\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Win32_OperatingSystem*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Win32_NetworkAdapterConfiguration*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*root\\\\SecurityCenter2*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*[System.Net.DNS]*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*[Convert]::ToBase64String*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*[System.Text.Encoding]::UTF8.GetString]*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*GetResponse().GetResponseStream()*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*[System.Net.HttpWebRequest]::Create(*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-bxor *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*vbscript:Close(Execute("CreateObject(*'; data_win_eventdata_commandLine
+  matches '*powershell*'; data_win_eventdata_commandLine matches '*-w 1 -exec
+  Bypass*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.mandiant.com/resources/blog/iranian-threat-group-updates-ttps-in-spear-phishing-campaign
+
+response:
+  message: >
+    Potential MuddyWater APT Activity detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - muddywater
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+    - g0069
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Vv][Bb][Ss][Cc][Rr][Ii][Pp][Tt]:[Cc][Ll][Oo][Ss][Ee]\([Ee][Xx][Ee][Cc][Uu][Tt][Ee]\(\"[Cc][Rr][Ee][Aa][Tt][Ee][Oo][Bb][Jj][Ee][Cc][Tt]\(.*/ AND data_win_eventdata_commandLine:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*-[Ww] 1 -[Ee][Xx][Ee][Cc] [Bb][Yy][Pp][Aa][Ss][Ss].*/ AND data_win_eventdata_commandLine:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\.*/) OR (data_win_eventdata_commandLine:/.*[Ww][Ii][Nn]32_[Oo][Pp][Ee][Rr][Aa][Tt][Ii][Nn][Gg][Ss][Yy][Ss][Tt][Ee][Mm].*/ AND data_win_eventdata_commandLine:/.*[Ww][Ii][Nn]32_[Nn][Ee][Tt][Ww][Oo][Rr][Kk][Aa][Dd][Aa][Pp][Tt][Ee][Rr][Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Aa][Tt][Ii][Oo][Nn].*/ AND data_win_eventdata_commandLine:/.*[Rr][Oo][Oo][Tt]\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Cc][Ee][Nn][Tt][Ee][Rr]2.*/ AND data_win_eventdata_commandLine:/.*\[[Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Dd][Nn][Ss]\].*/) OR (data_win_eventdata_commandLine:/.*\[[Cc][Oo][Nn][Vv][Ee][Rr][Tt]\]::[Tt][Oo][Bb][Aa][Ss][Ee]64[Ss][Tt][Rr][Ii][Nn][Gg].*/ AND data_win_eventdata_commandLine:/.*\[[Ss][Yy][Ss][Tt][Ee][Mm]\.[Tt][Ee][Xx][Tt]\.[Ee][Nn][Cc][Oo][Dd][Ii][Nn][Gg]\]::[Uu][Tt][Ff]8\.[Gg][Ee][Tt][Ss][Tt][Rr][Ii][Nn][Gg]\].*/ AND data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Rr][Ee][Ss][Pp][Oo][Nn][Ss][Ee]\(\)\.[Gg][Ee][Tt][Rr][Ee][Ss][Pp][Oo][Nn][Ss][Ee][Ss][Tt][Rr][Ee][Aa][Mm]\(\).*/ AND data_win_eventdata_commandLine:/.*\[[Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Hh][Tt][Tt][Pp][Ww][Ee][Bb][Rr][Ee][Qq][Uu][Ee][Ss][Tt]\]::[Cc][Rr][Ee][Aa][Tt][Ee]\(.*/ AND data_win_eventdata_commandLine:/.*-[Bb][Xx][Oo][Rr] .*/))

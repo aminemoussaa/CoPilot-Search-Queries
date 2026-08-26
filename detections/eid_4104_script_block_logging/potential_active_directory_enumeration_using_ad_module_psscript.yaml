@@ -1,0 +1,154 @@
+name: Potential Active Directory Enumeration Using AD Module - PsScript
+id: 9e620995-f2d8-4630-8430-4afd89f77604
+version: 1
+schema_version: "1.0"
+date: "2023-01-22"
+author: frack113, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9e620995-f2d8-4630-8430-4afd89f77604
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of the "Import-Module" cmdlet to load the
+  "Microsoft.ActiveDirectory.Management.dl" DLL. Which is often used by
+  attackers to perform AD enumeration.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Import-Module *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Microsoft.ActiveDirectory.Management.dll*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ipmo Microsoft.ActiveDirectory.Management.dll*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Import-Module *';
+  data_win_eventdata_scriptBlockText matches
+  '*Microsoft.ActiveDirectory.Management.dll*';
+  data_win_eventdata_scriptBlockText matches '*ipmo
+  Microsoft.ActiveDirectory.Management.dll*'.
+
+known_false_positives: >
+  Legitimate use of the library for administrative activity. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://github.com/samratashok/ADModule
+  - https://twitter.com/cyb3rops/status/1617108657166061568?s=20
+  - https://www.ired.team/offensive-security-experiments/active-directory-kerberos-abuse/active-directory-enumeration-with-ad-module-without-rsat-or-admin-privileges
+
+response:
+  message: >
+    Potential Active Directory Enumeration Using AD Module - PsScript detected
+    on host $agent_name$. Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - active
+    - directory
+    - enumeration
+    - powershell
+    - reconnaissance
+    - discovery
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND ((data_win_eventdata_scriptBlockText:/.*[Ii][Mm][Pp][Oo][Rr][Tt]-[Mm][Oo][Dd][Uu][Ll][Ee] .*/ AND data_win_eventdata_scriptBlockText:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Aa][Cc][Tt][Ii][Vv][Ee][Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Dd][Ll][Ll].*/) OR data_win_eventdata_scriptBlockText:/.*[Ii][Pp][Mm][Oo] [Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Aa][Cc][Tt][Ii][Vv][Ee][Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Dd][Ll][Ll].*/)

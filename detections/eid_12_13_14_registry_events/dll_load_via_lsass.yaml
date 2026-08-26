@@ -1,0 +1,175 @@
+name: DLL Load via LSASS
+id: b3503044-60ce-4bf4-bbcb-e3db98788823
+version: 1
+schema_version: "1.0"
+date: "2022-04-21"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b3503044-60ce-4bf4-bbcb-e3db98788823
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a method to load DLL via LSASS process using an undocumented Registry
+  key. MITRE ATT&CK: T1547.008.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CurrentControlSet\\\\Services\\\\NTDS\\\\DirectoryServiceExtPt*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\CurrentControlSet\\\\Services\\\\NTDS\\\\LsaDbExtPt*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\system32\\lsass.exe"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_details:
+                                value: "%%systemroot%%\\system32\\ntdsa.dll"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_details:
+                                value: "%%systemroot%%\\system32\\lsadb.dll"
+                                case_insensitive: true
+                        minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\CurrentControlSet\Services\NTDS\DirectoryServiceExtPt*';
+  data_win_eventdata_targetObject matches
+  '*\CurrentControlSet\Services\NTDS\LsaDbExtPt*'; data_win_eventdata_image
+  equals 'C:\Windows\system32\lsass.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blog.xpnsec.com/exploring-mimikatz-part-1/
+  - https://twitter.com/SBousseaden/status/1183745981189427200
+  - https://attack.mitre.org/techniques/T1547/008/
+
+response:
+  message: >
+    DLL Load via LSASS detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1547.008
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.008
+  custom_tags:
+    - lsass
+    - registry
+    - sysmon
+    - privilege_escalation
+    - execution
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND (data_win_eventdata_targetObject:/.*\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ss][Ee][Tt]\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\[Nn][Tt][Dd][Ss]\\[Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ee][Xx][Tt][Pp][Tt].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ss][Ee][Tt]\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\[Nn][Tt][Dd][Ss]\\[Ll][Ss][Aa][Dd][Bb][Ee][Xx][Tt][Pp][Tt].*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ll][Ss][Aa][Ss][Ss]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_details:/%%[Ss][Yy][Ss][Tt][Ee][Mm][Rr][Oo][Oo][Tt]%%\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Nn][Tt][Dd][Ss][Aa]\.[Dd][Ll][Ll]/ OR data_win_eventdata_details:/%%[Ss][Yy][Ss][Tt][Ee][Mm][Rr][Oo][Oo][Tt]%%\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ll][Ss][Aa][Dd][Bb]\.[Dd][Ll][Ll]/))

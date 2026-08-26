@@ -1,0 +1,76 @@
+name: Suspicious Email Delivered In Microsoft 365
+id: 3569aefd-e535-4391-8c18-24bd01a21eaf
+version: 1
+schema_version: "1.0"
+date: "2026-01-27"
+author: Marco Pedrinazzi (@pedrinazziM) (InTheCyber)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3569aefd-e535-4391-8c18-24bd01a21eaf
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: match
+description: >
+  Detects instances where an email, identified as malicious or suspicious by the
+  Microsoft Defender for Office 365 (formerly ATP) engine, was delivered to a
+  user's Inbox or Junk folder. It might indicate that a potential threat, such
+  as a spearphishing attachment or links, has bypassed initial blocking
+  mechanisms and reached an end-user, requiring further investigation and
+  potential remediation. MITRE ATT&CK: T1566.001, T1566.002.
+data_source:
+  - Office 365 Management Activity API
+  - "Workload: AzureActiveDirectory"
+workload: AzureActiveDirectory
+how_to_implement: >
+  Requires the Wazuh office365 module configured with an Azure AD application
+  subscribed to the Office 365 Management Activity API for the relevant
+  workload, ingested into the wazuh-* indices. The detection looks for events
+  where data_office365_Workload equals 'ThreatIntelligence';
+  data_office365_Operation equals 'TIMailData'; data_office365_Directionality
+  equals 'Inbound', among other conditions.
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+references:
+  - https://learn.microsoft.com/en-us/defender-office-365/threat-explorer-real-time-detections-about
+  - https://research.splunk.com/cloud/605cc93a-70e4-4ee3-9a3d-1a62e8c9b6c2/
+  - https://github.com/Bert-JanP/Hunting-Queries-Detection-Rules/blob/e7250648cb16d4a497ae8737943bf010ea96d2e6/Defender%20For%20Cloud%20Apps/MaliciousEmailDeliveredInMailbox.md
+  - https://attack.mitre.org/techniques/T1566/001/
+  - https://attack.mitre.org/techniques/T1566/002/
+response:
+  message: >
+    Suspicious Email Delivered In Microsoft 365 detected for user
+    $data_office365_UserId$. Matched data_office365_Workload:
+    $data_office365_Workload$. Matched data_office365_Operation:
+    $data_office365_Operation$. MITRE ATT&CK: T1566.001, T1566.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: data_office365_UserId
+      type: user
+      score: 50
+  threat_objects:
+    - field: data_office365_Workload
+      type: other
+    - field: data_office365_Operation
+      type: operation
+tags:
+  asset_type: Cloud Identity
+  mitre_attack_id:
+    - T1566.001
+    - T1566.002
+  custom_tags:
+    - email
+    - delivered
+    - microsoft
+    - o365
+    - audit
+    - initial_access
+  product:
+    - Office 365
+  security_domain: cloud
+graylog:
+  query: data_office365_Workload:/[Tt][Hh][Rr][Ee][Aa][Tt][Ii][Nn][Tt][Ee][Ll][Ll][Ii][Gg][Ee][Nn][Cc][Ee]/ AND data_office365_Operation:/[Tt][Ii][Mm][Aa][Ii][Ll][Dd][Aa][Tt][Aa]/ AND data_office365_Directionality:/[Ii][Nn][Bb][Oo][Uu][Nn][Dd]/ AND _exists_:data_office365_DeliveryAction AND NOT (data_office365_DeliveryAction:/[Bb][Ll][Oo][Cc][Kk][Ee][Dd]/)

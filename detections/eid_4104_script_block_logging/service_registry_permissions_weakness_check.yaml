@@ -1,0 +1,150 @@
+name: Service Registry Permissions Weakness Check
+id: 95afc12e-3cbb-40c3-9340-84a032e596a3
+version: 1
+schema_version: "1.0"
+date: "2021-12-30"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 95afc12e-3cbb-40c3-9340-84a032e596a3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may execute their own malicious payloads by hijacking the Registry
+  entries used by services. Adversaries may use flaws in the permissions for
+  registry to redirect from the originally specified executable to one that they
+  control, in order to launch their own code at Service start. Windows stores
+  local service configuration information in the Registry under
+  HKLM\SYSTEM\CurrentControlSet\Services. MITRE ATT&CK: T1574.011.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*get-acl*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*REGISTRY::HKLM\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*get-acl*';
+  data_win_eventdata_scriptBlockText matches
+  '*REGISTRY::HKLM\SYSTEM\CurrentControlSet\Services\*'.
+
+known_false_positives: >
+  Legitimate administrative script. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1574.011/T1574.011.md#atomic-test-1---service-registry-permissions-weakness
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-acl?view=powershell-7.4
+  - https://attack.mitre.org/techniques/T1574/011/
+
+response:
+  message: >
+    Service Registry Permissions Weakness Check detected on host $agent_name$.
+    Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1574.011
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.011
+  custom_tags:
+    - service
+    - registry
+    - permissions
+    - powershell
+    - privilege_escalation
+    - persistence
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Gg][Ee][Tt]-[Aa][Cc][Ll].*/ AND data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Gg][Ii][Ss][Tt][Rr][Yy]::[Hh][Kk][Ll][Mm]\\[Ss][Yy][Ss][Tt][Ee][Mm]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ss][Ee][Tt]\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\.*/

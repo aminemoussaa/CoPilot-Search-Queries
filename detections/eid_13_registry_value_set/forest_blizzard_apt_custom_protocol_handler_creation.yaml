@@ -1,0 +1,142 @@
+name: Forest Blizzard APT - Custom Protocol Handler Creation
+id: 5cdeb555-65de-4767-99fe-e26807465148
+version: 1
+schema_version: "1.0"
+date: "2024-04-23"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5cdeb555-65de-4767-99fe-e26807465148
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the setting of a custom protocol handler with the name "rogue". Seen
+  being created by Forest Blizzard APT as reported by MSFT. MITRE ATT&CK:
+  T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\PROTOCOLS\\\\Handler\\\\rogue\\\\CLSID*"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_details:
+              value: "{026CC6D7-34B2-33D5-B551-CA31EB6CE345}"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\PROTOCOLS\Handler\rogue\CLSID*'; data_win_eventdata_details equals
+  '{026CC6D7-34B2-33D5-B551-CA31EB6CE345}'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/en-us/security/blog/2024/04/22/analyzing-forest-blizzards-custom-post-compromise-tool-for-exploiting-cve-2022-38028-to-obtain-credentials/
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Forest Blizzard APT - Custom Protocol Handler Creation detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1547.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - forest
+    - blizzard
+    - custom
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Pp][Rr][Oo][Tt][Oo][Cc][Oo][Ll][Ss]\\[Hh][Aa][Nn][Dd][Ll][Ee][Rr]\\[Rr][Oo][Gg][Uu][Ee]\\[Cc][Ll][Ss][Ii][Dd].*/ AND data_win_eventdata_details:/\{026[Cc][Cc]6[Dd]7-34[Bb]2-33[Dd]5-[Bb]551-[Cc][Aa]31[Ee][Bb]6[Cc][Ee]345\}/

@@ -1,0 +1,303 @@
+name: Potential Data Exfiltration Activity Via CommandLine Tools
+id: 7d1aaf3d-4304-425c-b7c3-162055e0b3ab
+version: 1
+schema_version: "1.0"
+date: "2025-10-19"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7d1aaf3d-4304-425c-b7c3-162055e0b3ab
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of various CLI utilities exfiltrating data via web requests.
+  MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell_ise.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\cmd.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*curl *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Invoke-RestMethod*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Invoke-WebRequest*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*irm *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*iwr *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*wget *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -ur*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -me*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -b*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* POST *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\curl.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--ur*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -d *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* --data *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\wget.exe"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*--post-data*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*--post-file*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        - bool:
+            should:
+              - regexp:
+                  data_win_eventdata_commandLine: ".*(net[ ]+view).*"
+              - regexp:
+                  data_win_eventdata_commandLine: ".*(sc[ ]+query).*"
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-Content*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*GetBytes*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*hostname*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ifconfig*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ipconfig*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*netstat*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*nltest*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*qprocess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*systeminfo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*tasklist*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ToBase64String*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*whoami*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*type *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine: "* > *"
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* C:\\\\*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell_ise.exe'; data_win_eventdata_image matches '*\powershell.exe';
+  data_win_eventdata_image matches '*\pwsh.exe', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.sentinelone.com/blog/living-off-windows-defender-lockbit-ransomware-sideloads-cobalt-strike-through-microsoft-security-tool/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Potential Data Exfiltration Activity Via CommandLine Tools detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - exfiltration
+    - tools
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (((data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Cc][Uu][Rr][Ll] .*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Rr][Ee][Ss][Tt][Mm][Ee][Tt][Hh][Oo][Dd].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ww][Ee][Bb][Rr][Ee][Qq][Uu][Ee][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ii][Rr][Mm] .*/ OR data_win_eventdata_commandLine:/.*[Ii][Ww][Rr] .*/ OR data_win_eventdata_commandLine:/.*[Ww][Gg][Ee][Tt] .*/) AND data_win_eventdata_commandLine:/.* -[Uu][Rr].*/ AND data_win_eventdata_commandLine:/.* -[Mm][Ee].*/ AND data_win_eventdata_commandLine:/.* -[Bb].*/ AND data_win_eventdata_commandLine:/.* [Pp][Oo][Ss][Tt] .*/) OR (data_win_eventdata_image:/.*\\[Cc][Uu][Rr][Ll]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*--[Uu][Rr].*/ AND (data_win_eventdata_commandLine:/.* -[Dd] .*/ OR data_win_eventdata_commandLine:/.* --[Dd][Aa][Tt][Aa] .*/)) OR (data_win_eventdata_image:/.*\\[Ww][Gg][Ee][Tt]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.*--[Pp][Oo][Ss][Tt]-[Dd][Aa][Tt][Aa].*/ OR data_win_eventdata_commandLine:/.*--[Pp][Oo][Ss][Tt]-[Ff][Ii][Ll][Ee].*/))) AND (data_win_eventdata_commandLine:/.*(net[ ]+view).*/ OR data_win_eventdata_commandLine:/.*(sc[ ]+query).*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Cc][Oo][Nn][Tt][Ee][Nn][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt][Bb][Yy][Tt][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*[Hh][Oo][Ss][Tt][Nn][Aa][Mm][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ii][Ff][Cc][Oo][Nn][Ff][Ii][Gg].*/ OR data_win_eventdata_commandLine:/.*[Ii][Pp][Cc][Oo][Nn][Ff][Ii][Gg].*/ OR data_win_eventdata_commandLine:/.*[Nn][Ee][Tt][Ss][Tt][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*[Nn][Ll][Tt][Ee][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Qq][Pp][Rr][Oo][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ss][Yy][Ss][Tt][Ee][Mm][Ii][Nn][Ff][Oo].*/ OR data_win_eventdata_commandLine:/.*[Tt][Aa][Ss][Kk][Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Tt][Oo][Bb][Aa][Ss][Ee]64[Ss][Tt][Rr][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Ww][Hh][Oo][Aa][Mm][Ii].*/ OR (data_win_eventdata_commandLine:/.*[Tt][Yy][Pp][Ee] .*/ AND data_win_eventdata_commandLine:/.* \> .*/ AND data_win_eventdata_commandLine:/.* [Cc]:\\.*/))

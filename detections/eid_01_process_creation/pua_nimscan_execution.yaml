@@ -1,0 +1,155 @@
+name: PUA - NimScan Execution
+id: 4fd6b1c7-19b8-4488-97f6-00f0924991a3
+version: 1
+schema_version: "1.0"
+date: "2025-02-05"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4fd6b1c7-19b8-4488-97f6-00f0924991a3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of NimScan, a portscanner utility. In early 2025, adversaries
+  were observed using this utility to scan for open ports on remote hosts in a
+  compromised environment. This rule identifies the execution of NimScan based
+  on the process image name and specific hash values associated with different
+  versions of the tool. MITRE ATT&CK: T1046.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\NimScan.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=41BB1C7571B3A724EB83A1D2B96DBB8C*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=B1B6ADACB172795480179EFD18A29549*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0D1F896DC7642AD8384F9042F30279C2*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\NimScan.exe'; data_win_eventdata_hashes matches
+  '*IMPHASH=41BB1C7571B3A724EB83A1D2B96DBB8C*'; data_win_eventdata_hashes
+  matches '*IMPHASH=B1B6ADACB172795480179EFD18A29549*', among other conditions.
+
+known_false_positives: >
+  Legitimate administrator activity. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://x.com/cyberfeeddigest/status/1887041526397587859
+  - https://github.com/elddy/NimScan
+  - https://attack.mitre.org/techniques/T1046/
+
+response:
+  message: >
+    PUA - NimScan Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. MITRE ATT&CK: T1046
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1046
+  custom_tags:
+    - nimscan
+    - process_creation
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Nn][Ii][Mm][Ss][Cc][Aa][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=41[Bb][Bb]1[Cc]7571[Bb]3[Aa]724[Ee][Bb]83[Aa]1[Dd]2[Bb]96[Dd][Bb][Bb]8[Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb]1[Bb]6[Aa][Dd][Aa][Cc][Bb]172795480179[Ee][Ff][Dd]18[Aa]29549.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0[Dd]1[Ff]896[Dd][Cc]7642[Aa][Dd]8384[Ff]9042[Ff]30279[Cc]2.*/)

@@ -1,0 +1,265 @@
+name: Alternate PowerShell Hosts Pipe
+id: 58cb02d5-78ce-4692-b3e1-dce850aae41a
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: Roberto Rodriguez @Cyb3rWard0g, Tim Shelton
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 58cb02d5-78ce-4692-b3e1-dce850aae41a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects alternate PowerShell hosts potentially bypassing detections looking
+  for powershell.exe. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 17/18 - Named Pipe
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "17"
+              - term:
+                  data_win_system_eventID: "18"
+            minimum_should_match: 1
+        
+        - wildcard:
+            data_win_eventdata_pipeName:
+              value: "\\\\PSHost*"
+              case_insensitive: true
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\PowerShell\\\\7-preview\\\\pwsh.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\system32\\\\dsac.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\system32\\\\inetsrv\\\\w3wp.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\System32\\\\sdiagnhost.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\system32\\\\ServerManager.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\system32\\\\wbem\\\\wmiprvse.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell_ise.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\System32\\\\wsmprovhost.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\SysWOW64\\\\WindowsPowerShell\\\\v1.0\\\\powershell_ise.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\SysWOW64\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*C:\\\\Program Files\\\\WindowsApps\\\\Microsoft.PowerShellPreview*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\Microsoft.PowerShellPreview*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe*"
+                                case_insensitive: true
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_image"
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Microsoft SQL Server\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Tools\\\\Binn\\\\SQLPS.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Program Files\\\\AzureConnectedMachineAgent\\\\GCArcService*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\GC\\\\gc_worker.exe"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\Citrix\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "C:\\\\Program Files\\\\Microsoft\\\\Exchange Server\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_pipeName
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon named pipe logging (EventIDs 17/18) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_pipeName matches '\PSHost*'; data_win_eventdata_image
+  matches '*:\Program Files\PowerShell\7-preview\pwsh.exe*';
+  data_win_eventdata_image matches '*:\Program Files\PowerShell\7\pwsh.exe*',
+  among other conditions.
+
+known_false_positives: >
+  Programs using PowerShell directly without invocation of a dedicated
+  interpreter. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://threathunterplaybook.com/hunts/windows/190610-PwshAlternateHosts/notebook.html
+  - https://threathunterplaybook.com/hunts/windows/190410-LocalPwshExecution/notebook.html
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Alternate PowerShell Hosts Pipe detected on host $agent_name$. Matched
+    data_win_eventdata_pipeName: $data_win_eventdata_pipeName$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_pipeName
+      type: pipe
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - alternate
+    - powershell
+    - hosts
+    - pipe_created
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"17" OR data_win_system_eventID:"18") AND data_win_eventdata_pipeName:/\\[Pp][Ss][Hh][Oo][Ss][Tt].*/ AND NOT (data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7-[Pp][Rr][Ee][Vv][Ii][Ee][Ww]\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\7\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Ss][Aa][Cc]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ii][Nn][Ee][Tt][Ss][Rr][Vv]\\[Ww]3[Ww][Pp]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Dd][Ii][Aa][Gg][Nn][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Ee][Rr][Vv][Ee][Rr][Mm][Aa][Nn][Aa][Gg][Ee][Rr]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Bb][Ee][Mm]\\[Ww][Mm][Ii][Pp][Rr][Vv][Ss][Ee]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ss][Mm][Pp][Rr][Oo][Vv][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Vv]1\.0\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee].*/ OR (data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll][Pp][Rr][Ee][Vv][Ii][Ee][Ww].*/ AND data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee].*/) OR (data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll][Pp][Rr][Ee][Vv][Ii][Ee][Ww].*/ AND data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee].*/) OR NOT _exists_:data_win_eventdata_image) AND _exists_:data_win_eventdata_image AND NOT (((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/) AND data_win_eventdata_image:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Qq][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\.*/ AND data_win_eventdata_image:/.*\\[Tt][Oo][Oo][Ll][Ss]\\[Bb][Ii][Nn][Nn]\\[Ss][Qq][Ll][Pp][Ss]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Zz][Uu][Rr][Ee][Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ee][Dd][Mm][Aa][Cc][Hh][Ii][Nn][Ee][Aa][Gg][Ee][Nn][Tt]\\[Gg][Cc][Aa][Rr][Cc][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ AND data_win_eventdata_image:/.*\\[Gg][Cc]\\[Gg][Cc]_[Ww][Oo][Rr][Kk][Ee][Rr]\.[Ee][Xx][Ee]/) OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Ii][Tt][Rr][Ii][Xx]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ee][Xx][Cc][Hh][Aa][Nn][Gg][Ee] [Ss][Ee][Rr][Vv][Ee][Rr]\\.*/)

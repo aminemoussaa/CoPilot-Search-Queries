@@ -1,0 +1,174 @@
+name: Emotet Loader Execution Via .LNK File
+id: 1f32d820-1d5c-43fe-8fe2-feef0c952eb7
+version: 1
+schema_version: "1.0"
+date: "2024-08-15"
+author: "@kostastsale"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1f32d820-1d5c-43fe-8fe2-feef0c952eb7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the Emotet Epoch4 loader as reported by @malware_traffic back in 2022.
+  The ".lnk" file was delivered via phishing campaign. MITRE ATT&CK: T1059.006.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\cmd.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\explorer.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\cmd.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*findstr*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*.vbs*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*.lnk*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\cmd.exe'; data_win_eventdata_parentImage matches '*\explorer.exe';
+  data_win_eventdata_parentImage matches '*\powershell.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://web.archive.org/web/20220422215221/https://twitter.com/malware_traffic/status/1517622327000846338
+  - https://twitter.com/Cryptolaemus1/status/1517634855940632576
+  - https://tria.ge/220422-1pw1pscfdl/
+  - https://tria.ge/220422-1nnmyagdf2/
+  - https://attack.mitre.org/techniques/T1059/006/
+
+response:
+  message: >
+    Emotet Loader Execution Via .LNK File detected on host $agent_name$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1059.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.006
+  custom_tags:
+    - emotet
+    - loader
+    - process_creation
+    - sysmon
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd][Ss][Tt][Rr].*/ AND data_win_eventdata_commandLine:/.*\.[Vv][Bb][Ss].*/ AND data_win_eventdata_commandLine:/.*\.[Ll][Nn][Kk].*/

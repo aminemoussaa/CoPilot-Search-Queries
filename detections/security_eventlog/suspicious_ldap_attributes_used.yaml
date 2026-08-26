@@ -1,0 +1,150 @@
+name: Suspicious LDAP-Attributes Used
+id: d00a9a72-2c09-4459-ad03-5e0a23351e36
+version: 1
+schema_version: "1.0"
+date: "2022-10-05"
+author: xknow @xknow_infosec
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d00a9a72-2c09-4459-ad03-5e0a23351e36
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the usage of particular AttributeLDAPDisplayNames, which are known for
+  data exchange via LDAP by the tool LDAPFragger and are additionally not
+  commonly used in companies. MITRE ATT&CK: T1001.003.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5136"
+        - wildcard:
+            data_win_eventdata_attributeValue: "*"
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_attributeLDAPDisplayName:
+                    value: "primaryInternationalISDNNumber"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_attributeLDAPDisplayName:
+                    value: "otherFacsimileTelephoneNumber"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_attributeLDAPDisplayName:
+                    value: "primaryTelexNumber"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_attributeValue
+    - data_win_eventdata_attributeLDAPDisplayName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5136'; data_win_eventdata_attributeValue
+  matches '*'; data_win_eventdata_attributeLDAPDisplayName equals
+  'primaryInternationalISDNNumber', among other conditions.
+
+known_false_positives: >
+  Companies, who may use these default LDAP-Attributes for personal information.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://medium.com/@ivecodoe/detecting-ldapfragger-a-newly-released-cobalt-strike-beacon-using-ldap-for-c2-communication-c274a7f00961
+  - https://blog.fox-it.com/2020/03/19/ldapfragger-command-and-control-over-ldap-attributes/
+  - https://github.com/fox-it/LDAPFragger
+  - https://attack.mitre.org/techniques/T1001/003/
+
+response:
+  message: >
+    Suspicious LDAP-Attributes Used detected on host $agent_name$. Matched
+    data_win_eventdata_attributeValue: $data_win_eventdata_attributeValue$.
+    Matched data_win_eventdata_attributeLDAPDisplayName:
+    $data_win_eventdata_attributeLDAPDisplayName$. MITRE ATT&CK: T1001.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_attributeValue
+      type: other
+    - field: data_win_eventdata_attributeLDAPDisplayName
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1001.003
+  custom_tags:
+    - attributes
+    - windows_security
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5136" AND data_win_eventdata_attributeValue:/.*/ AND (data_win_eventdata_attributeLDAPDisplayName:/[Pp][Rr][Ii][Mm][Aa][Rr][Yy][Ii][Nn][Tt][Ee][Rr][Nn][Aa][Tt][Ii][Oo][Nn][Aa][Ll][Ii][Ss][Dd][Nn][Nn][Uu][Mm][Bb][Ee][Rr]/ OR data_win_eventdata_attributeLDAPDisplayName:/[Oo][Tt][Hh][Ee][Rr][Ff][Aa][Cc][Ss][Ii][Mm][Ii][Ll][Ee][Tt][Ee][Ll][Ee][Pp][Hh][Oo][Nn][Ee][Nn][Uu][Mm][Bb][Ee][Rr]/ OR data_win_eventdata_attributeLDAPDisplayName:/[Pp][Rr][Ii][Mm][Aa][Rr][Yy][Tt][Ee][Ll][Ee][Xx][Nn][Uu][Mm][Bb][Ee][Rr]/)

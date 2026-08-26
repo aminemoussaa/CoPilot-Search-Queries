@@ -1,0 +1,153 @@
+name: TeamViewer Remote Session
+id: 162ab1e4-6874-4564-853c-53ec3ab8be01
+version: 1
+schema_version: "1.0"
+date: "2022-01-30"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 162ab1e4-6874-4564-853c-53ec3ab8be01
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of log files during a TeamViewer remote session. MITRE
+  ATT&CK: T1219.002.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\TeamViewer\\\\RemotePrinting\\\\tvprint.db"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\TeamViewer\\\\TVNetwork.log"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\TeamViewer*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*_Logfile.log*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\TeamViewer\RemotePrinting\tvprint.db'; data_win_eventdata_targetFilename
+  matches '*\TeamViewer\TVNetwork.log'; data_win_eventdata_targetFilename
+  matches '*\TeamViewer*', among other conditions.
+
+known_false_positives: >
+  Legitimate uses of TeamViewer in an organisation. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.teamviewer.com/en-us/
+  - https://attack.mitre.org/techniques/T1219/002/
+
+response:
+  message: >
+    TeamViewer Remote Session detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1219.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1219.002
+  custom_tags:
+    - teamviewer
+    - session
+    - file_event
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*\\[Tt][Ee][Aa][Mm][Vv][Ii][Ee][Ww][Ee][Rr]\\[Rr][Ee][Mm][Oo][Tt][Ee][Pp][Rr][Ii][Nn][Tt][Ii][Nn][Gg]\\[Tt][Vv][Pp][Rr][Ii][Nn][Tt]\.[Dd][Bb]/ OR data_win_eventdata_targetFilename:/.*\\[Tt][Ee][Aa][Mm][Vv][Ii][Ee][Ww][Ee][Rr]\\[Tt][Vv][Nn][Ee][Tt][Ww][Oo][Rr][Kk]\.[Ll][Oo][Gg]/ OR (data_win_eventdata_targetFilename:/.*\\[Tt][Ee][Aa][Mm][Vv][Ii][Ee][Ww][Ee][Rr].*/ AND data_win_eventdata_targetFilename:/.*_[Ll][Oo][Gg][Ff][Ii][Ll][Ee]\.[Ll][Oo][Gg].*/))

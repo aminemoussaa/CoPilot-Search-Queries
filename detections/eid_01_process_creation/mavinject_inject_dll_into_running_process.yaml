@@ -1,0 +1,154 @@
+name: Mavinject Inject DLL Into Running Process
+id: 4f73421b-5a0b-4bbf-a892-5a7fb99bea66
+version: 1
+schema_version: "1.0"
+date: "2022-12-05"
+author: frack113, Florian Roth
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4f73421b-5a0b-4bbf-a892-5a7fb99bea66
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects process injection using the signed Windows tool "Mavinject" via the
+  "INJECTRUNNING" flag. MITRE ATT&CK: T1055.001, T1218.013.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* /INJECTRUNNING *"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - term:
+                  data_win_eventdata_parentImage:
+                    value: "C:\\Windows\\System32\\AppVClient.exe"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*
+  /INJECTRUNNING *'; data_win_eventdata_parentImage equals
+  'C:\Windows\System32\AppVClient.exe'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1218/T1218.md
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1056.004/T1056.004.md
+  - https://posts.specterops.io/mavinject-exe-functionality-deconstructed-c29ab2cf5c0e
+  - https://twitter.com/gN3mes1s/status/941315826107510784
+  - https://reaqta.com/2017/12/mavinject-microsoft-injector/
+  - https://twitter.com/Hexacorn/status/776122138063409152
+  - https://github.com/SigmaHQ/sigma/issues/3742
+  - https://github.com/keyboardcrunch/SentinelOne-ATTACK-Queries/blob/6a228d23eefe963ca81f2d52f94b815f61ef5ee0/Tactics/DefenseEvasion.md#t1055-process-injection
+  - https://attack.mitre.org/techniques/T1055/001/
+  - https://attack.mitre.org/techniques/T1218/013/
+
+response:
+  message: >
+    Mavinject Inject DLL Into Running Process detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    MITRE ATT&CK: T1055.001, T1218.013
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055.001
+    - T1218.013
+  custom_tags:
+    - mavinject
+    - inject
+    - running
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_commandLine:/.* \/[Ii][Nn][Jj][Ee][Cc][Tt][Rr][Uu][Nn][Nn][Ii][Nn][Gg] .*/ AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Aa][Pp][Pp][Vv][Cc][Ll][Ii][Ee][Nn][Tt]\.[Ee][Xx][Ee]/)

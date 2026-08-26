@@ -1,0 +1,297 @@
+name: GALLIUM IOCs
+id: 440a56bf-7873-4439-940a-1c8a671073c2
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Tim Burrell
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 440a56bf-7873-4439-940a-1c8a671073c2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects artifacts associated with GALLIUM cyber espionage group as reported by
+  Microsoft Threat Intelligence Center in the December 2019 report. MITRE
+  ATT&CK: T1212, T1071.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=9ae7c4a4e1cfe9b505c3a47e66551eb1357affee65bfefb0109d02f4e97c06dd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=7772d624e1aed327abcd24ce2068063da0e31bb1d5d3bf2841fc977e198c6c5b*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=657fc7e6447e0065d488a7db2caab13071e44741875044f9024ca843fe4e86b5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=2ef157a97e28574356e1d871abf75deca7d7a1ea662f38b577a06dd039dbae29*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=52fd7b90d7144ac448af4008be639d4d45c252e51823f4311011af3207a5fc77*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=a370e47cb97b35f1ae6590d14ada7561d22b4a73be0cb6df7e851d85054b1ac3*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=5bf80b871278a29f356bd42af1e35428aead20cd90b0c7642247afcaaa95b022*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=6f690ccfd54c2b02f0c3cb89c938162c10cbeee693286e809579c540b07ed883*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=3c884f776fbd16597c072afd81029e8764dd57ee79d798829ca111f5e170bd8e*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=1922a419f57afb351b58330ed456143cc8de8b3ebcbd236d26a219b03b3464d7*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=fe0e4ef832b62d49b43433e10c47dc51072959af93963c790892efc20ec422f1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=7ce9e1c5562c8a5c93878629a47fe6071a35d604ed57a8f918f3eadf82c11a9c*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=178d5ee8c04401d332af331087a80fb4e5e2937edfba7266f9be34a5029b6945*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=51f70956fa8c487784fd21ab795f6ba2199b5c2d346acdeef1de0318a4c729d9*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=889bca95f1a69e94aaade1e959ed0d3620531dc0fc563be9a8decf41899b4d79*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=332ddaa00e2eb862742cb8d7e24ce52a5d38ffb22f6c8bd51162bd35e84d7ddf*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=44bcf82fa536318622798504e8369e9dcdb32686b95fcb44579f0b4efa79df08*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=63552772fdd8c947712a2cff00dfe25c7a34133716784b6d486227384f8cf3ef*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=056744a3c371b5938d63c396fe094afce8fb153796a65afa5103e1bffd7ca070*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=53a44c2396d15c3a03723fa5e5db54cafd527635*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=9c5e496921e3bc882dc40694f1dcc3746a75db19*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=aeb573accfd95758550cf30bf04f389a92922844*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=79ef78a797403a4ed1a616c68e07fff868a8650a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=4f6f38b4cec35e895d91c052b1f5a83d665c2196*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=1e8c2cac2e4ce7cbd33c3858eb2e24531cb8a84d*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=e841a63e47361a572db9a7334af459ddca11347a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=c28f606df28a9bc8df75a4d5e5837fc5522dd34d*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=2e94b305d6812a9f96e6781c888e48c7fb157b6b*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=dd44133716b8a241957b912fa6a02efde3ce3025*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=8793bf166cb89eb55f0593404e4e933ab605e803*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=a39b57032dbb2335499a51e13470a7cd5d86b138*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=41cc2b15c662bc001c0eb92f6cc222934f0beeea*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=d209430d6af54792371174e70e27dd11d3def7a7*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=1c6452026c56efd2c94cea7e0f671eb55515edb0*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=c6b41d3afdcdcaf9f442bbe772f5da871801fd5a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=4923d460e22fbbf165bbbaba168e5a46b8157d9f*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=f201504bd96e81d0d350c3a8332593ee1c9e09de*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=ddd2db1127632a2a52943a2fe516a2e7d05d70d2*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_hashes
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_hashes matches
+  '*SHA256=9ae7c4a4e1cfe9b505c3a47e66551eb1357affee65bfefb0109d02f4e97c06dd*';
+  data_win_eventdata_hashes matches
+  '*SHA256=7772d624e1aed327abcd24ce2068063da0e31bb1d5d3bf2841fc977e198c6c5b*';
+  data_win_eventdata_hashes matches
+  '*SHA256=657fc7e6447e0065d488a7db2caab13071e44741875044f9024ca843fe4e86b5*',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/security/blog/2019/12/12/gallium-targeting-global-telecom/
+  - https://github.com/Azure/Azure-Sentinel/blob/a02ce85c96f162de6f8cc06f07a53b6525f0ff7f/Solutions/Legacy%20IOC%20based%20Threat%20Protection/Analytic%20Rules/GalliumIOCs.yaml
+  - https://attack.mitre.org/techniques/T1212/
+  - https://attack.mitre.org/techniques/T1071/
+
+response:
+  message: >
+    GALLIUM IOCs detected on host $agent_name$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1212,
+    T1071
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_hashes
+      type: file_hash
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1212
+    - T1071
+  custom_tags:
+    - gallium
+    - process_creation
+    - sysmon
+    - credential_access
+    - command_and_control
+    - g0093
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=9[Aa][Ee]7[Cc]4[Aa]4[Ee]1[Cc][Ff][Ee]9[Bb]505[Cc]3[Aa]47[Ee]66551[Ee][Bb]1357[Aa][Ff][Ff][Ee][Ee]65[Bb][Ff][Ee][Ff][Bb]0109[Dd]02[Ff]4[Ee]97[Cc]06[Dd][Dd].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=7772[Dd]624[Ee]1[Aa][Ee][Dd]327[Aa][Bb][Cc][Dd]24[Cc][Ee]2068063[Dd][Aa]0[Ee]31[Bb][Bb]1[Dd]5[Dd]3[Bb][Ff]2841[Ff][Cc]977[Ee]198[Cc]6[Cc]5[Bb].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=657[Ff][Cc]7[Ee]6447[Ee]0065[Dd]488[Aa]7[Dd][Bb]2[Cc][Aa][Aa][Bb]13071[Ee]44741875044[Ff]9024[Cc][Aa]843[Ff][Ee]4[Ee]86[Bb]5.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=2[Ee][Ff]157[Aa]97[Ee]28574356[Ee]1[Dd]871[Aa][Bb][Ff]75[Dd][Ee][Cc][Aa]7[Dd]7[Aa]1[Ee][Aa]662[Ff]38[Bb]577[Aa]06[Dd][Dd]039[Dd][Bb][Aa][Ee]29.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=52[Ff][Dd]7[Bb]90[Dd]7144[Aa][Cc]448[Aa][Ff]4008[Bb][Ee]639[Dd]4[Dd]45[Cc]252[Ee]51823[Ff]4311011[Aa][Ff]3207[Aa]5[Ff][Cc]77.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Aa]370[Ee]47[Cc][Bb]97[Bb]35[Ff]1[Aa][Ee]6590[Dd]14[Aa][Dd][Aa]7561[Dd]22[Bb]4[Aa]73[Bb][Ee]0[Cc][Bb]6[Dd][Ff]7[Ee]851[Dd]85054[Bb]1[Aa][Cc]3.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=5[Bb][Ff]80[Bb]871278[Aa]29[Ff]356[Bb][Dd]42[Aa][Ff]1[Ee]35428[Aa][Ee][Aa][Dd]20[Cc][Dd]90[Bb]0[Cc]7642247[Aa][Ff][Cc][Aa][Aa][Aa]95[Bb]022.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=6[Ff]690[Cc][Cc][Ff][Dd]54[Cc]2[Bb]02[Ff]0[Cc]3[Cc][Bb]89[Cc]938162[Cc]10[Cc][Bb][Ee][Ee][Ee]693286[Ee]809579[Cc]540[Bb]07[Ee][Dd]883.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=3[Cc]884[Ff]776[Ff][Bb][Dd]16597[Cc]072[Aa][Ff][Dd]81029[Ee]8764[Dd][Dd]57[Ee][Ee]79[Dd]798829[Cc][Aa]111[Ff]5[Ee]170[Bb][Dd]8[Ee].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=1922[Aa]419[Ff]57[Aa][Ff][Bb]351[Bb]58330[Ee][Dd]456143[Cc][Cc]8[Dd][Ee]8[Bb]3[Ee][Bb][Cc][Bb][Dd]236[Dd]26[Aa]219[Bb]03[Bb]3464[Dd]7.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Ff][Ee]0[Ee]4[Ee][Ff]832[Bb]62[Dd]49[Bb]43433[Ee]10[Cc]47[Dd][Cc]51072959[Aa][Ff]93963[Cc]790892[Ee][Ff][Cc]20[Ee][Cc]422[Ff]1.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=7[Cc][Ee]9[Ee]1[Cc]5562[Cc]8[Aa]5[Cc]93878629[Aa]47[Ff][Ee]6071[Aa]35[Dd]604[Ee][Dd]57[Aa]8[Ff]918[Ff]3[Ee][Aa][Dd][Ff]82[Cc]11[Aa]9[Cc].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=178[Dd]5[Ee][Ee]8[Cc]04401[Dd]332[Aa][Ff]331087[Aa]80[Ff][Bb]4[Ee]5[Ee]2937[Ee][Dd][Ff][Bb][Aa]7266[Ff]9[Bb][Ee]34[Aa]5029[Bb]6945.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=51[Ff]70956[Ff][Aa]8[Cc]487784[Ff][Dd]21[Aa][Bb]795[Ff]6[Bb][Aa]2199[Bb]5[Cc]2[Dd]346[Aa][Cc][Dd][Ee][Ee][Ff]1[Dd][Ee]0318[Aa]4[Cc]729[Dd]9.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=889[Bb][Cc][Aa]95[Ff]1[Aa]69[Ee]94[Aa][Aa][Aa][Dd][Ee]1[Ee]959[Ee][Dd]0[Dd]3620531[Dd][Cc]0[Ff][Cc]563[Bb][Ee]9[Aa]8[Dd][Ee][Cc][Ff]41899[Bb]4[Dd]79.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=332[Dd][Dd][Aa][Aa]00[Ee]2[Ee][Bb]862742[Cc][Bb]8[Dd]7[Ee]24[Cc][Ee]52[Aa]5[Dd]38[Ff][Ff][Bb]22[Ff]6[Cc]8[Bb][Dd]51162[Bb][Dd]35[Ee]84[Dd]7[Dd][Dd][Ff].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=44[Bb][Cc][Ff]82[Ff][Aa]536318622798504[Ee]8369[Ee]9[Dd][Cc][Dd][Bb]32686[Bb]95[Ff][Cc][Bb]44579[Ff]0[Bb]4[Ee][Ff][Aa]79[Dd][Ff]08.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=63552772[Ff][Dd][Dd]8[Cc]947712[Aa]2[Cc][Ff][Ff]00[Dd][Ff][Ee]25[Cc]7[Aa]34133716784[Bb]6[Dd]486227384[Ff]8[Cc][Ff]3[Ee][Ff].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=056744[Aa]3[Cc]371[Bb]5938[Dd]63[Cc]396[Ff][Ee]094[Aa][Ff][Cc][Ee]8[Ff][Bb]153796[Aa]65[Aa][Ff][Aa]5103[Ee]1[Bb][Ff][Ff][Dd]7[Cc][Aa]070.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=53[Aa]44[Cc]2396[Dd]15[Cc]3[Aa]03723[Ff][Aa]5[Ee]5[Dd][Bb]54[Cc][Aa][Ff][Dd]527635.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=9[Cc]5[Ee]496921[Ee]3[Bb][Cc]882[Dd][Cc]40694[Ff]1[Dd][Cc][Cc]3746[Aa]75[Dd][Bb]19.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Aa][Ee][Bb]573[Aa][Cc][Cc][Ff][Dd]95758550[Cc][Ff]30[Bb][Ff]04[Ff]389[Aa]92922844.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=79[Ee][Ff]78[Aa]797403[Aa]4[Ee][Dd]1[Aa]616[Cc]68[Ee]07[Ff][Ff][Ff]868[Aa]8650[Aa].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=4[Ff]6[Ff]38[Bb]4[Cc][Ee][Cc]35[Ee]895[Dd]91[Cc]052[Bb]1[Ff]5[Aa]83[Dd]665[Cc]2196.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=1[Ee]8[Cc]2[Cc][Aa][Cc]2[Ee]4[Cc][Ee]7[Cc][Bb][Dd]33[Cc]3858[Ee][Bb]2[Ee]24531[Cc][Bb]8[Aa]84[Dd].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Ee]841[Aa]63[Ee]47361[Aa]572[Dd][Bb]9[Aa]7334[Aa][Ff]459[Dd][Dd][Cc][Aa]11347[Aa].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Cc]28[Ff]606[Dd][Ff]28[Aa]9[Bb][Cc]8[Dd][Ff]75[Aa]4[Dd]5[Ee]5837[Ff][Cc]5522[Dd][Dd]34[Dd].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=2[Ee]94[Bb]305[Dd]6812[Aa]9[Ff]96[Ee]6781[Cc]888[Ee]48[Cc]7[Ff][Bb]157[Bb]6[Bb].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Dd][Dd]44133716[Bb]8[Aa]241957[Bb]912[Ff][Aa]6[Aa]02[Ee][Ff][Dd][Ee]3[Cc][Ee]3025.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=8793[Bb][Ff]166[Cc][Bb]89[Ee][Bb]55[Ff]0593404[Ee]4[Ee]933[Aa][Bb]605[Ee]803.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Aa]39[Bb]57032[Dd][Bb][Bb]2335499[Aa]51[Ee]13470[Aa]7[Cc][Dd]5[Dd]86[Bb]138.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=41[Cc][Cc]2[Bb]15[Cc]662[Bb][Cc]001[Cc]0[Ee][Bb]92[Ff]6[Cc][Cc]222934[Ff]0[Bb][Ee][Ee][Ee][Aa].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Dd]209430[Dd]6[Aa][Ff]54792371174[Ee]70[Ee]27[Dd][Dd]11[Dd]3[Dd][Ee][Ff]7[Aa]7.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=1[Cc]6452026[Cc]56[Ee][Ff][Dd]2[Cc]94[Cc][Ee][Aa]7[Ee]0[Ff]671[Ee][Bb]55515[Ee][Dd][Bb]0.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Cc]6[Bb]41[Dd]3[Aa][Ff][Dd][Cc][Dd][Cc][Aa][Ff]9[Ff]442[Bb][Bb][Ee]772[Ff]5[Dd][Aa]871801[Ff][Dd]5[Aa].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=4923[Dd]460[Ee]22[Ff][Bb][Bb][Ff]165[Bb][Bb][Bb][Aa][Bb][Aa]168[Ee]5[Aa]46[Bb]8157[Dd]9[Ff].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Ff]201504[Bb][Dd]96[Ee]81[Dd]0[Dd]350[Cc]3[Aa]8332593[Ee][Ee]1[Cc]9[Ee]09[Dd][Ee].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Dd][Dd][Dd]2[Dd][Bb]1127632[Aa]2[Aa]52943[Aa]2[Ff][Ee]516[Aa]2[Ee]7[Dd]05[Dd]70[Dd]2.*/)

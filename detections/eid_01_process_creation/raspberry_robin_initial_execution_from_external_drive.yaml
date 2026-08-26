@@ -1,0 +1,208 @@
+name: Raspberry Robin Initial Execution From External Drive
+id: 2c6bea3a-ef58-4f2e-a775-4928f6b7c58a
+version: 1
+schema_version: "1.0"
+date: "2022-05-06"
+author: "@kostastsale"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2c6bea3a-ef58-4f2e-a775-4928f6b7c58a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the initial execution of the Raspberry Robin malware from an external
+  drive using "Cmd.EXE". MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\cmd.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*/r*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.bin"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.ico"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.lnk"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.lo"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.sv"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentCommandLine:
+                    value: "*.usb"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\msiexec.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―q*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*http:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*https:*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\cmd.exe'; data_win_eventdata_parentCommandLine matches '*/r*';
+  data_win_eventdata_parentCommandLine matches '*.bin', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://redcanary.com/blog/raspberry-robin/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Raspberry Robin Initial Execution From External Drive detected on host
+    $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_parentCommandLine:
+    $data_win_eventdata_parentCommandLine$. MITRE ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_parentCommandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - raspberry
+    - robin
+    - initial
+    - process_creation
+    - sysmon
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*\/[Rr].*/ AND (data_win_eventdata_parentCommandLine:/.*\.[Bb][Ii][Nn]/ OR data_win_eventdata_parentCommandLine:/.*\.[Ii][Cc][Oo]/ OR data_win_eventdata_parentCommandLine:/.*\.[Ll][Nn][Kk]/ OR data_win_eventdata_parentCommandLine:/.*\.[Ll][Oo]/ OR data_win_eventdata_parentCommandLine:/.*\.[Ss][Vv]/ OR data_win_eventdata_parentCommandLine:/.*\.[Uu][Ss][Bb]/) AND data_win_eventdata_image:/.*\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.*-[Qq].*/ OR data_win_eventdata_commandLine:/.*\/[Qq].*/ OR data_win_eventdata_commandLine:/.*–[Qq].*/ OR data_win_eventdata_commandLine:/.*—[Qq].*/ OR data_win_eventdata_commandLine:/.*―[Qq].*/) AND (data_win_eventdata_commandLine:/.*[Hh][Tt][Tt][Pp]:.*/ OR data_win_eventdata_commandLine:/.*[Hh][Tt][Tt][Pp][Ss]:.*/)

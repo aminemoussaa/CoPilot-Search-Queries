@@ -1,0 +1,283 @@
+name: Potential Binary Or Script Dropper Via PowerShell
+id: 7047d730-036f-4f40-b9d8-1c63e36d5e62
+version: 1
+schema_version: "1.0"
+date: "2025-07-04"
+author: frack113, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7047d730-036f-4f40-b9d8-1c63e36d5e62
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects PowerShell creating a binary executable or a script file.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell_ise.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.bat"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.chm"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.cmd"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.com"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.hta"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.jar"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.js"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ocx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.scr"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbs"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.wsf"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*.dll"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "C:\\\\Windows\\\\Temp\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "C:\\\\Windows\\\\SystemTemp\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*.dll"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetFilename:
+                                      value: "*.exe"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\WindowsPowerShell\\\\Modules\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.dll"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\Program Files\\\\PackageManagement\\\\ProviderAssemblies\\\\nuget\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\Microsoft.PackageManagement.NuGetProvider.dll"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell.exe'; data_win_eventdata_image matches '*\powershell_ise.exe';
+  data_win_eventdata_image matches '*\pwsh.exe', among other conditions.
+
+known_false_positives: >
+  False positives will differ depending on the environment and scripts used.
+  Apply additional filters accordingly. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.zscaler.com/blogs/security-research/onenote-growing-threat-malware-distribution
+
+response:
+  message: >
+    Potential Binary Or Script Dropper Via PowerShell detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - binary
+    - dropper
+    - powershell
+    - file_event
+    - sysmon
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_targetFilename:/.*\.[Bb][Aa][Tt]/ OR data_win_eventdata_targetFilename:/.*\.[Cc][Hh][Mm]/ OR data_win_eventdata_targetFilename:/.*\.[Cc][Mm][Dd]/ OR data_win_eventdata_targetFilename:/.*\.[Cc][Oo][Mm]/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Ll][Ll]/ OR data_win_eventdata_targetFilename:/.*\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetFilename:/.*\.[Hh][Tt][Aa]/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Aa][Rr]/ OR data_win_eventdata_targetFilename:/.*\.[Jj][Ss]/ OR data_win_eventdata_targetFilename:/.*\.[Oo][Cc][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Ss][Cc][Rr]/ OR data_win_eventdata_targetFilename:/.*\.[Ss][Yy][Ss]/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ee]/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ss]/ OR data_win_eventdata_targetFilename:/.*\.[Ww][Ss][Ff]/) AND _exists_:data_win_eventdata_targetFilename AND NOT ((data_win_eventdata_targetFilename:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/ AND (data_win_eventdata_targetFilename:/.*\.[Dd][Ll][Ll]/ OR data_win_eventdata_targetFilename:/.*\.[Ee][Xx][Ee]/)) OR ((data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm][Tt][Ee][Mm][Pp]\\.*/) AND (data_win_eventdata_targetFilename:/.*\.[Dd][Ll][Ll]/ OR data_win_eventdata_targetFilename:/.*\.[Ee][Xx][Ee]/)) OR (data_win_eventdata_targetFilename:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_targetFilename:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\\[Mm][Oo][Dd][Uu][Ll][Ee][Ss]\\.*/ AND data_win_eventdata_targetFilename:/.*\.[Dd][Ll][Ll]/) OR (data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\\[Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr][Aa][Ss][Ss][Ee][Mm][Bb][Ll][Ii][Ee][Ss]\\[Nn][Uu][Gg][Ee][Tt]\\.*/ AND data_win_eventdata_targetFilename:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Nn][Uu][Gg][Ee][Tt][Pp][Rr][Oo][Vv][Ii][Dd][Ee][Rr]\.[Dd][Ll][Ll]/))

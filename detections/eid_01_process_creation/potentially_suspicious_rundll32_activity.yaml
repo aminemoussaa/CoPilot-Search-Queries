@@ -1,0 +1,419 @@
+name: Potentially Suspicious Rundll32 Activity
+id: e593cf51-88db-4ee1-b920-37e89012a3c9
+version: 1
+schema_version: "1.0"
+date: "2023-05-17"
+author: juju4, Jonhnathan Ribeiro, oscd.community, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e593cf51-88db-4ee1-b920-37e89012a3c9
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious execution of rundll32, with specific calls to some DLLs
+  with known LOLBIN functionalities. MITRE ATT&CK: T1218.011.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*javascript:*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.RegisterXLL*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*url.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*OpenURL*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*url.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*OpenURLA*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*url.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*FileProtocolHandler*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*zipfldr.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*RouteTheCall*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*shell32.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Control_RunDLL*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*shell32.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ShellExec_RunDLL*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*mshtml.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*PrintHTML*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*advpack.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*LaunchINFSection*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*advpack.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*RegisterOCX*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ieadvpack.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*LaunchINFSection*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ieadvpack.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*RegisterOCX*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ieframe.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*OpenURL*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*shdocvw.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*OpenURL*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*syssetup.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*SetupInfObjectInstallAction*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*setupapi.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*InstallHinfSection*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*pcwutl.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*LaunchApplication*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*dfshim.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ShOpenVerbApplication*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*dfshim.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ShOpenVerbShortcut*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*scrobj.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*GenerateTypeLib*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*http*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*shimgvw.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ImageView_Fullscreen*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*http*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*comsvcs.dll*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*MiniDump*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*shell32.dll,Control_RunDLL desk.cpl,screensaver,@screensaver*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\System32\\control.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*.cpl*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Shell32.dll*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Control_RunDLL*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.cpl*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\System32\\control.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "\"C:\\\\Windows\\\\system32\\\\rundll32.exe\" Shell32.dll,Control_RunDLL \"C:\\\\Windows\\\\System32\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.cpl\","
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*javascript:*'; data_win_eventdata_commandLine matches '*.RegisterXLL*';
+  data_win_eventdata_commandLine matches '*url.dll*', among other conditions.
+
+known_false_positives: >
+  False positives depend on scripts and administrative tools used in the
+  monitored environment. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - http://www.hexacorn.com/blog/2017/05/01/running-programs-via-proxy-jumping-on-a-edr-bypass-trampoline/
+  - https://twitter.com/Hexacorn/status/885258886428725250
+  - https://gist.github.com/ryhanson/227229866af52e2d963cf941af135a52
+  - https://twitter.com/nas_bench/status/1433344116071583746
+  - https://twitter.com/eral4m/status/1479106975967240209
+  - https://twitter.com/eral4m/status/1479080793003671557
+  - https://attack.mitre.org/techniques/T1218/011/
+
+response:
+  message: >
+    Potentially Suspicious Rundll32 Activity detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    MITRE ATT&CK: T1218.011
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.011
+  custom_tags:
+    - rundll32
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Jj][Aa][Vv][Aa][Ss][Cc][Rr][Ii][Pp][Tt]:.*/ AND data_win_eventdata_commandLine:/.*\.[Rr][Ee][Gg][Ii][Ss][Tt][Ee][Rr][Xx][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Uu][Rr][Ll]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Uu][Rr][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Uu][Rr][Ll]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Uu][Rr][Ll][Aa].*/) OR (data_win_eventdata_commandLine:/.*[Uu][Rr][Ll]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ff][Ii][Ll][Ee][Pp][Rr][Oo][Tt][Oo][Cc][Oo][Ll][Hh][Aa][Nn][Dd][Ll][Ee][Rr].*/) OR (data_win_eventdata_commandLine:/.*[Zz][Ii][Pp][Ff][Ll][Dd][Rr]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Rr][Oo][Uu][Tt][Ee][Tt][Hh][Ee][Cc][Aa][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Hh][Ee][Ll][Ll]32\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Tt][Rr][Oo][Ll]_[Rr][Uu][Nn][Dd][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Hh][Ee][Ll][Ll]32\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ss][Hh][Ee][Ll][Ll][Ee][Xx][Ee][Cc]_[Rr][Uu][Nn][Dd][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Mm][Ss][Hh][Tt][Mm][Ll]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Pp][Rr][Ii][Nn][Tt][Hh][Tt][Mm][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Aa][Dd][Vv][Pp][Aa][Cc][Kk]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ll][Aa][Uu][Nn][Cc][Hh][Ii][Nn][Ff][Ss][Ee][Cc][Tt][Ii][Oo][Nn].*/) OR (data_win_eventdata_commandLine:/.*[Aa][Dd][Vv][Pp][Aa][Cc][Kk]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Rr][Ee][Gg][Ii][Ss][Tt][Ee][Rr][Oo][Cc][Xx].*/) OR (data_win_eventdata_commandLine:/.*[Ii][Ee][Aa][Dd][Vv][Pp][Aa][Cc][Kk]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ll][Aa][Uu][Nn][Cc][Hh][Ii][Nn][Ff][Ss][Ee][Cc][Tt][Ii][Oo][Nn].*/) OR (data_win_eventdata_commandLine:/.*[Ii][Ee][Aa][Dd][Vv][Pp][Aa][Cc][Kk]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Rr][Ee][Gg][Ii][Ss][Tt][Ee][Rr][Oo][Cc][Xx].*/) OR (data_win_eventdata_commandLine:/.*[Ii][Ee][Ff][Rr][Aa][Mm][Ee]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Uu][Rr][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Hh][Dd][Oo][Cc][Vv][Ww]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Oo][Pp][Ee][Nn][Uu][Rr][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Yy][Ss][Ss][Ee][Tt][Uu][Pp]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ss][Ee][Tt][Uu][Pp][Ii][Nn][Ff][Oo][Bb][Jj][Ee][Cc][Tt][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Aa][Cc][Tt][Ii][Oo][Nn].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Ee][Tt][Uu][Pp][Aa][Pp][Ii]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Hh][Ii][Nn][Ff][Ss][Ee][Cc][Tt][Ii][Oo][Nn].*/) OR (data_win_eventdata_commandLine:/.*[Pp][Cc][Ww][Uu][Tt][Ll]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ll][Aa][Uu][Nn][Cc][Hh][Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/) OR (data_win_eventdata_commandLine:/.*[Dd][Ff][Ss][Hh][Ii][Mm]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ss][Hh][Oo][Pp][Ee][Nn][Vv][Ee][Rr][Bb][Aa][Pp][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Oo][Nn].*/) OR (data_win_eventdata_commandLine:/.*[Dd][Ff][Ss][Hh][Ii][Mm]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ss][Hh][Oo][Pp][Ee][Nn][Vv][Ee][Rr][Bb][Ss][Hh][Oo][Rr][Tt][Cc][Uu][Tt].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Cc][Rr][Oo][Bb][Jj]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Gg][Ee][Nn][Ee][Rr][Aa][Tt][Ee][Tt][Yy][Pp][Ee][Ll][Ii][Bb].*/ AND data_win_eventdata_commandLine:/.*[Hh][Tt][Tt][Pp].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Hh][Ii][Mm][Gg][Vv][Ww]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ii][Mm][Aa][Gg][Ee][Vv][Ii][Ee][Ww]_[Ff][Uu][Ll][Ll][Ss][Cc][Rr][Ee][Ee][Nn].*/ AND data_win_eventdata_commandLine:/.*[Hh][Tt][Tt][Pp].*/) OR (data_win_eventdata_commandLine:/.*[Cc][Oo][Mm][Ss][Vv][Cc][Ss]\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Mm][Ii][Nn][Ii][Dd][Uu][Mm][Pp].*/)) AND _exists_:data_win_eventdata_commandLine AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_parentCommandLine AND NOT (data_win_eventdata_commandLine:/.*[Ss][Hh][Ee][Ll][Ll]32\.[Dd][Ll][Ll],[Cc][Oo][Nn][Tt][Rr][Oo][Ll]_[Rr][Uu][Nn][Dd][Ll][Ll] [Dd][Ee][Ss][Kk]\.[Cc][Pp][Ll],[Ss][Cc][Rr][Ee][Ee][Nn][Ss][Aa][Vv][Ee][Rr],\@[Ss][Cc][Rr][Ee][Ee][Nn][Ss][Aa][Vv][Ee][Rr].*/ OR (data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*\.[Cc][Pp][Ll].*/ AND data_win_eventdata_commandLine:/.*[Ss][Hh][Ee][Ll][Ll]32\.[Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Tt][Rr][Oo][Ll]_[Rr][Uu][Nn][Dd][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll].*/) OR (data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/\"[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]\" [Ss][Hh][Ee][Ll][Ll]32\.[Dd][Ll][Ll],[Cc][Oo][Nn][Tt][Rr][Oo][Ll]_[Rr][Uu][Nn][Dd][Ll][Ll] \"[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ AND data_win_eventdata_commandLine:/.*\.[Cc][Pp][Ll]\",/))

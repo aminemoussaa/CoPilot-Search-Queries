@@ -1,0 +1,151 @@
+name: Group Policy Abuse for Privilege Addition
+id: 1c480e10-7ee1-46d4-8ed2-85f9789e3ce4
+version: 1
+schema_version: "1.0"
+date: "2024-09-04"
+author: Elastic, Josh Nickels, Marius Rothenbücher
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1c480e10-7ee1-46d4-8ed2-85f9789e3ce4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the first occurrence of a modification to Group Policy Object
+  Attributes to add privileges to user accounts or use them to add users as
+  local admins. MITRE ATT&CK: T1484.001.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5136"
+        - term:
+            data_win_eventdata_attributeLDAPDisplayName:
+              value: "gPCMachineExtensionNames"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_attributeValue:
+                    value: "*827D319E-6EAC-11D2-A4EA-00C04F79F83A*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_attributeValue:
+                    value: "*803E14A0-B4FB-11D0-A0D0-00A0C90F574B*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_attributeLDAPDisplayName
+    - data_win_eventdata_attributeValue
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5136';
+  data_win_eventdata_attributeLDAPDisplayName equals 'gPCMachineExtensionNames';
+  data_win_eventdata_attributeValue matches
+  '*827D319E-6EAC-11D2-A4EA-00C04F79F83A*', among other conditions.
+
+known_false_positives: >
+  Users allowed to perform these modifications (user found in field
+  SubjectUserName). Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.elastic.co/guide/en/security/current/group-policy-abuse-for-privilege-addition.html#_setup_275
+  - https://attack.mitre.org/techniques/T1484/001/
+
+response:
+  message: >
+    Group Policy Abuse for Privilege Addition detected on host $agent_name$.
+    Matched data_win_eventdata_attributeLDAPDisplayName:
+    $data_win_eventdata_attributeLDAPDisplayName$. Matched
+    data_win_eventdata_attributeValue: $data_win_eventdata_attributeValue$.
+    MITRE ATT&CK: T1484.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_attributeLDAPDisplayName
+      type: other
+    - field: data_win_eventdata_attributeValue
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1484.001
+  custom_tags:
+    - group
+    - policy
+    - abuse
+    - windows_security
+    - privilege_escalation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5136" AND data_win_eventdata_attributeLDAPDisplayName:/[Gg][Pp][Cc][Mm][Aa][Cc][Hh][Ii][Nn][Ee][Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Nn][Aa][Mm][Ee][Ss]/ AND (data_win_eventdata_attributeValue:/.*827[Dd]319[Ee]-6[Ee][Aa][Cc]-11[Dd]2-[Aa]4[Ee][Aa]-00[Cc]04[Ff]79[Ff]83[Aa].*/ OR data_win_eventdata_attributeValue:/.*803[Ee]14[Aa]0-[Bb]4[Ff][Bb]-11[Dd]0-[Aa]0[Dd]0-00[Aa]0[Cc]90[Ff]574[Bb].*/)

@@ -1,0 +1,178 @@
+name: Operator Bloopers Cobalt Strike Modules
+id: 4f154fb6-27d1-4813-a759-78b93e0b9c48
+version: 1
+schema_version: "1.0"
+date: "2023-01-30"
+author: _pete_0, TheDFIRReport
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4f154fb6-27d1-4813-a759-78b93e0b9c48
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Cobalt Strike module/commands accidentally entered in CMD shell. MITRE
+  ATT&CK: T1059.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "Cmd.Exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\cmd.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-UserHunter*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-ShareFinder*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-Kerberoast*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-SMBAutoBrute*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-Nightmare*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*zerologon*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*av_query*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'Cmd.Exe'; data_win_eventdata_image matches '*\cmd.exe';
+  data_win_eventdata_commandLine matches '*Invoke-UserHunter*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://hstechdocs.helpsystems.com/manuals/cobaltstrike/current/userguide/content/cobalt-4-5-user-guide.pdf
+  - https://thedfirreport.com/2021/10/04/bazarloader-and-the-conti-leaks/
+  - https://thedfirreport.com/2022/06/16/sans-ransomware-summit-2022-can-you-detect-this/
+  - https://attack.mitre.org/techniques/T1059/003/
+
+response:
+  message: >
+    Operator Bloopers Cobalt Strike Modules detected on host $agent_name$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1059.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.003
+  custom_tags:
+    - operator
+    - bloopers
+    - cobalt
+    - process_creation
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Uu][Ss][Ee][Rr][Hh][Uu][Nn][Tt][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ss][Hh][Aa][Rr][Ee][Ff][Ii][Nn][Dd][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Kk][Ee][Rr][Bb][Ee][Rr][Oo][Aa][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ss][Mm][Bb][Aa][Uu][Tt][Oo][Bb][Rr][Uu][Tt][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Nn][Ii][Gg][Hh][Tt][Mm][Aa][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*[Zz][Ee][Rr][Oo][Ll][Oo][Gg][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Aa][Vv]_[Qq][Uu][Ee][Rr][Yy].*/)

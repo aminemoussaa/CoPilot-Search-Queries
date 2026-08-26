@@ -1,0 +1,154 @@
+name: Lace Tempest PowerShell Launcher
+id: 37dc5463-f7e3-4f61-ad76-ba59cd02a651
+version: 1
+schema_version: "1.0"
+date: "2023-11-09"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 37dc5463-f7e3-4f61-ad76-ba59cd02a651
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a PowerShell script used by Lace Tempest APT to launch their malware
+  loader by exploiting CVE-2023-47246 as reported by SysAid Team. MITRE ATT&CK:
+  T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*\\\\SysAidServer\\\\tomcat\\\\webapps*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Starting user.exe*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*\\\\usersfiles\\\\user.exe*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Remove-Item -Force \"$wapps*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*(Sophos).*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*\SysAidServer\tomcat\webapps*';
+  data_win_eventdata_scriptBlockText matches '*Starting user.exe*';
+  data_win_eventdata_scriptBlockText matches '*\usersfiles\user.exe*', among
+  other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.sysaid.com/blog/service-desk/on-premise-software-security-vulnerability-notification
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Lace Tempest PowerShell Launcher detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - tempest
+    - powershell
+    - launcher
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*\\[Ss][Yy][Ss][Aa][Ii][Dd][Ss][Ee][Rr][Vv][Ee][Rr]\\[Tt][Oo][Mm][Cc][Aa][Tt]\\[Ww][Ee][Bb][Aa][Pp][Pp][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*[Ss][Tt][Aa][Rr][Tt][Ii][Nn][Gg] [Uu][Ss][Ee][Rr]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*\\[Uu][Ss][Ee][Rr][Ss][Ff][Ii][Ll][Ee][Ss]\\[Uu][Ss][Ee][Rr]\.[Ee][Xx][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Ii][Tt][Ee][Mm] -[Ff][Oo][Rr][Cc][Ee] \"\$[Ww][Aa][Pp][Pp][Ss].*/ AND data_win_eventdata_scriptBlockText:/.*\([Ss][Oo][Pp][Hh][Oo][Ss]\)\..*/

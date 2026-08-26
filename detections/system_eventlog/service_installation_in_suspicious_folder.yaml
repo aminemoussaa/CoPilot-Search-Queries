@@ -1,0 +1,164 @@
+name: Service Installation in Suspicious Folder
+id: 5e993621-67d4-488a-b9ae-b420d08b96cb
+version: 1
+schema_version: "1.0"
+date: "2024-01-18"
+author: pH-T (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5e993621-67d4-488a-b9ae-b420d08b96cb
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects service installation in suspicious folder appdata. MITRE ATT&CK:
+  T1543.003.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "Service Control Manager"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "7045"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imagePath:
+                    value: "*\\\\AppData\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imagePath: "*\\\\\\\\127.0.0.1*"
+              - wildcard:
+                  data_win_eventdata_imagePath:
+                    value: "*\\\\\\\\localhost*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_serviceName"
+        - exists:
+            field: "data_win_eventdata_imagePath"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_serviceName:
+                          value: "Zoom Sharing Service"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imagePath:
+                          value: "*:\\\\Program Files\\\\Common Files\\\\Zoom\\\\Support\\\\CptService.exe*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_imagePath
+    - data_win_eventdata_serviceName
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals 'Service Control Manager';
+  data_win_system_eventID equals '7045'; data_win_eventdata_imagePath matches
+  '*\AppData\*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - Internal Research
+  - https://attack.mitre.org/techniques/T1543/003/
+
+response:
+  message: >
+    Service Installation in Suspicious Folder detected on host $agent_name$.
+    Matched data_win_system_providerName: $data_win_system_providerName$.
+    Matched data_win_eventdata_imagePath: $data_win_eventdata_imagePath$. MITRE
+    ATT&CK: T1543.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_imagePath
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+  custom_tags:
+    - service
+    - installation
+    - folder
+    - windows_system
+    - persistence
+    - privilege_escalation
+    - car_2013_09_005
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Mm][Aa][Nn][Aa][Gg][Ee][Rr]/ AND data_win_system_eventID:"7045" AND (data_win_eventdata_imagePath:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\.*/ OR data_win_eventdata_imagePath:/.*\\\\127\.0\.0\.1.*/ OR data_win_eventdata_imagePath:/.*\\\\[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/) AND _exists_:data_win_eventdata_serviceName AND _exists_:data_win_eventdata_imagePath AND NOT (data_win_eventdata_serviceName:/[Zz][Oo][Oo][Mm] [Ss][Hh][Aa][Rr][Ii][Nn][Gg] [Ss][Ee][Rr][Vv][Ii][Cc][Ee]/ AND data_win_eventdata_imagePath:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Zz][Oo][Oo][Mm]\\[Ss][Uu][Pp][Pp][Oo][Rr][Tt]\\[Cc][Pp][Tt][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee].*/)

@@ -1,0 +1,145 @@
+name: Suspicious Cobalt Strike DNS Beaconing - Sysmon
+id: f356a9c4-effd-4608-bbf8-408afd5cd006
+version: 1
+schema_version: "1.0"
+date: "2023-01-16"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f356a9c4-effd-4608-bbf8-408afd5cd006
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a program that invoked suspicious DNS queries known from Cobalt Strike
+  beacons. MITRE ATT&CK: T1071.004.
+
+data_source:
+  - Sysmon EventID 22 - DNS Query
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "22"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_queryName:
+                    value: "aaa.stage.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_queryName:
+                    value: "post.1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_queryName:
+                    value: "*.stage.123456.*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_queryName
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 22 (DNS query) enabled in the Sysmon configuration and
+  the Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent.
+  The detection looks for events where data_win_eventdata_queryName matches
+  'aaa.stage.*'; data_win_eventdata_queryName matches 'post.1*';
+  data_win_eventdata_queryName matches '*.stage.123456.*'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.icebrg.io/blog/footprints-of-fin7-tracking-actor-patterns
+  - https://www.sekoia.io/en/hunting-and-detecting-cobalt-strike/
+  - https://attack.mitre.org/techniques/T1071/004/
+
+response:
+  message: >
+    Suspicious Cobalt Strike DNS Beaconing - Sysmon detected on host
+    $agent_name$. Matched data_win_eventdata_queryName:
+    $data_win_eventdata_queryName$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1071.004
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_queryName
+      type: domain
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1071.004
+  custom_tags:
+    - cobalt
+    - strike
+    - beaconing
+    - dns_query
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"22" AND (data_win_eventdata_queryName:/[Aa][Aa][Aa]\.[Ss][Tt][Aa][Gg][Ee]\..*/ OR data_win_eventdata_queryName:/[Pp][Oo][Ss][Tt]\.1.*/ OR data_win_eventdata_queryName:/.*\.[Ss][Tt][Aa][Gg][Ee]\.123456\..*/)

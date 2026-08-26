@@ -1,0 +1,227 @@
+name: Curl File Upload To File Sharing Websites
+id: e328cc73-f92a-42fb-b3fa-7c2cffda981a
+version: 1
+schema_version: "1.0"
+date: "2026-03-29"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e328cc73-f92a-42fb-b3fa-7c2cffda981a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of curl to upload files to known file sharing domains, which may
+  indicate data exfiltration. MITRE ATT&CK: T1567.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\curl.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "curl.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*0x0.st*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*bashupload.com*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*chunk.io*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*file.io*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*filebin.net*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*pastebin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*send.firefox.com*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*temp.sh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*transfer.sh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ufile.io*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*uploadfiles.io*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*wetransfer.com*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*x0.at*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --form*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --upload-file*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --data*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -X POST*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --request POST *"
+                    case_insensitive: true
+              - regexp:
+                  data_win_eventdata_commandLine: ".*([ ]-[FTd][ ]).*"
+              - regexp:
+                  data_win_eventdata_commandLine: ".*([ ]-sT[ ]).*"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\curl.exe'; data_win_eventdata_originalFileName equals 'curl.exe';
+  data_win_eventdata_commandLine matches '*0x0.st*', among other conditions.
+
+known_false_positives: >
+  Legitimate file uploads to these services by administrators or developers.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://unit42.paloaltonetworks.com/advanced-backdoor-squidoor/
+  - https://attack.mitre.org/techniques/T1567/002/
+
+response:
+  message: >
+    Curl File Upload To File Sharing Websites detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1567.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1567.002
+  custom_tags:
+    - upload
+    - sharing
+    - websites
+    - process_creation
+    - sysmon
+    - exfiltration
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Cc][Uu][Rr][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Cc][Uu][Rr][Ll]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*0[Xx]0\.[Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Bb][Aa][Ss][Hh][Uu][Pp][Ll][Oo][Aa][Dd]\.[Cc][Oo][Mm].*/ OR data_win_eventdata_commandLine:/.*[Cc][Hh][Uu][Nn][Kk]\.[Ii][Oo].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Ll][Ee]\.[Ii][Oo].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Ll][Ee][Bb][Ii][Nn]\.[Nn][Ee][Tt].*/ OR data_win_eventdata_commandLine:/.*[Pp][Aa][Ss][Tt][Ee][Bb][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Nn][Dd]\.[Ff][Ii][Rr][Ee][Ff][Oo][Xx]\.[Cc][Oo][Mm].*/ OR data_win_eventdata_commandLine:/.*[Tt][Ee][Mm][Pp]\.[Ss][Hh].*/ OR data_win_eventdata_commandLine:/.*[Tt][Rr][Aa][Nn][Ss][Ff][Ee][Rr]\.[Ss][Hh].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ff][Ii][Ll][Ee]\.[Ii][Oo].*/ OR data_win_eventdata_commandLine:/.*[Uu][Pp][Ll][Oo][Aa][Dd][Ff][Ii][Ll][Ee][Ss]\.[Ii][Oo].*/ OR data_win_eventdata_commandLine:/.*[Ww][Ee][Tt][Rr][Aa][Nn][Ss][Ff][Ee][Rr]\.[Cc][Oo][Mm].*/ OR data_win_eventdata_commandLine:/.*[Xx]0\.[Aa][Tt].*/) AND (data_win_eventdata_commandLine:/.* --[Ff][Oo][Rr][Mm].*/ OR data_win_eventdata_commandLine:/.* --[Uu][Pp][Ll][Oo][Aa][Dd]-[Ff][Ii][Ll][Ee].*/ OR data_win_eventdata_commandLine:/.* --[Dd][Aa][Tt][Aa].*/ OR data_win_eventdata_commandLine:/.* -[Xx] [Pp][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.* --[Rr][Ee][Qq][Uu][Ee][Ss][Tt] [Pp][Oo][Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.*([ ]-[FTd][ ]).*/ OR data_win_eventdata_commandLine:/.*([ ]-sT[ ]).*/)

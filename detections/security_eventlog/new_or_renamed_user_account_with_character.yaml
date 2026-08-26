@@ -1,0 +1,160 @@
+name: New or Renamed User Account with '$' Character
+id: cfeed607-6aa4-4bbd-9627-b637deb723c8
+version: 1
+schema_version: "1.0"
+date: "2024-01-16"
+author: Ilyas Ochkov, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cfeed607-6aa4-4bbd-9627-b637deb723c8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a user with the "$" character. This can be used by
+  attackers to hide a user or trick detection systems that lack the parsing
+  mechanisms. MITRE ATT&CK: T1036.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4720"
+                    - wildcard:
+                        data_win_eventdata_samAccountName: "*$*"
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4781"
+                    - wildcard:
+                        data_win_eventdata_newTargetUserName: "*$*"
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_system_eventID"
+        - exists:
+            field: "data_win_eventdata_targetUserName"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "4720"
+                    - term:
+                        data_win_eventdata_targetUserName:
+                          value: "HomeGroupUser$"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_samAccountName
+    - data_win_eventdata_newTargetUserName
+    - data_win_eventdata_targetUserName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4720'; data_win_eventdata_samAccountName
+  matches '*$*'; data_win_system_eventID equals '4781', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/SBousseaden/status/1387743867663958021
+  - https://attack.mitre.org/techniques/T1036/
+
+response:
+  message: >
+    New or Renamed User Account with '$' Character detected on host
+    $agent_name$. Matched data_win_eventdata_samAccountName:
+    $data_win_eventdata_samAccountName$. Matched
+    data_win_eventdata_newTargetUserName:
+    $data_win_eventdata_newTargetUserName$. MITRE ATT&CK: T1036
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_samAccountName
+      type: other
+    - field: data_win_eventdata_newTargetUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036
+  custom_tags:
+    - renamed
+    - account
+    - character
+    - windows_security
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_win_system_eventID:"4720" AND data_win_eventdata_samAccountName:/.*\$.*/) OR (data_win_system_eventID:"4781" AND data_win_eventdata_newTargetUserName:/.*\$.*/)) AND _exists_:data_win_system_eventID AND _exists_:data_win_eventdata_targetUserName AND NOT (data_win_system_eventID:"4720" AND data_win_eventdata_targetUserName:/[Hh][Oo][Mm][Ee][Gg][Rr][Oo][Uu][Pp][Uu][Ss][Ee][Rr]\$/)

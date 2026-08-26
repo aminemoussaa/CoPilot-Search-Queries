@@ -1,0 +1,217 @@
+name: BPFDoor Abnormal Process ID or Lock File Accessed
+id: 808146b2-9332-4d78-9416-d7e47012d83d
+version: 1
+schema_version: "1.0"
+date: "2026-03-30"
+author: Rafal Piasecki
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 808146b2-9332-4d78-9416-d7e47012d83d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  detects BPFDoor .lock and .pid files access in temporary file storage
+  facility. MITRE ATT&CK: T1106, T1059.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_audit_type:
+              value: "PATH"
+              case_insensitive: true
+        - bool:
+            should:
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/aepmonend.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/auditd.lock"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/cma.lock"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/console-kit.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/consolekit.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/daemon.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/hald-addon.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/hald-smartd.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/haldrund.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/hp-health.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/hpasmlit.lock"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/hpasmlited.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/kdevrund.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/lldpad.lock"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/mcelog.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/system.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/uvp-srv.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/vmtoolagt.pid"
+                    case_insensitive: true
+              - term:
+                  data_audit_file_name:
+                    value: "/var/run/xinetd.lock"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_file_name
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_execve_a0
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'PATH'; data_audit_file_name equals '/var/run/aepmonend.pid';
+  data_audit_file_name equals '/var/run/auditd.lock', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.sandflysecurity.com/blog/bpfdoor-an-evasive-linux-backdoor-technical-analysis/
+  - https://www.elastic.co/security-labs/a-peek-behind-the-bpfdoor
+  - https://www.rapid7.com/blog/post/tr-bpfdoor-telecom-networks-sleeper-cells-threat-research-report/
+  - https://github.com/rapid7/Rapid7-Labs/blob/741c7196ec12a0a56b63463d1fd726ff14d3a97a/BPFDoor/rapid7_detect_bpfdoor.sh
+  - https://attack.mitre.org/techniques/T1106/
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    BPFDoor Abnormal Process ID or Lock File Accessed detected on host
+    $agent_name$. Matched data_audit_type: $data_audit_type$. Matched
+    data_audit_file_name: $data_audit_file_name$. MITRE ATT&CK: T1106, T1059
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_file_name
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1106
+    - T1059
+  custom_tags:
+    - bpfdoor
+    - abnormal
+    - accessed
+    - linux
+    - auditd
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_audit_type:/[Pp][Aa][Tt][Hh]/ AND (data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Aa][Ee][Pp][Mm][Oo][Nn][Ee][Nn][Dd]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Aa][Uu][Dd][Ii][Tt][Dd]\.[Ll][Oo][Cc][Kk]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Cc][Mm][Aa]\.[Ll][Oo][Cc][Kk]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Cc][Oo][Nn][Ss][Oo][Ll][Ee]-[Kk][Ii][Tt]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Cc][Oo][Nn][Ss][Oo][Ll][Ee][Kk][Ii][Tt]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Dd][Aa][Ee][Mm][Oo][Nn]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Hh][Aa][Ll][Dd]-[Aa][Dd][Dd][Oo][Nn]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Hh][Aa][Ll][Dd]-[Ss][Mm][Aa][Rr][Tt][Dd]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Hh][Aa][Ll][Dd][Rr][Uu][Nn][Dd]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Hh][Pp]-[Hh][Ee][Aa][Ll][Tt][Hh]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Hh][Pp][Aa][Ss][Mm][Ll][Ii][Tt]\.[Ll][Oo][Cc][Kk]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Hh][Pp][Aa][Ss][Mm][Ll][Ii][Tt][Ee][Dd]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Kk][Dd][Ee][Vv][Rr][Uu][Nn][Dd]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Ll][Ll][Dd][Pp][Aa][Dd]\.[Ll][Oo][Cc][Kk]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Mm][Cc][Ee][Ll][Oo][Gg]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Ss][Yy][Ss][Tt][Ee][Mm]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Uu][Vv][Pp]-[Ss][Rr][Vv]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Vv][Mm][Tt][Oo][Oo][Ll][Aa][Gg][Tt]\.[Pp][Ii][Dd]/ OR data_audit_file_name:/\/[Vv][Aa][Rr]\/[Rr][Uu][Nn]\/[Xx][Ii][Nn][Ee][Tt][Dd]\.[Ll][Oo][Cc][Kk]/)

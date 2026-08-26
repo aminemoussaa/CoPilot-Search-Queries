@@ -1,0 +1,172 @@
+name: DarkGate - Drop DarkGate Loader In C:\Temp Directory
+id: df49c691-8026-48dd-94d3-4ba6a79102a8
+version: 1
+schema_version: "1.0"
+date: "2024-05-31"
+author: Tomasz Dyduch, Josh Nickels
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: df49c691-8026-48dd-94d3-4ba6a79102a8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects attackers attempting to save, decrypt and execute the DarkGate Loader
+  in C:\temp folder. MITRE ATT&CK: T1059.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*:\\\\temp\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.au3"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\autoit3.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\temp\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*.au3"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\autoit3.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*:\temp\*'; data_win_eventdata_targetFilename matches '*.au3';
+  data_win_eventdata_targetFilename matches '*\autoit3.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely legitimate usage of AutoIT in temp folders. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://www.bleepingcomputer.com/news/security/hackers-exploit-windows-smartscreen-flaw-to-drop-darkgate-malware/
+  - https://www.trendmicro.com/en_us/research/24/c/cve-2024-21412--darkgate-operators-exploit-microsoft-windows-sma.html
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    DarkGate - Drop DarkGate Loader In C:\Temp Directory detected on host
+    $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1059
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+  custom_tags:
+    - darkgate
+    - loader
+    - directory
+    - file_event
+    - sysmon
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND ((data_win_eventdata_targetFilename:/.*:\\[Tt][Ee][Mm][Pp]\\.*/ AND (data_win_eventdata_targetFilename:/.*\.[Aa][Uu]3/ OR data_win_eventdata_targetFilename:/.*\\[Aa][Uu][Tt][Oo][Ii][Tt]3\.[Ee][Xx][Ee]/)) OR (data_win_eventdata_image:/.*:\\[Tt][Ee][Mm][Pp]\\.*/ AND (data_win_eventdata_image:/.*\.[Aa][Uu]3/ OR data_win_eventdata_image:/.*\\[Aa][Uu][Tt][Oo][Ii][Tt]3\.[Ee][Xx][Ee]/)))

@@ -1,0 +1,216 @@
+name: Potentially Suspicious File Download From ZIP TLD
+id: 0bb4bbeb-fe52-4044-b40c-430a04577ebe
+version: 1
+schema_version: "1.0"
+date: "2023-05-18"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0bb4bbeb-fe52-4044-b40c-430a04577ebe
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the download of a file with a potentially suspicious extension from a
+  .zip top level domain.
+
+data_source:
+  - Sysmon EventID 15 - FileCreateStreamHash
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "15"
+        
+        - wildcard:
+            data_win_eventdata_contents:
+              value: "*.zip/*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.bat:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.dat:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.dll:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.doc:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.docm:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.exe:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.hta:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.pptm:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ps1:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.rar:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.rtf:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.sct:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbe:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbs:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ws:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.wsf:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.xll:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.xls:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.xlsm:Zone*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.zip:Zone*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_contents
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_contents matches
+  '*.zip/*'; data_win_eventdata_targetFilename matches '*.bat:Zone*';
+  data_win_eventdata_targetFilename matches '*.dat:Zone*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate file downloads from a websites and web services that uses the
+  ".zip" top level domain. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/cyb3rops/status/1659175181695287297
+  - https://fabian-voith.de/2020/06/25/sysmon-v11-1-reads-alternate-data-streams/
+
+response:
+  message: >
+    Potentially Suspicious File Download From ZIP TLD detected on host
+    $agent_name$. Matched data_win_eventdata_contents:
+    $data_win_eventdata_contents$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_contents
+      type: other
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - download
+    - create_stream_hash
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"15" AND data_win_eventdata_contents:/.*\.[Zz][Ii][Pp]\/.*/ AND (data_win_eventdata_targetFilename:/.*\.[Bb][Aa][Tt]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Aa][Tt]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Ll][Ll]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Cc]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Dd][Oo][Cc][Mm]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Ee][Xx][Ee]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Hh][Tt][Aa]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Pp][Tt][Mm]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Ss]1:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Rr][Aa][Rr]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Rr][Tt][Ff]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Ss][Cc][Tt]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ee]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ss]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Ww][Ss]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Ww][Ss][Ff]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ll]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ss]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Xx][Ll][Ss][Mm]:[Zz][Oo][Nn][Ee].*/ OR data_win_eventdata_targetFilename:/.*\.[Zz][Ii][Pp]:[Zz][Oo][Nn][Ee].*/)

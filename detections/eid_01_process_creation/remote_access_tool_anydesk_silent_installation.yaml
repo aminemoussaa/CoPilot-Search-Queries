@@ -1,0 +1,146 @@
+name: Remote Access Tool - AnyDesk Silent Installation
+id: 114e7f1c-f137-48c8-8f54-3088c24ce4b9
+version: 1
+schema_version: "1.0"
+date: "2023-03-05"
+author: Ján Trenčanský
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 114e7f1c-f137-48c8-8f54-3088c24ce4b9
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects AnyDesk Remote Desktop silent installation. Which can be used by
+  attackers to gain remote access. MITRE ATT&CK: T1219.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*--install*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*--start-with-win*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*--silent*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*--install*'; data_win_eventdata_commandLine matches '*--start-with-win*';
+  data_win_eventdata_commandLine matches '*--silent*'.
+
+known_false_positives: >
+  Legitimate deployment of AnyDesk. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://twitter.com/TheDFIRReport/status/1423361119926816776?s=20
+  - https://support.anydesk.com/Automatic_Deployment
+  - https://attack.mitre.org/techniques/T1219/002/
+
+response:
+  message: >
+    Remote Access Tool - AnyDesk Silent Installation detected on host
+    $agent_name$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1219.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1219.002
+  custom_tags:
+    - anydesk
+    - silent
+    - installation
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_commandLine:/.*--[Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*--[Ss][Tt][Aa][Rr][Tt]-[Ww][Ii][Tt][Hh]-[Ww][Ii][Nn].*/ AND data_win_eventdata_commandLine:/.*--[Ss][Ii][Ll][Ee][Nn][Tt].*/

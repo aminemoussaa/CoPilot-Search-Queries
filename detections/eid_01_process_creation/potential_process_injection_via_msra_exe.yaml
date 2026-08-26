@@ -1,0 +1,178 @@
+name: Potential Process Injection Via Msra.EXE
+id: 744a188b-0415-4792-896f-11ddb0588dbc
+version: 1
+schema_version: "1.0"
+date: "2023-02-03"
+author: Alexander McDonald
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 744a188b-0415-4792-896f-11ddb0588dbc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential process injection via Microsoft Remote Asssistance
+  (Msra.exe) by looking at suspicious child processes spawned from the
+  aforementioned process. It has been a target used by many threat actors and
+  used for discovery and persistence tactics. MITRE ATT&CK: T1055.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\msra.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_parentCommandLine:
+              value: "*msra.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\arp.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\cmd.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\net.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\netstat.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\nslookup.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\route.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\schtasks.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\whoami.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\msra.exe'; data_win_eventdata_parentCommandLine matches '*msra.exe';
+  data_win_eventdata_image matches '*\arp.exe', among other conditions.
+
+known_false_positives: >
+  Legitimate use of Msra.exe. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/security/blog/2021/12/09/a-closer-look-at-qakbots-latest-building-blocks-and-how-to-knock-them-down/
+  - https://www.fortinet.com/content/dam/fortinet/assets/analyst-reports/ar-qakbot.pdf
+  - https://attack.mitre.org/techniques/T1055/
+
+response:
+  message: >
+    Potential Process Injection Via Msra.EXE detected on host $agent_name$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    Matched data_win_eventdata_parentCommandLine:
+    $data_win_eventdata_parentCommandLine$. MITRE ATT&CK: T1055
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_parentCommandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055
+  custom_tags:
+    - injection
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Mm][Ss][Rr][Aa]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*[Mm][Ss][Rr][Aa]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_image:/.*\\[Aa][Rr][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ee][Tt][Ss][Tt][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Rr][Oo][Uu][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Hh][Oo][Aa][Mm][Ii]\.[Ee][Xx][Ee]/)

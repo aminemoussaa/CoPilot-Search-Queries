@@ -1,0 +1,146 @@
+name: Creation Of An User Account
+id: 759d0d51-bc99-4b5e-9add-8f5b2c8e7512
+version: 1
+schema_version: "1.0"
+date: "2022-12-20"
+author: Marie Euler, Pawel Mazur
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 759d0d51-bc99-4b5e-9add-8f5b2c8e7512
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a new user account. Such accounts may be used for
+  persistence that do not require persistent remote access tools to be deployed
+  on the system. MITRE ATT&CK: T1136.001.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_audit_type:
+                          value: "SYSCALL"
+                          case_insensitive: true
+                    - wildcard:
+                        data_audit_exe:
+                          value: "*/useradd"
+                          case_insensitive: true
+              - term:
+                  data_audit_type:
+                    value: "ADD_USER"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_execve_a0
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'SYSCALL'; data_audit_exe matches '*/useradd'; data_audit_type equals
+  'ADD_USER'.
+
+known_false_positives: >
+  Admin activity. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/security_guide/sec-understanding_audit_log_files
+  - https://access.redhat.com/articles/4409591#audit-record-types-2
+  - https://www.youtube.com/watch?v=VmvY5SQm5-Y&ab_channel=M45C07
+  - https://attack.mitre.org/techniques/T1136/001/
+
+response:
+  message: >
+    Creation Of An User Account detected on host $agent_name$. Matched
+    data_audit_type: $data_audit_type$. Matched data_audit_exe:
+    $data_audit_exe$. MITRE ATT&CK: T1136.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_exe
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1136.001
+  custom_tags:
+    - account
+    - linux
+    - auditd
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_audit_type:/[Ss][Yy][Ss][Cc][Aa][Ll][Ll]/ AND data_audit_exe:/.*\/[Uu][Ss][Ee][Rr][Aa][Dd][Dd]/) OR data_audit_type:/[Aa][Dd][Dd]_[Uu][Ss][Ee][Rr]/)

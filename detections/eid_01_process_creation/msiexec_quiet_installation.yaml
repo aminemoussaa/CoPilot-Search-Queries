@@ -1,0 +1,296 @@
+name: Msiexec Quiet Installation
+id: 79a87aa6-e4bd-42fc-a5bb-5e6fbdcd62f5
+version: 1
+schema_version: "1.0"
+date: "2024-12-01"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 79a87aa6-e4bd-42fc-a5bb-5e6fbdcd62f5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may abuse msiexec.exe to proxy execution of malicious payloads.
+  Msiexec.exe is the command-line utility for the Windows Installer and is thus
+  commonly associated with executing installation packages (.msi). MITRE ATT&CK:
+  T1218.007.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\msiexec.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "msiexec.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-i*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/i*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–i*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—i*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―i*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-package*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/package*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–package*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—package*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―package*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-j*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/j*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–j*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—j*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―j*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*–q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*—q*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*―q*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_integrityLevel"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "C:\\\\Windows\\\\Temp\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\CCM\\Ccm32BitLauncher.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_integrityLevel:
+                                      value: "System"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_integrityLevel:
+                                      value: "S-1-16-16384"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_integrityLevel
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\msiexec.exe'; data_win_eventdata_originalFileName equals 'msiexec.exe';
+  data_win_eventdata_commandLine matches '*-i*', among other conditions.
+
+known_false_positives: >
+  WindowsApps installing updates via the quiet flag. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/msiexec
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1218.007/T1218.007.md
+  - https://twitter.com/_st0pp3r_/status/1583914244344799235
+  - https://attack.mitre.org/techniques/T1218/007/
+
+response:
+  message: >
+    Msiexec Quiet Installation detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1218.007
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218.007
+  custom_tags:
+    - msiexec
+    - quiet
+    - installation
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*-[Ii].*/ OR data_win_eventdata_commandLine:/.*\/[Ii].*/ OR data_win_eventdata_commandLine:/.*–[Ii].*/ OR data_win_eventdata_commandLine:/.*—[Ii].*/ OR data_win_eventdata_commandLine:/.*―[Ii].*/ OR data_win_eventdata_commandLine:/.*-[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*/ OR data_win_eventdata_commandLine:/.*\/[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*/ OR data_win_eventdata_commandLine:/.*–[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*/ OR data_win_eventdata_commandLine:/.*—[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*/ OR data_win_eventdata_commandLine:/.*―[Pp][Aa][Cc][Kk][Aa][Gg][Ee].*/ OR data_win_eventdata_commandLine:/.*-[Aa].*/ OR data_win_eventdata_commandLine:/.*\/[Aa].*/ OR data_win_eventdata_commandLine:/.*–[Aa].*/ OR data_win_eventdata_commandLine:/.*—[Aa].*/ OR data_win_eventdata_commandLine:/.*―[Aa].*/ OR data_win_eventdata_commandLine:/.*-[Jj].*/ OR data_win_eventdata_commandLine:/.*\/[Jj].*/ OR data_win_eventdata_commandLine:/.*–[Jj].*/ OR data_win_eventdata_commandLine:/.*—[Jj].*/ OR data_win_eventdata_commandLine:/.*―[Jj].*/) AND (data_win_eventdata_commandLine:/.*-[Qq].*/ OR data_win_eventdata_commandLine:/.*\/[Qq].*/ OR data_win_eventdata_commandLine:/.*–[Qq].*/ OR data_win_eventdata_commandLine:/.*—[Qq].*/ OR data_win_eventdata_commandLine:/.*―[Qq].*/) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_integrityLevel AND NOT ((data_win_eventdata_parentImage:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_parentImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/) OR data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR (data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Cc][Mm]\\[Cc][Cc][Mm]32[Bb][Ii][Tt][Ll][Aa][Uu][Nn][Cc][Hh][Ee][Rr]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_integrityLevel:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_integrityLevel:/[Ss]-1-16-16384/)))

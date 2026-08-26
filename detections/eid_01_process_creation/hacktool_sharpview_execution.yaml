@@ -1,0 +1,483 @@
+name: HackTool - SharpView Execution
+id: b2317cfa-4a47-4ead-b3ff-297438c0bc2d
+version: 1
+schema_version: "1.0"
+date: "2023-02-14"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b2317cfa-4a47-4ead-b3ff-297438c0bc2d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may look for details about the network configuration and settings
+  of systems they access or through information discovery of remote systems.
+  MITRE ATT&CK: T1049, T1069.002, T1482, T1135, T1033.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "SharpView.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SharpView.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Add-RemoteConnection*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Convert-ADName*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ConvertFrom-SID*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ConvertFrom-UACValue*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Convert-SidToName*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Export-PowerViewCSV*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-DomainObjectPropertyOutlier*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-DomainProcess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-DomainShare*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-DomainUserEvent*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-DomainUserLocation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-ForeignGroup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-ForeignUser*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-GPOComputerAdmin*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-GPOLocation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-Interesting*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-LocalAdminAccess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Find-ManagedSecurityGroups*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-CachedRDPConnection*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DFSshare*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainComputer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainController*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainDFSShare*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainDNSRecord*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainFileServer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainForeign*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainGPO*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainGroup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainGUIDMap*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainManagedSecurityGroup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainObject*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainOU*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainPolicy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainSID*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainSite*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainSPNTicket*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainSubnet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainTrust*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-DomainUserEvent*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-ForestDomain*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-ForestGlobalCatalog*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-ForestTrust*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-GptTmpl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-GroupsXML*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-LastLoggedOn*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-LoggedOnLocal*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetComputer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetDomain*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetFileServer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetForest*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetGPO*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetGroupMember*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetLocalGroup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetLoggedon*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetOU*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetProcess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetRDPSession*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetSession*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetShare*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetSite*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetSubnet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-NetUser*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-PathAcl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-PrincipalContext*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-RegistryMountedDrive*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-RegLoggedOn*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-WMIRegCachedRDPConnection*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-WMIRegLastLoggedOn*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-WMIRegMountedDrive*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-WMIRegProxy*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-ACLScanner*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-CheckLocalAdminAccess*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-Kerberoast*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-MapDomainTrust*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-RevertToSelf*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-Sharefinder*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-UserImpersonation*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Remove-DomainObjectAcl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Remove-RemoteConnection*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Request-SPNTicket*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Set-DomainObject*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Test-AdminAccess*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_originalFileName equals
+  'SharpView.exe'; data_win_eventdata_image matches '*\SharpView.exe';
+  data_win_eventdata_commandLine matches '*Add-RemoteConnection*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/tevora-threat/SharpView/
+  - https://github.com/PowerShellMafia/PowerSploit/blob/d943001a7defb5e0d1657085a77a0e78609be58f/Recon/PowerView.ps1
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1049/T1049.md#atomic-test-4---system-discovery-using-sharpview
+  - https://attack.mitre.org/techniques/T1049/
+  - https://attack.mitre.org/techniques/T1069/002/
+  - https://attack.mitre.org/techniques/T1482/
+  - https://attack.mitre.org/techniques/T1135/
+  - https://attack.mitre.org/techniques/T1033/
+
+response:
+  message: >
+    HackTool - SharpView Execution detected on host $agent_name$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1049, T1069.002, T1482, T1135, T1033
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1049
+    - T1069.002
+    - T1482
+    - T1135
+    - T1033
+  custom_tags:
+    - hacktool
+    - sharpview
+    - process_creation
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_originalFileName:/[Ss][Hh][Aa][Rr][Pp][Vv][Ii][Ee][Ww]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ss][Hh][Aa][Rr][Pp][Vv][Ii][Ee][Ww]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*[Aa][Dd][Dd]-[Rr][Ee][Mm][Oo][Tt][Ee][Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt]-[Aa][Dd][Nn][Aa][Mm][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Ss][Ii][Dd].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt][Ff][Rr][Oo][Mm]-[Uu][Aa][Cc][Vv][Aa][Ll][Uu][Ee].*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Vv][Ee][Rr][Tt]-[Ss][Ii][Dd][Tt][Oo][Nn][Aa][Mm][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ee][Xx][Pp][Oo][Rr][Tt]-[Pp][Oo][Ww][Ee][Rr][Vv][Ii][Ee][Ww][Cc][Ss][Vv].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Dd][Oo][Mm][Aa][Ii][Nn][Oo][Bb][Jj][Ee][Cc][Tt][Pp][Rr][Oo][Pp][Ee][Rr][Tt][Yy][Oo][Uu][Tt][Ll][Ii][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Dd][Oo][Mm][Aa][Ii][Nn][Pp][Rr][Oo][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Dd][Oo][Mm][Aa][Ii][Nn][Ss][Hh][Aa][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Dd][Oo][Mm][Aa][Ii][Nn][Uu][Ss][Ee][Rr][Ee][Vv][Ee][Nn][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Dd][Oo][Mm][Aa][Ii][Nn][Uu][Ss][Ee][Rr][Ll][Oo][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Ff][Oo][Rr][Ee][Ii][Gg][Nn][Gg][Rr][Oo][Uu][Pp].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Ff][Oo][Rr][Ee][Ii][Gg][Nn][Uu][Ss][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Gg][Pp][Oo][Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr][Aa][Dd][Mm][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Gg][Pp][Oo][Ll][Oo][Cc][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Ii][Nn][Tt][Ee][Rr][Ee][Ss][Tt][Ii][Nn][Gg].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Ll][Oo][Cc][Aa][Ll][Aa][Dd][Mm][Ii][Nn][Aa][Cc][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]-[Mm][Aa][Nn][Aa][Gg][Ee][Dd][Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Gg][Rr][Oo][Uu][Pp][Ss].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Cc][Aa][Cc][Hh][Ee][Dd][Rr][Dd][Pp][Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Ff][Ss][Ss][Hh][Aa][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ll][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Dd][Ff][Ss][Ss][Hh][Aa][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Dd][Nn][Ss][Rr][Ee][Cc][Oo][Rr][Dd].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Ff][Ii][Ll][Ee][Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Ff][Oo][Rr][Ee][Ii][Gg][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Gg][Pp][Oo].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Gg][Rr][Oo][Uu][Pp].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Gg][Uu][Ii][Dd][Mm][Aa][Pp].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Gg][Rr][Oo][Uu][Pp].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Oo][Bb][Jj][Ee][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Oo][Uu].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Pp][Oo][Ll][Ii][Cc][Yy].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Ss][Ii][Dd].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Ss][Ii][Tt][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Ss][Pp][Nn][Tt][Ii][Cc][Kk][Ee][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Ss][Uu][Bb][Nn][Ee][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Tt][Rr][Uu][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Uu][Ss][Ee][Rr][Ee][Vv][Ee][Nn][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ff][Oo][Rr][Ee][Ss][Tt][Dd][Oo][Mm][Aa][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ff][Oo][Rr][Ee][Ss][Tt][Gg][Ll][Oo][Bb][Aa][Ll][Cc][Aa][Tt][Aa][Ll][Oo][Gg].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ff][Oo][Rr][Ee][Ss][Tt][Tt][Rr][Uu][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Gg][Pp][Tt][Tt][Mm][Pp][Ll].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Gg][Rr][Oo][Uu][Pp][Ss][Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ll][Aa][Ss][Tt][Ll][Oo][Gg][Gg][Ee][Dd][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ll][Oo][Gg][Gg][Ee][Dd][Oo][Nn][Ll][Oo][Cc][Aa][Ll].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Dd][Oo][Mm][Aa][Ii][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ff][Ii][Ll][Ee][Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ff][Oo][Rr][Ee][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Gg][Pp][Oo].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Gg][Rr][Oo][Uu][Pp][Mm][Ee][Mm][Bb][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ll][Oo][Cc][Aa][Ll][Gg][Rr][Oo][Uu][Pp].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ll][Oo][Gg][Gg][Ee][Dd][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Oo][Uu].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Pp][Rr][Oo][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Rr][Dd][Pp][Ss][Ee][Ss][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ss][Ee][Ss][Ss][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ss][Hh][Aa][Rr][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ss][Ii][Tt][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Ss][Uu][Bb][Nn][Ee][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Nn][Ee][Tt][Uu][Ss][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Pp][Aa][Tt][Hh][Aa][Cc][Ll].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Pp][Rr][Ii][Nn][Cc][Ii][Pp][Aa][Ll][Cc][Oo][Nn][Tt][Ee][Xx][Tt].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Rr][Ee][Gg][Ii][Ss][Tt][Rr][Yy][Mm][Oo][Uu][Nn][Tt][Ee][Dd][Dd][Rr][Ii][Vv][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Rr][Ee][Gg][Ll][Oo][Gg][Gg][Ee][Dd][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ww][Mm][Ii][Rr][Ee][Gg][Cc][Aa][Cc][Hh][Ee][Dd][Rr][Dd][Pp][Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ww][Mm][Ii][Rr][Ee][Gg][Ll][Aa][Ss][Tt][Ll][Oo][Gg][Gg][Ee][Dd][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ww][Mm][Ii][Rr][Ee][Gg][Mm][Oo][Uu][Nn][Tt][Ee][Dd][Dd][Rr][Ii][Vv][Ee].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Ww][Mm][Ii][Rr][Ee][Gg][Pp][Rr][Oo][Xx][Yy].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Aa][Cc][Ll][Ss][Cc][Aa][Nn][Nn][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Cc][Hh][Ee][Cc][Kk][Ll][Oo][Cc][Aa][Ll][Aa][Dd][Mm][Ii][Nn][Aa][Cc][Cc][Ee][Ss][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Kk][Ee][Rr][Bb][Ee][Rr][Oo][Aa][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Mm][Aa][Pp][Dd][Oo][Mm][Aa][Ii][Nn][Tt][Rr][Uu][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Rr][Ee][Vv][Ee][Rr][Tt][Tt][Oo][Ss][Ee][Ll][Ff].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ss][Hh][Aa][Rr][Ee][Ff][Ii][Nn][Dd][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Uu][Ss][Ee][Rr][Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Dd][Oo][Mm][Aa][Ii][Nn][Oo][Bb][Jj][Ee][Cc][Tt][Aa][Cc][Ll].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Rr][Ee][Mm][Oo][Tt][Ee][Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Qq][Uu][Ee][Ss][Tt]-[Ss][Pp][Nn][Tt][Ii][Cc][Kk][Ee][Tt].*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Tt]-[Dd][Oo][Mm][Aa][Ii][Nn][Oo][Bb][Jj][Ee][Cc][Tt].*/ OR data_win_eventdata_commandLine:/.*[Tt][Ee][Ss][Tt]-[Aa][Dd][Mm][Ii][Nn][Aa][Cc][Cc][Ee][Ss][Ss].*/)

@@ -1,0 +1,154 @@
+name: Invoke-Obfuscation Obfuscated IEX Invocation - PowerShell Module
+id: 2f211361-7dce-442d-b78a-c04039677378
+version: 1
+schema_version: "1.0"
+date: "2022-12-31"
+author: Daniel Bohannon (@Mandiant/@FireEye), oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2f211361-7dce-442d-b78a-c04039677378
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects all variations of obfuscated powershell IEX invocation code generated
+  by Invoke-Obfuscation framework from the code block cited in the reference
+  section below. MITRE ATT&CK: T1027, T1059.001.
+
+data_source:
+  - PowerShell Module Logging EventID 4103
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4103"
+        
+        - bool:
+            should:
+              - regexp:
+                  data_win_eventdata_payload: ".*(\\$PSHome\\[[ ]*[0-9]{1,3}[ ]*\\][ ]*\\+[ ]*\\$PSHome\\[).*"
+              - regexp:
+                  data_win_eventdata_payload: ".*(\\$ShellId\\[[ ]*[0-9]{1,3}[ ]*\\][ ]*\\+[ ]*\\$ShellId\\[).*"
+              - regexp:
+                  data_win_eventdata_payload: ".*(\\$env:Public\\[[ ]*[0-9]{1,3}[ ]*\\][ ]*\\+[ ]*\\$env:Public\\[).*"
+              - regexp:
+                  data_win_eventdata_payload: ".*(\\$env:ComSpec\\[([ ]*[0-9]{1,3}[ ]*,){2}).*"
+              - regexp:
+                  data_win_eventdata_payload: ".*(\\*mdr\\*[^A-Za-z0-9_][ ]*\\)\\.Name).*"
+              - regexp:
+                  data_win_eventdata_payload: ".*(\\$VerbosePreference\\.ToString\\().*"
+              - regexp:
+                  data_win_eventdata_payload: ".*(\\[String\\][ ]*\\$VerbosePreference).*"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_payload
+    - data_win_eventdata_contextInfo
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Module Logging (EventID 4103) enabled via GPO and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where data_win_eventdata_payload
+  matches the regex /.*(\$PSHome\[[ ]*[0-9]{1,3}[ ]*\][ ]*\+[ ]*\$PSHome\[).*/;
+  data_win_eventdata_payload matches the regex /.*(\$ShellId\[[ ]*[0-9]{1,3}[
+  ]*\][ ]*\+[ ]*\$ShellId\[).*/; data_win_eventdata_payload matches the regex
+  /.*(\$env:Public\[[ ]*[0-9]{1,3}[ ]*\][ ]*\+[ ]*\$env:Public\[).*/, among
+  other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/danielbohannon/Invoke-Obfuscation/blob/f20e7f843edd0a3a7716736e9eddfa423395dd26/Out-ObfuscatedStringCommand.ps1#L873-L888
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Invoke-Obfuscation Obfuscated IEX Invocation - PowerShell Module detected on
+    host $agent_name$. Matched data_win_eventdata_payload:
+    $data_win_eventdata_payload$. Matched data_win_eventdata_contextInfo:
+    $data_win_eventdata_contextInfo$. MITRE ATT&CK: T1027, T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_payload
+      type: powershell_script
+    - field: data_win_eventdata_contextInfo
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1027
+    - T1059.001
+  custom_tags:
+    - invoke
+    - obfuscation
+    - obfuscated
+    - powershell
+    - stealth
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4103" AND (data_win_eventdata_payload:/.*(\$PSHome\[[ ]*[0-9]{1,3}[ ]*\][ ]*\+[ ]*\$PSHome\[).*/ OR data_win_eventdata_payload:/.*(\$ShellId\[[ ]*[0-9]{1,3}[ ]*\][ ]*\+[ ]*\$ShellId\[).*/ OR data_win_eventdata_payload:/.*(\$env:Public\[[ ]*[0-9]{1,3}[ ]*\][ ]*\+[ ]*\$env:Public\[).*/ OR data_win_eventdata_payload:/.*(\$env:ComSpec\[([ ]*[0-9]{1,3}[ ]*,){2}).*/ OR data_win_eventdata_payload:/.*(\*mdr\*[^A-Za-z0-9_][ ]*\)\.Name).*/ OR data_win_eventdata_payload:/.*(\$VerbosePreference\.ToString\().*/ OR data_win_eventdata_payload:/.*(\[String\][ ]*\$VerbosePreference).*/)

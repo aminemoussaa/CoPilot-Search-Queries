@@ -1,0 +1,142 @@
+name: Suspicious Get-ADDBAccount Usage
+id: b140afd9-474b-4072-958e-2ebb435abd68
+version: 1
+schema_version: "1.0"
+date: "2022-03-16"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b140afd9-474b-4072-958e-2ebb435abd68
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious invocation of the Get-ADDBAccount script that reads from a
+  ntds.dit file and may be used to get access to credentials without using any
+  credential dumpers. MITRE ATT&CK: T1003.003.
+
+data_source:
+  - PowerShell Module Logging EventID 4103
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4103"
+        
+        - wildcard:
+            data_win_eventdata_payload:
+              value: "*Get-ADDBAccount*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_payload:
+              value: "*BootKey *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_payload:
+              value: "*DatabasePath *"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_payload
+    - data_win_eventdata_contextInfo
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Module Logging (EventID 4103) enabled via GPO and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where data_win_eventdata_payload
+  matches '*Get-ADDBAccount*'; data_win_eventdata_payload matches '*BootKey *';
+  data_win_eventdata_payload matches '*DatabasePath *'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.n00py.io/2022/03/manipulating-user-passwords-without-mimikatz/
+  - https://github.com/MichaelGrafnetter/DSInternals/blob/7ba59c12ee9a1cb430d7dc186a3366842dd612c8/Documentation/PowerShell/Get-ADDBAccount.md
+  - https://attack.mitre.org/techniques/T1003/003/
+
+response:
+  message: >
+    Suspicious Get-ADDBAccount Usage detected on host $agent_name$. Matched
+    data_win_eventdata_payload: $data_win_eventdata_payload$. Matched
+    data_win_eventdata_contextInfo: $data_win_eventdata_contextInfo$. MITRE
+    ATT&CK: T1003.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_payload
+      type: powershell_script
+    - field: data_win_eventdata_contextInfo
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.003
+  custom_tags:
+    - addbaccount
+    - powershell
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4103" AND data_win_eventdata_payload:/.*[Gg][Ee][Tt]-[Aa][Dd][Dd][Bb][Aa][Cc][Cc][Oo][Uu][Nn][Tt].*/ AND data_win_eventdata_payload:/.*[Bb][Oo][Oo][Tt][Kk][Ee][Yy] .*/ AND data_win_eventdata_payload:/.*[Dd][Aa][Tt][Aa][Bb][Aa][Ss][Ee][Pp][Aa][Tt][Hh] .*/

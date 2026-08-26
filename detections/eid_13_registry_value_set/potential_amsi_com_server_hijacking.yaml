@@ -1,0 +1,146 @@
+name: Potential AMSI COM Server Hijacking
+id: 160d2780-31f7-4922-8b3a-efce30e63e96
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 160d2780-31f7-4922-8b3a-efce30e63e96
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to the AMSI come server registry key in order disable AMSI
+  scanning functionalities. When AMSI attempts to starts its COM component, it
+  will query its registered CLSID and return a non-existent COM server. This
+  causes a load failure and prevents any scanning methods from being accessed,
+  ultimately rendering AMSI useless. MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\CLSID\\\\{fdb00e52-a214-4aa1-8fba-4357bb0072ec}\\\\InProcServer32\\\\(Default)"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - term:
+                  data_win_eventdata_details:
+                    value: "%windir%\\system32\\amsi.dll"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\CLSID\{fdb00e52-a214-4aa1-8fba-4357bb0072ec}\InProcServer32\(Default)';
+  data_win_eventdata_details equals '%windir%\system32\amsi.dll'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://enigma0x3.net/2017/07/19/bypassing-amsi-via-com-server-hijacking/
+  - https://github.com/r00t-3xp10it/hacking-material-books/blob/43cb1e1932c16ff1f58b755bc9ab6b096046853f/obfuscation/simple_obfuscation.md#amsi-comreg-bypass
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Potential AMSI COM Server Hijacking detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_details: $data_win_eventdata_details$. MITRE ATT&CK:
+    T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - server
+    - hijacking
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\\{[Ff][Dd][Bb]00[Ee]52-[Aa]214-4[Aa][Aa]1-8[Ff][Bb][Aa]-4357[Bb][Bb]0072[Ee][Cc]\}\\[Ii][Nn][Pp][Rr][Oo][Cc][Ss][Ee][Rr][Vv][Ee][Rr]32\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_details:/%[Ww][Ii][Nn][Dd][Ii][Rr]%\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Aa][Mm][Ss][Ii]\.[Dd][Ll][Ll]/)

@@ -1,0 +1,166 @@
+name: Powershell XML Execute Command
+id: 6c6c6282-7671-4fe9-a0ce-a2dcebdc342b
+version: 1
+schema_version: "1.0"
+date: "2023-01-19"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6c6c6282-7671-4fe9-a0ce-a2dcebdc342b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may abuse PowerShell commands and scripts for execution.
+  PowerShell is a powerful interactive command-line interface and scripting
+  environment included in the Windows operating system. (Citation: TechNet
+  PowerShell) Adversaries can use PowerShell to perform a number of actions,
+  including discovery of information and execution of code. MITRE ATT&CK:
+  T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*New-Object*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*System.Xml.XmlDocument*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*.Load*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*IEX *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-Expression *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-Command *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*ICM -*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*New-Object*';
+  data_win_eventdata_scriptBlockText matches '*System.Xml.XmlDocument*';
+  data_win_eventdata_scriptBlockText matches '*.Load*', among other conditions.
+
+known_false_positives: >
+  Legitimate administrative script. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1059.001/T1059.001.md#atomic-test-8---powershell-xml-requests
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Powershell XML Execute Command detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - powershell
+    - execute
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_scriptBlockText:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Xx][Mm][Ll]\.[Xx][Mm][Ll][Dd][Oo][Cc][Uu][Mm][Ee][Nn][Tt].*/ AND data_win_eventdata_scriptBlockText:/.*\.[Ll][Oo][Aa][Dd].*/ AND (data_win_eventdata_scriptBlockText:/.*[Ii][Ee][Xx] .*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Ee][Xx][Pp][Rr][Ee][Ss][Ss][Ii][Oo][Nn] .*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Cc][Oo][Mm][Mm][Aa][Nn][Dd] .*/ OR data_win_eventdata_scriptBlockText:/.*[Ii][Cc][Mm] -.*/)

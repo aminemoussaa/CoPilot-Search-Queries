@@ -1,0 +1,215 @@
+name: HackTool - Rubeus Execution
+id: 7ec2c172-dceb-4c10-92c9-87c1881b7e18
+version: 1
+schema_version: "1.0"
+date: "2023-04-20"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7ec2c172-dceb-4c10-92c9-87c1881b7e18
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects the execution of the hacktool Rubeus via PE information of command
+  line parameters. MITRE ATT&CK: T1003, T1558.003, T1550.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Rubeus.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "Rubeus.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "Rubeus"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*asreproast *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dump /service:krbtgt *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dump /luid:0x*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*kerberoast *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*createnetonly /program:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*ptt /ticket:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/impersonateuser:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*renew /ticket:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*asktgt /user:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*harvest /interval:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*s4u /user:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*s4u /ticket:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*hash /password:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*golden /aes256:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*silver /user:*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_description
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\Rubeus.exe'; data_win_eventdata_originalFileName equals 'Rubeus.exe';
+  data_win_eventdata_description equals 'Rubeus', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blog.harmj0y.net/redteaming/from-kekeo-to-rubeus
+  - https://m0chan.github.io/2019/07/31/How-To-Attack-Kerberos-101.html
+  - https://github.com/GhostPack/Rubeus
+  - https://attack.mitre.org/techniques/T1003/
+  - https://attack.mitre.org/techniques/T1558/003/
+  - https://attack.mitre.org/techniques/T1550/003/
+
+response:
+  message: >
+    HackTool - Rubeus Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1003, T1558.003, T1550.003
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003
+    - T1558.003
+    - T1550.003
+  custom_tags:
+    - hacktool
+    - rubeus
+    - process_creation
+    - sysmon
+    - credential_access
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Rr][Uu][Bb][Ee][Uu][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Rr][Uu][Bb][Ee][Uu][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_description:/[Rr][Uu][Bb][Ee][Uu][Ss]/ OR data_win_eventdata_commandLine:/.*[Aa][Ss][Rr][Ee][Pp][Rr][Oo][Aa][Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.*[Dd][Uu][Mm][Pp] \/[Ss][Ee][Rr][Vv][Ii][Cc][Ee]:[Kk][Rr][Bb][Tt][Gg][Tt] .*/ OR data_win_eventdata_commandLine:/.*[Dd][Uu][Mm][Pp] \/[Ll][Uu][Ii][Dd]:0[Xx].*/ OR data_win_eventdata_commandLine:/.*[Kk][Ee][Rr][Bb][Ee][Rr][Oo][Aa][Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee][Nn][Ee][Tt][Oo][Nn][Ll][Yy] \/[Pp][Rr][Oo][Gg][Rr][Aa][Mm]:.*/ OR data_win_eventdata_commandLine:/.*[Pp][Tt][Tt] \/[Tt][Ii][Cc][Kk][Ee][Tt]:.*/ OR data_win_eventdata_commandLine:/.*\/[Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ee][Uu][Ss][Ee][Rr]:.*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Nn][Ee][Ww] \/[Tt][Ii][Cc][Kk][Ee][Tt]:.*/ OR data_win_eventdata_commandLine:/.*[Aa][Ss][Kk][Tt][Gg][Tt] \/[Uu][Ss][Ee][Rr]:.*/ OR data_win_eventdata_commandLine:/.*[Hh][Aa][Rr][Vv][Ee][Ss][Tt] \/[Ii][Nn][Tt][Ee][Rr][Vv][Aa][Ll]:.*/ OR data_win_eventdata_commandLine:/.*[Ss]4[Uu] \/[Uu][Ss][Ee][Rr]:.*/ OR data_win_eventdata_commandLine:/.*[Ss]4[Uu] \/[Tt][Ii][Cc][Kk][Ee][Tt]:.*/ OR data_win_eventdata_commandLine:/.*[Hh][Aa][Ss][Hh] \/[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]:.*/ OR data_win_eventdata_commandLine:/.*[Gg][Oo][Ll][Dd][Ee][Nn] \/[Aa][Ee][Ss]256:.*/ OR data_win_eventdata_commandLine:/.*[Ss][Ii][Ll][Vv][Ee][Rr] \/[Uu][Ss][Ee][Rr]:.*/)

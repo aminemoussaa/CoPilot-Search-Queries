@@ -1,0 +1,167 @@
+name: PUA- IOX Tunneling Tool Execution
+id: d7654f02-e04b-4934-9838-65c46f187ebc
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d7654f02-e04b-4934-9838-65c46f187ebc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of IOX - a tool for port forwarding and intranet proxy
+  purposes. MITRE ATT&CK: T1090.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\iox.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.exe fwd -l *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.exe fwd -r *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.exe proxy -l *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.exe proxy -r *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*MD5=9DB2D314DD3F704A02051EF5EA210993*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=039130337E28A6623ECF9A0A3DA7D92C5964D8DD*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=C6CF82919B809967D9D90EA73772A8AA1C1EB3BC59252D977500F64F1A0D6731*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_hashes
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\iox.exe';
+  data_win_eventdata_commandLine matches '*.exe fwd -l *';
+  data_win_eventdata_commandLine matches '*.exe fwd -r *', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate use. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/EddieIvan01/iox
+  - https://attack.mitre.org/techniques/T1090/
+
+response:
+  message: >
+    PUA- IOX Tunneling Tool Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1090
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1090
+  custom_tags:
+    - tunneling
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ii][Oo][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Ff][Ww][Dd] -[Ll] .*/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Ff][Ww][Dd] -[Rr] .*/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Pp][Rr][Oo][Xx][Yy] -[Ll] .*/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] [Pp][Rr][Oo][Xx][Yy] -[Rr] .*/ OR data_win_eventdata_hashes:/.*[Mm][Dd]5=9[Dd][Bb]2[Dd]314[Dd][Dd]3[Ff]704[Aa]02051[Ee][Ff]5[Ee][Aa]210993.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=039130337[Ee]28[Aa]6623[Ee][Cc][Ff]9[Aa]0[Aa]3[Dd][Aa]7[Dd]92[Cc]5964[Dd]8[Dd][Dd].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Cc]6[Cc][Ff]82919[Bb]809967[Dd]9[Dd]90[Ee][Aa]73772[Aa]8[Aa][Aa]1[Cc]1[Ee][Bb]3[Bb][Cc]59252[Dd]977500[Ff]64[Ff]1[Aa]0[Dd]6731.*/)

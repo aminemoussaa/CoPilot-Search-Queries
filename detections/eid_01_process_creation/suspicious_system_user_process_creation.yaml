@@ -1,0 +1,419 @@
+name: Suspicious SYSTEM User Process Creation
+id: 2617e7ed-adb7-40ba-b0f3-8f9945fe6c09
+version: 1
+schema_version: "1.0"
+date: "2025-10-19"
+author: Florian Roth (Nextron Systems), David ANDRE (additional keywords)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2617e7ed-adb7-40ba-b0f3-8f9945fe6c09
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a suspicious process creation as SYSTEM user (suspicious program or
+  command line parameter). MITRE ATT&CK: T1134, T1003, T1027.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_integrityLevel:
+                    value: "System"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_integrityLevel:
+                    value: "S-1-16-16384"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_user:
+                    value: "*AUTHORI*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_user:
+                    value: "*AUTORI*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\calc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\cscript.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\forfiles.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\hh.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\mshta.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ping.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wscript.exe"
+                    case_insensitive: true
+              - regexp:
+                  data_win_eventdata_commandLine: ".*(net[ ]+user[ ]+).*"
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -NoP *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -W Hidden *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -decode *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /decode *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /urlcache *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -urlcache *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* JAB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* SUVYI*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* SQBFAFgA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* aWV4I*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* IAB*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* PAA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* aQBlAHgA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*vssadmin delete shadows*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*reg SAVE HKLM*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -ma *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Microsoft\\\\Windows\\\\CurrentVersion\\\\Run*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.downloadstring(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.downloadfile(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /ticket:*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dpapi::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*event::clear*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*event::drop*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*id::modify*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*kerberos::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*lsadump::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*misc::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*privilege::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*rpc::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*sekurlsa::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*sid::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*token::*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*vault::cred*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*vault::list*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* p::d *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*;iex(*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*MiniDump*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*ping*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine: "*127.0.0.1*"
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -n *"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\PING.EXE"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*\\\\DismFoDInstall.cmd*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\Packages\\\\Plugins\\\\Microsoft.GuestConfiguration.ConfigurationforWindows\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "*:\\\\Program Files (x86)\\\\Java\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_parentImage:
+                                      value: "*:\\\\Program Files\\\\Java\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\bin\\\\javaws.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*:\\\\Program Files (x86)\\\\Java\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*:\\\\Program Files\\\\Java\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\bin\\\\jp2launcher.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -ma *"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_integrityLevel
+    - data_win_eventdata_user
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_parentImage
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_integrityLevel equals
+  'System'; data_win_eventdata_integrityLevel equals 'S-1-16-16384';
+  data_win_eventdata_user matches '*AUTHORI*', among other conditions.
+
+known_false_positives: >
+  Administrative activity. Scripts and administrative tools used in the
+  monitored environment. Monitoring activity. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - Internal Research
+  - https://tools.thehacker.recipes/mimikatz/modules
+  - https://attack.mitre.org/techniques/T1134/
+  - https://attack.mitre.org/techniques/T1003/
+  - https://attack.mitre.org/techniques/T1027/
+
+response:
+  message: >
+    Suspicious SYSTEM User Process Creation detected on host $agent_name$.
+    Matched data_win_eventdata_integrityLevel:
+    $data_win_eventdata_integrityLevel$. Matched data_win_eventdata_user:
+    $data_win_eventdata_user$. MITRE ATT&CK: T1134, T1003, T1027
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_integrityLevel
+      type: other
+    - field: data_win_eventdata_user
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1134
+    - T1003
+    - T1027
+  custom_tags:
+    - system
+    - process_creation
+    - sysmon
+    - credential_access
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_integrityLevel:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_integrityLevel:/[Ss]-1-16-16384/) AND (data_win_eventdata_user:/.*[Aa][Uu][Tt][Hh][Oo][Rr][Ii].*/ OR data_win_eventdata_user:/.*[Aa][Uu][Tt][Oo][Rr][Ii].*/) AND (data_win_eventdata_image:/.*\\[Cc][Aa][Ll][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Cc][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ff][Oo][Rr][Ff][Ii][Ll][Ee][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Hh][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.*(net[ ]+user[ ]+).*/ OR data_win_eventdata_commandLine:/.* -[Nn][Oo][Pp] .*/ OR data_win_eventdata_commandLine:/.* -[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Dd][Ee][Cc][Oo][Dd][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Dd][Ee][Cc][Oo][Dd][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Uu][Rr][Ll][Cc][Aa][Cc][Hh][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Uu][Rr][Ll][Cc][Aa][Cc][Hh][Ee] .*/ OR data_win_eventdata_commandLine:/.* -[Ee].* [Jj][Aa][Bb].*/ OR data_win_eventdata_commandLine:/.* -[Ee].* [Ss][Uu][Vv][Yy][Ii].*/ OR data_win_eventdata_commandLine:/.* -[Ee].* [Ss][Qq][Bb][Ff][Aa][Ff][Gg][Aa].*/ OR data_win_eventdata_commandLine:/.* -[Ee].* [Aa][Ww][Vv]4[Ii].*/ OR data_win_eventdata_commandLine:/.* -[Ee].* [Ii][Aa][Bb].*/ OR data_win_eventdata_commandLine:/.* -[Ee].* [Pp][Aa][Aa].*/ OR data_win_eventdata_commandLine:/.* -[Ee].* [Aa][Qq][Bb][Ll][Aa][Hh][Gg][Aa].*/ OR data_win_eventdata_commandLine:/.*[Vv][Ss][Ss][Aa][Dd][Mm][Ii][Nn] [Dd][Ee][Ll][Ee][Tt][Ee] [Ss][Hh][Aa][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Gg] [Ss][Aa][Vv][Ee] [Hh][Kk][Ll][Mm].*/ OR data_win_eventdata_commandLine:/.* -[Mm][Aa] .*/ OR data_win_eventdata_commandLine:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn].*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg]\(.*/ OR data_win_eventdata_commandLine:/.*\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ff][Ii][Ll][Ee]\(.*/ OR data_win_eventdata_commandLine:/.* \/[Tt][Ii][Cc][Kk][Ee][Tt]:.*/ OR data_win_eventdata_commandLine:/.*[Dd][Pp][Aa][Pp][Ii]::.*/ OR data_win_eventdata_commandLine:/.*[Ee][Vv][Ee][Nn][Tt]::[Cc][Ll][Ee][Aa][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ee][Vv][Ee][Nn][Tt]::[Dd][Rr][Oo][Pp].*/ OR data_win_eventdata_commandLine:/.*[Ii][Dd]::[Mm][Oo][Dd][Ii][Ff][Yy].*/ OR data_win_eventdata_commandLine:/.*[Kk][Ee][Rr][Bb][Ee][Rr][Oo][Ss]::.*/ OR data_win_eventdata_commandLine:/.*[Ll][Ss][Aa][Dd][Uu][Mm][Pp]::.*/ OR data_win_eventdata_commandLine:/.*[Mm][Ii][Ss][Cc]::.*/ OR data_win_eventdata_commandLine:/.*[Pp][Rr][Ii][Vv][Ii][Ll][Ee][Gg][Ee]::.*/ OR data_win_eventdata_commandLine:/.*[Rr][Pp][Cc]::.*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Kk][Uu][Rr][Ll][Ss][Aa]::.*/ OR data_win_eventdata_commandLine:/.*[Ss][Ii][Dd]::.*/ OR data_win_eventdata_commandLine:/.*[Tt][Oo][Kk][Ee][Nn]::.*/ OR data_win_eventdata_commandLine:/.*[Vv][Aa][Uu][Ll][Tt]::[Cc][Rr][Ee][Dd].*/ OR data_win_eventdata_commandLine:/.*[Vv][Aa][Uu][Ll][Tt]::[Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.* [Pp]::[Dd] .*/ OR data_win_eventdata_commandLine:/.*;[Ii][Ee][Xx]\(.*/ OR data_win_eventdata_commandLine:/.*[Mm][Ii][Nn][Ii][Dd][Uu][Mm][Pp].*/) AND _exists_:data_win_eventdata_commandLine AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_parentCommandLine AND _exists_:data_win_eventdata_parentImage AND NOT ((data_win_eventdata_commandLine:/.*[Pp][Ii][Nn][Gg].*/ AND data_win_eventdata_commandLine:/.*127\.0\.0\.1.*/ AND data_win_eventdata_commandLine:/.* -[Nn] .*/) OR (data_win_eventdata_image:/.*\\[Pp][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*\\[Dd][Ii][Ss][Mm][Ff][Oo][Dd][Ii][Nn][Ss][Tt][Aa][Ll][Ll]\.[Cc][Mm][Dd].*/) OR data_win_eventdata_parentImage:/.*:\\[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss]\\[Pp][Ll][Uu][Gg][Ii][Nn][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Gg][Uu][Ee][Ss][Tt][Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Aa][Tt][Ii][Oo][Nn]\.[Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Aa][Tt][Ii][Oo][Nn][Ff][Oo][Rr][Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\.*/ OR ((data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Jj][Aa][Vv][Aa]\\.*/ OR data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Jj][Aa][Vv][Aa]\\.*/) AND data_win_eventdata_parentImage:/.*\\[Bb][Ii][Nn]\\[Jj][Aa][Vv][Aa][Ww][Ss]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Jj][Aa][Vv][Aa]\\.*/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Jj][Aa][Vv][Aa]\\.*/) AND data_win_eventdata_image:/.*\\[Bb][Ii][Nn]\\[Jj][Pp]2[Ll][Aa][Uu][Nn][Cc][Hh][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.* -[Mm][Aa] .*/))

@@ -1,0 +1,196 @@
+name: Potentially Suspicious JWT Token Search Via CLI
+id: 6d3a3952-6530-44a3-8554-cf17c116c615
+version: 1
+schema_version: "1.0"
+date: "2025-10-21"
+author: Nasreddine Bencherchali (Nextron Systems), kagebunsher
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6d3a3952-6530-44a3-8554-cf17c116c615
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potentially suspicious search for JWT tokens via CLI by looking for
+  the string "eyJ0eX" or "eyJhbG". JWT tokens are often used for access-tokens
+  across various applications and services like Microsoft 365, Azure, AWS,
+  Google Cloud, and others. Threat actors may search for these tokens to steal
+  them for lateral movement or privilege escalation. MITRE ATT&CK: T1528,
+  T1552.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*find *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*find.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*findstr*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*select-string *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*strings*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*eyJ0eXAiOi*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*eyJhbGciOi*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* eyJ0eX*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"eyJ0eX\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'eyJ0eX'*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* eyJhbG*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"eyJhbG\"*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'eyJhbG'*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '*find
+  *'; data_win_eventdata_commandLine matches '*find.exe*';
+  data_win_eventdata_commandLine matches '*findstr*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://mrd0x.com/stealing-tokens-from-office-applications/
+  - https://www.scip.ch/en/?labs.20240523
+  - https://attack.mitre.org/techniques/T1528/
+  - https://attack.mitre.org/techniques/T1552/001/
+
+response:
+  message: >
+    Potentially Suspicious JWT Token Search Via CLI detected on host
+    $agent_name$. Matched data_win_eventdata_commandLine:
+    $data_win_eventdata_commandLine$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1528, T1552.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1528
+    - T1552.001
+  custom_tags:
+    - token
+    - search
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd] .*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd][Ss][Tt][Rr].*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Ll][Ee][Cc][Tt]-[Ss][Tt][Rr][Ii][Nn][Gg] .*/ OR data_win_eventdata_commandLine:/.*[Ss][Tt][Rr][Ii][Nn][Gg][Ss].*/) AND (data_win_eventdata_commandLine:/.*[Ee][Yy][Jj]0[Ee][Xx][Aa][Ii][Oo][Ii].*/ OR data_win_eventdata_commandLine:/.*[Ee][Yy][Jj][Hh][Bb][Gg][Cc][Ii][Oo][Ii].*/ OR data_win_eventdata_commandLine:/.* [Ee][Yy][Jj]0[Ee][Xx].*/ OR data_win_eventdata_commandLine:/.* \"[Ee][Yy][Jj]0[Ee][Xx]\".*/ OR data_win_eventdata_commandLine:/.* '[Ee][Yy][Jj]0[Ee][Xx]'.*/ OR data_win_eventdata_commandLine:/.* [Ee][Yy][Jj][Hh][Bb][Gg].*/ OR data_win_eventdata_commandLine:/.* \"[Ee][Yy][Jj][Hh][Bb][Gg]\".*/ OR data_win_eventdata_commandLine:/.* '[Ee][Yy][Jj][Hh][Bb][Gg]'.*/)

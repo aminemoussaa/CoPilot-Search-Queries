@@ -1,0 +1,223 @@
+name: HackTool - Bloodhound/Sharphound Execution
+id: f376c8a7-a2d0-4ddc-aa0c-16c17236d962
+version: 1
+schema_version: "1.0"
+date: "2023-02-04"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f376c8a7-a2d0-4ddc-aa0c-16c17236d962
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects command line parameters used by Bloodhound and Sharphound hack tools.
+  MITRE ATT&CK: T1087.001, T1087.002, T1482, T1069.001, T1069.002, T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_product:
+                    value: "*SharpHound*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_description:
+                    value: "*SharpHound*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_company:
+                    value: "*SpecterOps*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_company:
+                    value: "*evil corp*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\Bloodhound.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SharpHound.exe*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -CollectionMethod All *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --CollectionMethods Session *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --Loop --Loopduration *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* --PortScanTimeout *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.exe -c All -d *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Invoke-Bloodhound*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Get-BloodHoundData*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -JsonFolder *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -ZipFileName *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* DCOnly *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* --NoSaveCache *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_product
+    - data_win_eventdata_description
+    - data_win_eventdata_company
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_product matches
+  '*SharpHound*'; data_win_eventdata_description matches '*SharpHound*';
+  data_win_eventdata_company matches '*SpecterOps*', among other conditions.
+
+known_false_positives: >
+  Other programs that use these command line option and accepts an 'All'
+  parameter. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/BloodHoundAD/BloodHound
+  - https://github.com/BloodHoundAD/SharpHound
+  - https://attack.mitre.org/techniques/T1087/001/
+  - https://attack.mitre.org/techniques/T1087/002/
+  - https://attack.mitre.org/techniques/T1482/
+  - https://attack.mitre.org/techniques/T1069/001/
+  - https://attack.mitre.org/techniques/T1069/002/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    HackTool - Bloodhound/Sharphound Execution detected on host $agent_name$.
+    Matched data_win_eventdata_product: $data_win_eventdata_product$. Matched
+    data_win_eventdata_description: $data_win_eventdata_description$. MITRE
+    ATT&CK: T1087.001, T1087.002, T1482, T1069.001, T1069.002, T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_product
+      type: other
+    - field: data_win_eventdata_description
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1087.001
+    - T1087.002
+    - T1482
+    - T1069.001
+    - T1069.002
+    - T1059.001
+  custom_tags:
+    - hacktool
+    - bloodhound
+    - sharphound
+    - process_creation
+    - sysmon
+    - discovery
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_product:/.*[Ss][Hh][Aa][Rr][Pp][Hh][Oo][Uu][Nn][Dd].*/ OR data_win_eventdata_description:/.*[Ss][Hh][Aa][Rr][Pp][Hh][Oo][Uu][Nn][Dd].*/ OR data_win_eventdata_company:/.*[Ss][Pp][Ee][Cc][Tt][Ee][Rr][Oo][Pp][Ss].*/ OR data_win_eventdata_company:/.*[Ee][Vv][Ii][Ll] [Cc][Oo][Rr][Pp].*/ OR data_win_eventdata_image:/.*\\[Bb][Ll][Oo][Oo][Dd][Hh][Oo][Uu][Nn][Dd]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Ss][Hh][Aa][Rr][Pp][Hh][Oo][Uu][Nn][Dd]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.* -[Cc][Oo][Ll][Ll][Ee][Cc][Tt][Ii][Oo][Nn][Mm][Ee][Tt][Hh][Oo][Dd] [Aa][Ll][Ll] .*/ OR data_win_eventdata_commandLine:/.* --[Cc][Oo][Ll][Ll][Ee][Cc][Tt][Ii][Oo][Nn][Mm][Ee][Tt][Hh][Oo][Dd][Ss] [Ss][Ee][Ss][Ss][Ii][Oo][Nn] .*/ OR data_win_eventdata_commandLine:/.* --[Ll][Oo][Oo][Pp] --[Ll][Oo][Oo][Pp][Dd][Uu][Rr][Aa][Tt][Ii][Oo][Nn] .*/ OR data_win_eventdata_commandLine:/.* --[Pp][Oo][Rr][Tt][Ss][Cc][Aa][Nn][Tt][Ii][Mm][Ee][Oo][Uu][Tt] .*/ OR data_win_eventdata_commandLine:/.*\.[Ee][Xx][Ee] -[Cc] [Aa][Ll][Ll] -[Dd] .*/ OR data_win_eventdata_commandLine:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Bb][Ll][Oo][Oo][Dd][Hh][Oo][Uu][Nn][Dd].*/ OR data_win_eventdata_commandLine:/.*[Gg][Ee][Tt]-[Bb][Ll][Oo][Oo][Dd][Hh][Oo][Uu][Nn][Dd][Dd][Aa][Tt][Aa].*/ OR (data_win_eventdata_commandLine:/.* -[Jj][Ss][Oo][Nn][Ff][Oo][Ll][Dd][Ee][Rr] .*/ AND data_win_eventdata_commandLine:/.* -[Zz][Ii][Pp][Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee] .*/) OR (data_win_eventdata_commandLine:/.* [Dd][Cc][Oo][Nn][Ll][Yy] .*/ AND data_win_eventdata_commandLine:/.* --[Nn][Oo][Ss][Aa][Vv][Ee][Cc][Aa][Cc][Hh][Ee] .*/))

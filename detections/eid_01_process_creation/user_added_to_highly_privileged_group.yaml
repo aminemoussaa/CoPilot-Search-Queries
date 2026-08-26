@@ -1,0 +1,168 @@
+name: User Added To Highly Privileged Group
+id: 10fb649c-3600-4d37-b1e6-56ea90bb7e09
+version: 1
+schema_version: "1.0"
+date: "2024-02-23"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 10fb649c-3600-4d37-b1e6-56ea90bb7e09
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects addition of users to highly privileged groups via "Net" or
+  "Add-LocalGroupMember". MITRE ATT&CK: T1098.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*localgroup *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /add*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Add-LocalGroupMember *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -Group *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Group Policy Creator Owners*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Schema Admins*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*localgroup *'; data_win_eventdata_commandLine matches '* /add*';
+  data_win_eventdata_commandLine matches '*Add-LocalGroupMember *', among other
+  conditions.
+
+known_false_positives: >
+  Administrative activity that must be investigated. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.huntress.com/blog/slashandgrab-screen-connect-post-exploitation-in-the-wild-cve-2024-1709-cve-2024-1708
+  - https://attack.mitre.org/techniques/T1098/
+
+response:
+  message: >
+    User Added To Highly Privileged Group detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1098
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1098
+  custom_tags:
+    - added
+    - highly
+    - privileged
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Ll][Oo][Cc][Aa][Ll][Gg][Rr][Oo][Uu][Pp] .*/ AND data_win_eventdata_commandLine:/.* \/[Aa][Dd][Dd].*/) OR (data_win_eventdata_commandLine:/.*[Aa][Dd][Dd]-[Ll][Oo][Cc][Aa][Ll][Gg][Rr][Oo][Uu][Pp][Mm][Ee][Mm][Bb][Ee][Rr] .*/ AND data_win_eventdata_commandLine:/.* -[Gg][Rr][Oo][Uu][Pp] .*/)) AND (data_win_eventdata_commandLine:/.*[Gg][Rr][Oo][Uu][Pp] [Pp][Oo][Ll][Ii][Cc][Yy] [Cc][Rr][Ee][Aa][Tt][Oo][Rr] [Oo][Ww][Nn][Ee][Rr][Ss].*/ OR data_win_eventdata_commandLine:/.*[Ss][Cc][Hh][Ee][Mm][Aa] [Aa][Dd][Mm][Ii][Nn][Ss].*/)

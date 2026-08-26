@@ -1,0 +1,310 @@
+name: COM Object Hijacking Via Modification Of Default System CLSID Default Value
+id: 790317c0-0a36-4a6a-a105-6e576bf99a14
+version: 1
+schema_version: "1.0"
+date: "2025-11-10"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 790317c0-0a36-4a6a-a105-6e576bf99a14
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential COM object hijacking via modification of default system
+  CLSID. MITRE ATT&CK: T1546.015.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\CLSID\\\\*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\InprocServer32\\\\(Default)"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\LocalServer32\\\\(Default)"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{1f486a52-3cb1-48fd-8f50-b8dc300d9f9d}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{2155fee3-2419-4373-b102-6843707eb41f}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{4590f811-1d3a-11d0-891f-00aa004b2e24}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{4de225bf-cf59-4cfc-85f7-68b90f185355}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{ddc05a5a-351a-4e06-8eaf-54ec1bc2dcea}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{F56F6FDD-AA9D-4618-A949-C1B91AF43B1A}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{F82B4EF1-93A9-4DDE-8015-F7950A1A6E31}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{7849596a-48ea-486e-8937-a2a3009f31a9}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{0b91a74b-ad7c-4a9d-b563-29eef9167172}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{603D3801-BD81-11d0-A3A5-00C04FD706EC}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{30D49246-D217-465F-B00B-AC9DDD652EB7}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{A7A63E5C-3877-4840-8727-C1EA9D7A4D50}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{2227A280-3AEA-1069-A2DE-08002B30309D}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{2DEA658F-54C1-4227-AF9B-260AB5FC3543}\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\{AA509086-5Ca9-4C25-8F95-589D3C07B48A}\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*:\\\\Perflogs\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\AppData\\\\Local\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Desktop\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Downloads\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Startup\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\System32\\\\spool\\\\drivers\\\\color\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Temporary Internet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Users\\\\Public\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*\\\\Windows\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*%appdata%*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*%temp%*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*%tmp%*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*\\\\Favorites\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*\\\\Favourites\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*\\\\Contacts\\\\*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*\\\\Pictures\\\\*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\CLSID\*'; data_win_eventdata_targetObject matches
+  '*\InprocServer32\(Default)'; data_win_eventdata_targetObject matches
+  '*\LocalServer32\(Default)', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/security/blog/2022/07/27/untangling-knotweed-european-private-sector-offensive-actor-using-0-day-exploits/ (idea)
+  - https://unit42.paloaltonetworks.com/snipbot-romcom-malware-variant/
+  - https://blog.talosintelligence.com/uat-5647-romcom/
+  - https://global.ptsecurity.com/analytics/pt-esc-threat-intelligence/darkhotel-a-cluster-of-groups-united-by-common-techniques
+  - https://threatbook.io/blog/Analysis-of-APT-C-60-Attack-on-South-Korea
+  - https://catalyst.prodaft.com/public/report/inside-the-latest-espionage-campaign-of-nebulous-mantis
+  - https://github.com/rtecCyberSec/BitlockMove
+  - https://cert.gov.ua/article/6284080
+  - https://securelist.com/forumtroll-apt-hacking-team-dante-spyware/117851/
+  - https://attack.mitre.org/techniques/T1546/015/
+
+response:
+  message: >
+    COM Object Hijacking Via Modification Of Default System CLSID Default Value
+    detected on host $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1546.015
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1546.015
+  custom_tags:
+    - object
+    - hijacking
+    - default
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ss][Ii][Dd]\\.*/ AND (data_win_eventdata_targetObject:/.*\\[Ii][Nn][Pp][Rr][Oo][Cc][Ss][Ee][Rr][Vv][Ee][Rr]32\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ OR data_win_eventdata_targetObject:/.*\\[Ll][Oo][Cc][Aa][Ll][Ss][Ee][Rr][Vv][Ee][Rr]32\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/) AND (data_win_eventdata_targetObject:/.*\\\{1[Ff]486[Aa]52-3[Cc][Bb]1-48[Ff][Dd]-8[Ff]50-[Bb]8[Dd][Cc]300[Dd]9[Ff]9[Dd]\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{2155[Ff][Ee][Ee]3-2419-4373-[Bb]102-6843707[Ee][Bb]41[Ff]\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{4590[Ff]811-1[Dd]3[Aa]-11[Dd]0-891[Ff]-00[Aa][Aa]004[Bb]2[Ee]24\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{4[Dd][Ee]225[Bb][Ff]-[Cc][Ff]59-4[Cc][Ff][Cc]-85[Ff]7-68[Bb]90[Ff]185355\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{[Dd][Dd][Cc]05[Aa]5[Aa]-351[Aa]-4[Ee]06-8[Ee][Aa][Ff]-54[Ee][Cc]1[Bb][Cc]2[Dd][Cc][Ee][Aa]\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{[Ff]56[Ff]6[Ff][Dd][Dd]-[Aa][Aa]9[Dd]-4618-[Aa]949-[Cc]1[Bb]91[Aa][Ff]43[Bb]1[Aa]\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{[Ff]82[Bb]4[Ee][Ff]1-93[Aa]9-4[Dd][Dd][Ee]-8015-[Ff]7950[Aa]1[Aa]6[Ee]31\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{7849596[Aa]-48[Ee][Aa]-486[Ee]-8937-[Aa]2[Aa]3009[Ff]31[Aa]9\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{0[Bb]91[Aa]74[Bb]-[Aa][Dd]7[Cc]-4[Aa]9[Dd]-[Bb]563-29[Ee][Ee][Ff]9167172\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{603[Dd]3801-[Bb][Dd]81-11[Dd]0-[Aa]3[Aa]5-00[Cc]04[Ff][Dd]706[Ee][Cc]\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{30[Dd]49246-[Dd]217-465[Ff]-[Bb]00[Bb]-[Aa][Cc]9[Dd][Dd][Dd]652[Ee][Bb]7\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{[Aa]7[Aa]63[Ee]5[Cc]-3877-4840-8727-[Cc]1[Ee][Aa]9[Dd]7[Aa]4[Dd]50\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{2227[Aa]280-3[Aa][Ee][Aa]-1069-[Aa]2[Dd][Ee]-08002[Bb]30309[Dd]\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{2[Dd][Ee][Aa]658[Ff]-54[Cc]1-4227-[Aa][Ff]9[Bb]-260[Aa][Bb]5[Ff][Cc]3543\}\\.*/ OR data_win_eventdata_targetObject:/.*\\\{[Aa][Aa]509086-5[Cc][Aa]9-4[Cc]25-8[Ff]95-589[Dd]3[Cc]07[Bb]48[Aa]\}\\.*/) AND (data_win_eventdata_details:/.*:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/ OR data_win_eventdata_details:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\.*/ OR data_win_eventdata_details:/.*\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\.*/ OR data_win_eventdata_details:/.*\\[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss]\\.*/ OR data_win_eventdata_details:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp]\\.*/ OR data_win_eventdata_details:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Pp][Oo][Oo][Ll]\\[Dd][Rr][Ii][Vv][Ee][Rr][Ss]\\[Cc][Oo][Ll][Oo][Rr]\\.*/ OR data_win_eventdata_details:/.*\\[Tt][Ee][Mm][Pp][Oo][Rr][Aa][Rr][Yy] [Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt].*/ OR data_win_eventdata_details:/.*\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_details:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_details:/.*%[Aa][Pp][Pp][Dd][Aa][Tt][Aa]%.*/ OR data_win_eventdata_details:/.*%[Tt][Ee][Mm][Pp]%.*/ OR data_win_eventdata_details:/.*%[Tt][Mm][Pp]%.*/ OR (data_win_eventdata_details:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_details:/.*\\[Ff][Aa][Vv][Oo][Rr][Ii][Tt][Ee][Ss]\\.*/) OR (data_win_eventdata_details:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_details:/.*\\[Ff][Aa][Vv][Oo][Uu][Rr][Ii][Tt][Ee][Ss]\\.*/) OR (data_win_eventdata_details:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_details:/.*\\[Cc][Oo][Nn][Tt][Aa][Cc][Tt][Ss]\\.*/) OR (data_win_eventdata_details:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_details:/.*\\[Pp][Ii][Cc][Tt][Uu][Rr][Ee][Ss]\\.*/))

@@ -1,0 +1,447 @@
+name: Webshell Detection With Command Line Keywords
+id: bed2a484-9348-4143-8a8a-b801c979301c
+version: 1
+schema_version: "1.0"
+date: "2024-12-14"
+author: Florian Roth (Nextron Systems), Jonhnathan Ribeiro, Anton Kutepov, oscd.community, Chad Hudson, Matt Anderson
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bed2a484-9348-4143-8a8a-b801c979301c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects certain command line parameters often used during reconnaissance
+  activity via web shells. MITRE ATT&CK: T1505.003, T1018, T1033, T1087.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\w3wp.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\php-cgi.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\nginx.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\httpd.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\caddy.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\ws_tomcatservice.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\java.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\javaw.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*-tomcat-*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\tomcat*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\java.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\javaw.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*catalina.jar*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*CATALINA_HOME*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "net.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "net1.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* user *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* use *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* group *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_originalFileName:
+                          value: "ping.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -n *"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*&cd&echo*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cd /d *"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_originalFileName:
+                          value: "wmic.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /node:*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\cmd.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -enc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -EncodedCommand *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -w hidden *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* -windowstyle hidden*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*.WebClient).Download*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\dsquery.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\find.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\findstr.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ipconfig.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\netstat.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\nslookup.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pathping.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\quser.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\schtasks.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\systeminfo.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\tasklist.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\tracert.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\ver.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wevtutil.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\whoami.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "dsquery.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "find.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "findstr.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "ipconfig.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "netstat.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "nslookup.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "pathping.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "quser.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "schtasks.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "sysinfo.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "tasklist.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "tracert.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "ver.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "VSSADMIN.EXE"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "wevtutil.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "whoami.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Test-NetConnection *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*dir \\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\w3wp.exe'; data_win_eventdata_parentImage matches '*\php-cgi.exe';
+  data_win_eventdata_parentImage matches '*\nginx.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.fireeye.com/blog/threat-research/2013/08/breaking-down-the-china-chopper-web-shell-part-ii.html
+  - https://unit42.paloaltonetworks.com/bumblebee-webshell-xhunt-campaign/
+  - https://www.huntress.com/blog/threat-advisory-oh-no-cleo-cleo-software-actively-being-exploited-in-the-wild
+  - https://attack.mitre.org/techniques/T1505/003/
+  - https://attack.mitre.org/techniques/T1018/
+  - https://attack.mitre.org/techniques/T1033/
+  - https://attack.mitre.org/techniques/T1087/
+
+response:
+  message: >
+    Webshell Detection With Command Line Keywords detected on host $agent_name$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1505.003, T1018, T1033, T1087
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1505.003
+    - T1018
+    - T1033
+    - T1087
+  custom_tags:
+    - webshell
+    - keywords
+    - process_creation
+    - sysmon
+    - persistence
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Ww]3[Ww][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Hh][Pp]-[Cc][Gg][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Nn][Gg][Ii][Nn][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Hh][Tt][Tt][Pp][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Cc][Aa][Dd][Dd][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ww][Ss]_[Tt][Oo][Mm][Cc][Aa][Tt][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_parentImage:/.*\\[Jj][Aa][Vv][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Jj][Aa][Vv][Aa][Ww]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_parentImage:/.*-[Tt][Oo][Mm][Cc][Aa][Tt]-.*/ OR data_win_eventdata_parentImage:/.*\\[Tt][Oo][Mm][Cc][Aa][Tt].*/)) OR ((data_win_eventdata_parentImage:/.*\\[Jj][Aa][Vv][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Jj][Aa][Vv][Aa][Ww]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Cc][Aa][Tt][Aa][Ll][Ii][Nn][Aa]\.[Jj][Aa][Rr].*/ OR data_win_eventdata_commandLine:/.*[Cc][Aa][Tt][Aa][Ll][Ii][Nn][Aa]_[Hh][Oo][Mm][Ee].*/))) AND (((data_win_eventdata_originalFileName:/[Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ee][Tt]1\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.* [Uu][Ss][Ee][Rr] .*/ OR data_win_eventdata_commandLine:/.* [Uu][Ss][Ee] .*/ OR data_win_eventdata_commandLine:/.* [Gg][Rr][Oo][Uu][Pp] .*/)) OR (data_win_eventdata_originalFileName:/[Pp][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.* -[Nn] .*/) OR data_win_eventdata_commandLine:/.*\&[Cc][Dd]\&[Ee][Cc][Hh][Oo].*/ OR data_win_eventdata_commandLine:/.*[Cc][Dd] \/[Dd] .*/ OR (data_win_eventdata_originalFileName:/[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.* \/[Nn][Oo][Dd][Ee]:.*/) OR ((data_win_eventdata_image:/.*\\[Cc][Mm][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc] .*/ OR data_win_eventdata_commandLine:/.* -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn][Dd] .*/ OR data_win_eventdata_commandLine:/.* -[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] .*/ OR data_win_eventdata_commandLine:/.* -[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Tt][Yy][Ll][Ee] [Hh][Ii][Dd][Dd][Ee][Nn].*/ OR data_win_eventdata_commandLine:/.*\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt]\)\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd].*/)) OR data_win_eventdata_image:/.*\\[Dd][Ss][Qq][Uu][Ee][Rr][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ff][Ii][Nn][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ff][Ii][Nn][Dd][Ss][Tt][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ii][Pp][Cc][Oo][Nn][Ff][Ii][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ee][Tt][Ss][Tt][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Aa][Tt][Hh][Pp][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Qq][Uu][Ss][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm][Ii][Nn][Ff][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Tt][Aa][Ss][Kk][Ll][Ii][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Tt][Rr][Aa][Cc][Ee][Rr][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Vv][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Ee][Vv][Tt][Uu][Tt][Ii][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Hh][Oo][Aa][Mm][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Dd][Ss][Qq][Uu][Ee][Rr][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ff][Ii][Nn][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ff][Ii][Nn][Dd][Ss][Tt][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ii][Pp][Cc][Oo][Nn][Ff][Ii][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ee][Tt][Ss][Tt][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Aa][Tt][Hh][Pp][Ii][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Qq][Uu][Ss][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Yy][Ss][Ii][Nn][Ff][Oo]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Tt][Aa][Ss][Kk][Ll][Ii][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Tt][Rr][Aa][Cc][Ee][Rr][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Vv][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Vv][Ss][Ss][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ee][Vv][Tt][Uu][Tt][Ii][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Hh][Oo][Aa][Mm][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.* [Tt][Ee][Ss][Tt]-[Nn][Ee][Tt][Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ii][Oo][Nn] .*/ OR data_win_eventdata_commandLine:/.*[Dd][Ii][Rr] \\.*/)

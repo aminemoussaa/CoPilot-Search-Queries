@@ -1,0 +1,148 @@
+name: HackTool - Potential CobaltStrike Process Injection
+id: 6309645e-122d-4c5b-bb2b-22e4f9c2fa42
+version: 1
+schema_version: "1.0"
+date: "2023-05-05"
+author: Olaf Hartong, Florian Roth (Nextron Systems), Aleksey Potapov, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6309645e-122d-4c5b-bb2b-22e4f9c2fa42
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a potential remote threat creation with certain characteristics which
+  are typical for Cobalt Strike beacons. MITRE ATT&CK: T1055.001.
+
+data_source:
+  - Sysmon EventID 8 - CreateRemoteThread
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "8"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_startAddress:
+                    value: "*0B80"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_startAddress:
+                    value: "*0C7C"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_startAddress:
+                    value: "*0C88"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_startAddress
+    - data_win_eventdata_sourceImage
+    - data_win_eventdata_targetImage
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 8 (CreateRemoteThread) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_startAddress matches '*0B80';
+  data_win_eventdata_startAddress matches '*0C7C';
+  data_win_eventdata_startAddress matches '*0C88'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://medium.com/@olafhartong/cobalt-strike-remote-threads-detection-206372d11d0f
+  - https://blog.cobaltstrike.com/2018/04/09/cobalt-strike-3-11-the-snake-that-eats-its-tail/
+  - https://attack.mitre.org/techniques/T1055/001/
+
+response:
+  message: >
+    HackTool - Potential CobaltStrike Process Injection detected on host
+    $agent_name$. Matched data_win_eventdata_startAddress:
+    $data_win_eventdata_startAddress$. Matched data_win_eventdata_sourceImage:
+    $data_win_eventdata_sourceImage$. MITRE ATT&CK: T1055.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_startAddress
+      type: other
+    - field: data_win_eventdata_sourceImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1055.001
+  custom_tags:
+    - hacktool
+    - cobaltstrike
+    - injection
+    - create_remote_thread
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"8" AND (data_win_eventdata_startAddress:/.*0[Bb]80/ OR data_win_eventdata_startAddress:/.*0[Cc]7[Cc]/ OR data_win_eventdata_startAddress:/.*0[Cc]88/)

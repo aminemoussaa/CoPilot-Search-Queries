@@ -1,0 +1,167 @@
+name: Suspicious ASPX File Drop by Exchange
+id: bd1212e5-78da-431e-95fa-c58e3237a8e6
+version: 1
+schema_version: "1.0"
+date: "2022-10-01"
+author: Florian Roth (Nextron Systems), MSTI (query, idea)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bd1212e5-78da-431e-95fa-c58e3237a8e6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious file type dropped by an Exchange component in IIS into a
+  suspicious folder. MITRE ATT&CK: T1505.003.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\w3wp.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*MSExchange*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*FrontEnd\\\\HttpProxy\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\inetpub\\\\wwwroot\\\\aspnet_client\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.aspx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.asp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.ashx"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\w3wp.exe'; data_win_eventdata_commandLine matches '*MSExchange*';
+  data_win_eventdata_targetFilename matches '*FrontEnd\HttpProxy\*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/security/blog/2022/09/30/analyzing-attacks-using-the-exchange-vulnerabilities-cve-2022-41040-and-cve-2022-41082/
+  - https://www.gteltsc.vn/blog/canh-bao-chien-dich-tan-cong-su-dung-lo-hong-zero-day-tren-microsoft-exchange-server-12714.html
+  - https://en.gteltsc.vn/blog/cap-nhat-nhe-ve-lo-hong-bao-mat-0day-microsoft-exchange-dang-duoc-su-dung-de-tan-cong-cac-to-chuc-tai-viet-nam-9685.html
+  - https://attack.mitre.org/techniques/T1505/003/
+
+response:
+  message: >
+    Suspicious ASPX File Drop by Exchange detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1505.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1505.003
+  custom_tags:
+    - exchange
+    - file_event
+    - sysmon
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_image:/.*\\[Ww]3[Ww][Pp]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*[Mm][Ss][Ee][Xx][Cc][Hh][Aa][Nn][Gg][Ee].*/ AND (data_win_eventdata_targetFilename:/.*[Ff][Rr][Oo][Nn][Tt][Ee][Nn][Dd]\\[Hh][Tt][Tt][Pp][Pp][Rr][Oo][Xx][Yy]\\.*/ OR data_win_eventdata_targetFilename:/.*\\[Ii][Nn][Ee][Tt][Pp][Uu][Bb]\\[Ww][Ww][Ww][Rr][Oo][Oo][Tt]\\[Aa][Ss][Pp][Nn][Ee][Tt]_[Cc][Ll][Ii][Ee][Nn][Tt]\\.*/) AND (data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Pp][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Pp]/ OR data_win_eventdata_targetFilename:/.*\.[Aa][Ss][Hh][Xx]/)

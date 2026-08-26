@@ -1,0 +1,225 @@
+name: Uncommon File Created by Notepad++ Updater Gup.EXE
+id: 3b8f4c92-6a51-4d7e-9c3a-8e2d1f5a7b09
+version: 1
+schema_version: "1.0"
+date: "2026-03-16"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3b8f4c92-6a51-4d7e-9c3a-8e2d1f5a7b09
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when the Notepad++ updater (gup.exe) creates files in suspicious or
+  uncommon locations. This could indicate potential exploitation of the updater
+  component to deliver unwanted malware or unwarranted files. MITRE ATT&CK:
+  T1195.002, T1557.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\gup.exe"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "C:\\\\Program Files\\\\Notepad++\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "C:\\\\Program Files (x86)\\\\Notepad++\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*npp.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.Installer.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.exe*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "C:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.zip*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "C:\\\\$Recycle.Bin\\\\S-1-5-21*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\plugins\\\\JsonTools\\\\testfiles\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\Notepad++\\\\plugins\\\\ComparePlugin\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*npp.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*.portable.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetFilename:
+                                value: "*\\\\plugins\\\\*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches '*\gup.exe';
+  data_win_eventdata_targetFilename matches 'C:\Program Files\Notepad++\*';
+  data_win_eventdata_targetFilename matches 'C:\Program Files
+  (x86)\Notepad++\*', among other conditions.
+
+known_false_positives: >
+  Custom or portable Notepad++ installations in non-standard directories..
+  Legitimate update processes creating temporary files in unexpected locations.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://notepad-plus-plus.org/news/v889-released/
+  - https://www.heise.de/en/news/Notepad-updater-installed-malware-11109726.html
+  - https://www.rapid7.com/blog/post/tr-chrysalis-backdoor-dive-into-lotus-blossoms-toolkit/
+  - https://www.validin.com/blog/exploring_notepad_plus_plus_network_indicators/
+  - https://securelist.com/notepad-supply-chain-attack/118708/
+  - https://attack.mitre.org/techniques/T1195/002/
+  - https://attack.mitre.org/techniques/T1557/
+
+response:
+  message: >
+    Uncommon File Created by Notepad++ Updater Gup.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. MITRE ATT&CK: T1195.002, T1557
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1195.002
+    - T1557
+  custom_tags:
+    - uncommon
+    - notepad
+    - updater
+    - file_event
+    - sysmon
+    - collection
+    - credential_access
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_image:/.*\\[Gg][Uu][Pp]\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\+\+\\.*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\+\+\\.*/ OR (data_win_eventdata_targetFilename:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/ AND data_win_eventdata_targetFilename:/.*[Nn][Pp][Pp]\..*/ AND data_win_eventdata_targetFilename:/.*\.[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\..*/ AND data_win_eventdata_targetFilename:/.*\.[Ee][Xx][Ee].*/) OR (data_win_eventdata_targetFilename:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/ AND data_win_eventdata_targetFilename:/.*\.[Zz][Ii][Pp].*/) OR data_win_eventdata_targetFilename:/[Cc]:\\\$[Rr][Ee][Cc][Yy][Cc][Ll][Ee]\.[Bb][Ii][Nn]\\[Ss]-1-5-21.*/ OR data_win_eventdata_targetFilename:/.*\\[Pp][Ll][Uu][Gg][Ii][Nn][Ss]\\[Jj][Ss][Oo][Nn][Tt][Oo][Oo][Ll][Ss]\\[Tt][Ee][Ss][Tt][Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_targetFilename:/.*\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\+\+\\[Pp][Ll][Uu][Gg][Ii][Nn][Ss]\\[Cc][Oo][Mm][Pp][Aa][Rr][Ee][Pp][Ll][Uu][Gg][Ii][Nn]\\.*/ OR (data_win_eventdata_targetFilename:/.*[Nn][Pp][Pp]\..*/ AND data_win_eventdata_targetFilename:/.*\.[Pp][Oo][Rr][Tt][Aa][Bb][Ll][Ee]\..*/ AND data_win_eventdata_targetFilename:/.*\\[Pp][Ll][Uu][Gg][Ii][Nn][Ss]\\.*/))

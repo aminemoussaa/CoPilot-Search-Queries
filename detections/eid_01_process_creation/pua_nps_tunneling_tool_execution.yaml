@@ -1,0 +1,168 @@
+name: PUA - NPS Tunneling Tool Execution
+id: 68d37776-61db-42f5-bf54-27e87072d17e
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 68d37776-61db-42f5-bf54-27e87072d17e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of NPS, a port forwarding and intranet penetration proxy
+  server. MITRE ATT&CK: T1090.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\npc.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -server=*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -vkey=*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -password=*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -config=npc*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*MD5=AE8ACF66BFE3A44148964048B826D005*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=CEA49E9B9B67F3A13AD0BE1C2655293EA3C18181*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=5A456283392FFCEEEACA3D3426C306EB470304637520D72FED1CC1FEBBBD6856*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_hashes
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\npc.exe';
+  data_win_eventdata_commandLine matches '* -server=*';
+  data_win_eventdata_commandLine matches '* -vkey=*', among other conditions.
+
+known_false_positives: >
+  Legitimate use. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/ehang-io/nps
+  - https://attack.mitre.org/techniques/T1090/
+
+response:
+  message: >
+    PUA - NPS Tunneling Tool Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1090
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1090
+  custom_tags:
+    - tunneling
+    - process_creation
+    - sysmon
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Nn][Pp][Cc]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_commandLine:/.* -[Ss][Ee][Rr][Vv][Ee][Rr]=.*/ AND data_win_eventdata_commandLine:/.* -[Vv][Kk][Ee][Yy]=.*/ AND data_win_eventdata_commandLine:/.* -[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]=.*/) OR data_win_eventdata_commandLine:/.* -[Cc][Oo][Nn][Ff][Ii][Gg]=[Nn][Pp][Cc].*/ OR data_win_eventdata_hashes:/.*[Mm][Dd]5=[Aa][Ee]8[Aa][Cc][Ff]66[Bb][Ff][Ee]3[Aa]44148964048[Bb]826[Dd]005.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=[Cc][Ee][Aa]49[Ee]9[Bb]9[Bb]67[Ff]3[Aa]13[Aa][Dd]0[Bb][Ee]1[Cc]2655293[Ee][Aa]3[Cc]18181.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=5[Aa]456283392[Ff][Ff][Cc][Ee][Ee][Ee][Aa][Cc][Aa]3[Dd]3426[Cc]306[Ee][Bb]470304637520[Dd]72[Ff][Ee][Dd]1[Cc][Cc]1[Ff][Ee][Bb][Bb][Bb][Dd]6856.*/)

@@ -1,0 +1,132 @@
+name: DiagTrackEoP Default Login Username
+id: 2111118f-7e46-4fc8-974a-59fd8ec95196
+version: 1
+schema_version: "1.0"
+date: "2022-08-03"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2111118f-7e46-4fc8-974a-59fd8ec95196
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the default "UserName" used by the DiagTrackEoP POC.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4624"
+        - term:
+            data_win_eventdata_logonType: "9"
+        - term:
+            data_win_eventdata_targetOutboundUserName:
+              value: "thisisnotvaliduser"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_logonType
+    - data_win_eventdata_targetOutboundUserName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4624'; data_win_eventdata_logonType equals
+  '9'; data_win_eventdata_targetOutboundUserName equals 'thisisnotvaliduser'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/Wh04m1001/DiagTrackEoP/blob/3a2fc99c9700623eb7dc7d4b5f314fd9ce5ef51f/main.cpp#L46
+
+response:
+  message: >
+    DiagTrackEoP Default Login Username detected on host $agent_name$. Matched
+    data_win_eventdata_logonType: $data_win_eventdata_logonType$. Matched
+    data_win_eventdata_targetOutboundUserName:
+    $data_win_eventdata_targetOutboundUserName$.
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_logonType
+      type: other
+    - field: data_win_eventdata_targetOutboundUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - diagtrackeop
+    - default
+    - login
+    - windows_security
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4624" AND data_win_eventdata_logonType:"9" AND data_win_eventdata_targetOutboundUserName:/[Tt][Hh][Ii][Ss][Ii][Ss][Nn][Oo][Tt][Vv][Aa][Ll][Ii][Dd][Uu][Ss][Ee][Rr]/

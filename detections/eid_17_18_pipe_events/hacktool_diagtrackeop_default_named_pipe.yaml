@@ -1,0 +1,133 @@
+name: HackTool - DiagTrackEoP Default Named Pipe
+id: 1f7025a6-e747-4130-aac4-961eb47015f1
+version: 1
+schema_version: "1.0"
+date: "2023-08-07"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1f7025a6-e747-4130-aac4-961eb47015f1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects creation of default named pipe used by the DiagTrackEoP POC, a tool
+  that abuses "SeImpersonate" privilege.
+
+data_source:
+  - Sysmon EventID 17/18 - Named Pipe
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "17"
+              - term:
+                  data_win_system_eventID: "18"
+            minimum_should_match: 1
+        
+        - wildcard:
+            data_win_eventdata_pipeName:
+              value: "*thisispipe*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_pipeName
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon named pipe logging (EventIDs 17/18) enabled in the Sysmon
+  configuration and the Microsoft-Windows-Sysmon/Operational channel collected
+  by the Wazuh agent. The detection looks for events where
+  data_win_eventdata_pipeName matches '*thisispipe*'.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/Wh04m1001/DiagTrackEoP/blob/3a2fc99c9700623eb7dc7d4b5f314fd9ce5ef51f/main.cpp#L22
+
+response:
+  message: >
+    HackTool - DiagTrackEoP Default Named Pipe detected on host $agent_name$.
+    Matched data_win_eventdata_pipeName: $data_win_eventdata_pipeName$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$.
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_eventdata_pipeName
+      type: pipe
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - hacktool
+    - diagtrackeop
+    - default
+    - pipe_created
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"17" OR data_win_system_eventID:"18") AND data_win_eventdata_pipeName:/.*[Tt][Hh][Ii][Ss][Ii][Ss][Pp][Ii][Pp][Ee].*/

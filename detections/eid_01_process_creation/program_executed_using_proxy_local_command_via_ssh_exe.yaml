@@ -1,0 +1,213 @@
+name: Program Executed Using Proxy/Local Command Via SSH.EXE
+id: 7d6d30b8-5b91-4b90-a891-46cccaf29598
+version: 1
+schema_version: "1.0"
+date: "2025-10-16"
+author: frack113, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7d6d30b8-5b91-4b90-a891-46cccaf29598
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect usage of the "ssh.exe" binary as a proxy to launch other programs.
+  MITRE ATT&CK: T1218.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_parentImage:
+                    value: "C:\\Windows\\System32\\OpenSSH\\sshd.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\ssh.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_product:
+                                value: "OpenSSH for Windows"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=55b4964d29aad5438b9e950052dbbbc0*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=334d66c33503ccbf647c15b47c27eef4*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=27b0da080ef92afb37983d30d839141e*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=977eb4c263d384e47daa0712d34713ab*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=3eaadce9ae43d5a918bb082065815c3b*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=980fe6cf0d996ab1eedf877222e722aa*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=5f959422308ac3d721010d66647e100e*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=a49aaa3d03d1cd9c8dc7fca60f7f480b*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_hashes:
+                                value: "*IMPHASH=dd335f759b6d5d6a8382b71dd9d65791*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*ProxyCommand=*"
+                                case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*PermitLocalCommand=yes*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "* LocalCommand*"
+                                      case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_product
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage equals
+  'C:\Windows\System32\OpenSSH\sshd.exe'; data_win_eventdata_image matches
+  '*\ssh.exe'; data_win_eventdata_product equals 'OpenSSH for Windows', among
+  other conditions.
+
+known_false_positives: >
+  Legitimate usage for administration purposes. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://lolbas-project.github.io/lolbas/Binaries/Ssh/
+  - https://github.com/LOLBAS-Project/LOLBAS/pull/211/files
+  - https://gtfobins.github.io/gtfobins/ssh/
+  - https://man.openbsd.org/ssh_config#ProxyCommand
+  - https://man.openbsd.org/ssh_config#LocalCommand
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Program Executed Using Proxy/Local Command Via SSH.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1218
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+  custom_tags:
+    - program
+    - executed
+    - proxy
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Oo][Pp][Ee][Nn][Ss][Ss][Hh]\\[Ss][Ss][Hh][Dd]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/.*\\[Ss][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_product:/[Oo][Pp][Ee][Nn][Ss][Ss][Hh] [Ff][Oo][Rr] [Ww][Ii][Nn][Dd][Oo][Ww][Ss]/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=55[Bb]4964[Dd]29[Aa][Aa][Dd]5438[Bb]9[Ee]950052[Dd][Bb][Bb][Bb][Cc]0.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=334[Dd]66[Cc]33503[Cc][Cc][Bb][Ff]647[Cc]15[Bb]47[Cc]27[Ee][Ee][Ff]4.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=27[Bb]0[Dd][Aa]080[Ee][Ff]92[Aa][Ff][Bb]37983[Dd]30[Dd]839141[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=977[Ee][Bb]4[Cc]263[Dd]384[Ee]47[Dd][Aa][Aa]0712[Dd]34713[Aa][Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=3[Ee][Aa][Aa][Dd][Cc][Ee]9[Aa][Ee]43[Dd]5[Aa]918[Bb][Bb]082065815[Cc]3[Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=980[Ff][Ee]6[Cc][Ff]0[Dd]996[Aa][Bb]1[Ee][Ee][Dd][Ff]877222[Ee]722[Aa][Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=5[Ff]959422308[Aa][Cc]3[Dd]721010[Dd]66647[Ee]100[Ee].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa]49[Aa][Aa][Aa]3[Dd]03[Dd]1[Cc][Dd]9[Cc]8[Dd][Cc]7[Ff][Cc][Aa]60[Ff]7[Ff]480[Bb].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Dd][Dd]335[Ff]759[Bb]6[Dd]5[Dd]6[Aa]8382[Bb]71[Dd][Dd]9[Dd]65791.*/) AND (data_win_eventdata_commandLine:/.*[Pp][Rr][Oo][Xx][Yy][Cc][Oo][Mm][Mm][Aa][Nn][Dd]=.*/ OR (data_win_eventdata_commandLine:/.*[Pp][Ee][Rr][Mm][Ii][Tt][Ll][Oo][Cc][Aa][Ll][Cc][Oo][Mm][Mm][Aa][Nn][Dd]=[Yy][Ee][Ss].*/ AND data_win_eventdata_commandLine:/.* [Ll][Oo][Cc][Aa][Ll][Cc][Oo][Mm][Mm][Aa][Nn][Dd].*/))))

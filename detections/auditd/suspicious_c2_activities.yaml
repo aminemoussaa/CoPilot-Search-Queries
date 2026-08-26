@@ -1,0 +1,129 @@
+name: Suspicious C2 Activities
+id: f7158a64-6204-4d6d-868a-6e6378b467e0
+version: 1
+schema_version: "1.0"
+date: "2021-11-27"
+author: Marie Euler
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f7158a64-6204-4d6d-868a-6e6378b467e0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious activities as declared by Florian Roth in its 'Best
+  Practice Auditd Configuration'. This includes the detection of the following
+  commands; wget, curl, base64, nc, netcat, ncat, ssh, socat, wireshark,
+  rawshark, rdesktop, nmap. These commands match a few techniques from the
+  tactics "Command and Control", including not exhaustively the following;
+  Application Layer Protocol (T1071), Non-Application Layer Protocol (T1095),
+  Data Encoding (T1132).
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_audit_key:
+              value: "susp_activity"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_key
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_execve_a0
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_key equals
+  'susp_activity'.
+
+known_false_positives: >
+  Admin or User activity. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/Neo23x0/auditd
+
+response:
+  message: >
+    Suspicious C2 Activities detected on host $agent_name$. Matched
+    data_audit_key: $data_audit_key$. Matched data_audit_exe: $data_audit_exe$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_audit_key
+      type: other
+    - field: data_audit_exe
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - activities
+    - linux
+    - auditd
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_audit_key:/[Ss][Uu][Ss][Pp]_[Aa][Cc][Tt][Ii][Vv][Ii][Tt][Yy]/

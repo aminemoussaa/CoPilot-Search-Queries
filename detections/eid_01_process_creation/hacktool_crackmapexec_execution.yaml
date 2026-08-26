@@ -1,0 +1,274 @@
+name: HackTool - CrackMapExec Execution
+id: 42a993dd-bb3e-48c8-b372-4d6684c4106c
+version: 1
+schema_version: "1.0"
+date: "2023-03-08"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 42a993dd-bb3e-48c8-b372-4d6684c4106c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  This rule detect common flag combinations used by CrackMapExec in order to
+  detect its use even if the binary has been replaced. MITRE ATT&CK: T1047,
+  T1053, T1059.003, T1059.001, T1110, T1201.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\crackmapexec.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -M pe_inject *"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* --local-auth*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -u *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -x *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* --local-auth*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -u *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -p *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -H 'NTHASH'*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* mssql *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -u *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -p *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -M *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -d *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* smb *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -u *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -H *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -M *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -o *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* smb *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -u *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -p *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* --local-auth*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* --local-auth*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -u *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -p *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine: "* 10.*"
+                    - wildcard:
+                        data_win_eventdata_commandLine: "* 192.168.*"
+                    - wildcard:
+                        data_win_eventdata_commandLine: "*/24 *"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\crackmapexec.exe'; data_win_eventdata_commandLine matches '* -M pe_inject
+  *'; data_win_eventdata_commandLine matches '* --local-auth*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://mpgn.gitbook.io/crackmapexec/smb-protocol/authentication/checking-credentials-local
+  - https://www.mandiant.com/resources/telegram-malware-iranian-espionage
+  - https://www.infosecmatter.com/crackmapexec-module-library/?cmem=mssql-mimikatz
+  - https://www.infosecmatter.com/crackmapexec-module-library/?cmem=smb-pe_inject
+  - https://attack.mitre.org/techniques/T1047/
+  - https://attack.mitre.org/techniques/T1053/
+  - https://attack.mitre.org/techniques/T1059/003/
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1110/
+  - https://attack.mitre.org/techniques/T1201/
+
+response:
+  message: >
+    HackTool - CrackMapExec Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1047, T1053, T1059.003, T1059.001, T1110, T1201
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1047
+    - T1053
+    - T1059.003
+    - T1059.001
+    - T1110
+    - T1201
+  custom_tags:
+    - hacktool
+    - crackmapexec
+    - process_creation
+    - sysmon
+    - execution
+    - persistence
+    - privilege_escalation
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Cc][Rr][Aa][Cc][Kk][Mm][Aa][Pp][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_commandLine:/.* -[Mm] [Pp][Ee]_[Ii][Nn][Jj][Ee][Cc][Tt] .*/ OR (data_win_eventdata_commandLine:/.* --[Ll][Oo][Cc][Aa][Ll]-[Aa][Uu][Tt][Hh].*/ AND data_win_eventdata_commandLine:/.* -[Uu] .*/ AND data_win_eventdata_commandLine:/.* -[Xx] .*/) OR (data_win_eventdata_commandLine:/.* --[Ll][Oo][Cc][Aa][Ll]-[Aa][Uu][Tt][Hh].*/ AND data_win_eventdata_commandLine:/.* -[Uu] .*/ AND data_win_eventdata_commandLine:/.* -[Pp] .*/ AND data_win_eventdata_commandLine:/.* -[Hh] '[Nn][Tt][Hh][Aa][Ss][Hh]'.*/) OR (data_win_eventdata_commandLine:/.* [Mm][Ss][Ss][Qq][Ll] .*/ AND data_win_eventdata_commandLine:/.* -[Uu] .*/ AND data_win_eventdata_commandLine:/.* -[Pp] .*/ AND data_win_eventdata_commandLine:/.* -[Mm] .*/ AND data_win_eventdata_commandLine:/.* -[Dd] .*/) OR (data_win_eventdata_commandLine:/.* [Ss][Mm][Bb] .*/ AND data_win_eventdata_commandLine:/.* -[Uu] .*/ AND data_win_eventdata_commandLine:/.* -[Hh] .*/ AND data_win_eventdata_commandLine:/.* -[Mm] .*/ AND data_win_eventdata_commandLine:/.* -[Oo] .*/) OR (data_win_eventdata_commandLine:/.* [Ss][Mm][Bb] .*/ AND data_win_eventdata_commandLine:/.* -[Uu] .*/ AND data_win_eventdata_commandLine:/.* -[Pp] .*/ AND data_win_eventdata_commandLine:/.* --[Ll][Oo][Cc][Aa][Ll]-[Aa][Uu][Tt][Hh].*/) OR (data_win_eventdata_commandLine:/.* --[Ll][Oo][Cc][Aa][Ll]-[Aa][Uu][Tt][Hh].*/ AND data_win_eventdata_commandLine:/.* -[Uu] .*/ AND data_win_eventdata_commandLine:/.* -[Pp] .*/ AND data_win_eventdata_commandLine:/.* 10\..*/ AND data_win_eventdata_commandLine:/.* 192\.168\..*/ AND data_win_eventdata_commandLine:/.*\/24 .*/))

@@ -1,0 +1,142 @@
+name: Data Exfiltration with Wget
+id: cb39d16b-b3b6-4a7a-8222-1cf24b686ffc
+version: 1
+schema_version: "1.0"
+date: "2022-12-25"
+author: Pawel Mazur
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cb39d16b-b3b6-4a7a-8222-1cf24b686ffc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects attempts to post the file with the usage of wget utility. The
+  adversary can bypass the permission restriction with the misconfigured sudo
+  permission for wget utility which could allow them to read files like
+  /etc/shadow. MITRE ATT&CK: T1048.003.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_audit_type:
+              value: "EXECVE"
+              case_insensitive: true
+        - term:
+            data_audit_execve_a0:
+              value: "wget"
+              case_insensitive: true
+        - wildcard:
+            data_audit_execve_a1:
+              value: "--post-file=*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_execve_a0
+    - data_audit_execve_a1
+    - data_audit_exe
+    - data_audit_command
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'EXECVE'; data_audit_execve_a0 equals 'wget'; data_audit_execve_a1 matches
+  '--post-file=*'.
+
+known_false_positives: >
+  Legitimate usage of wget utility to post a file. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://linux.die.net/man/1/wget
+  - https://gtfobins.github.io/gtfobins/wget/
+  - https://attack.mitre.org/techniques/T1048/003/
+
+response:
+  message: >
+    Data Exfiltration with Wget detected on host $agent_name$. Matched
+    data_audit_type: $data_audit_type$. Matched data_audit_execve_a0:
+    $data_audit_execve_a0$. MITRE ATT&CK: T1048.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_execve_a0
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1048.003
+  custom_tags:
+    - exfiltration
+    - linux
+    - auditd
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_audit_type:/[Ee][Xx][Ee][Cc][Vv][Ee]/ AND data_audit_execve_a0:/[Ww][Gg][Ee][Tt]/ AND data_audit_execve_a1:/--[Pp][Oo][Ss][Tt]-[Ff][Ii][Ll][Ee]=.*/

@@ -1,0 +1,213 @@
+name: LiteLLM / TeamPCP Supply Chain Attack Indicators
+id: 36603778-030c-43c4-8cbb-cd3c1d1a80c7
+version: 1
+schema_version: "1.0"
+date: "2026-03-30"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 36603778-030c-43c4-8cbb-cd3c1d1a80c7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects process executions related to the backdoored versions of LiteLLM
+  (v1.82.7 or v1.82.8). In March 2026, a supply chain attack was discovered
+  involving the popular open-source LLM framework LiteLLM by Threat Actor
+  TeamPCP. The malicious package harvests every credential on the system,
+  encrypts and exfiltrates them, and installs a persistent C2 backdoor. MITRE
+  ATT&CK: T1195.002, T1560.001, T1543.002.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/python3*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*exec(base64.b64decode('aW1wb3J0*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*kI2NF9TQ1JJUFQgPSAiYV*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/tar"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*tpcp.tar.gz*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*payload.enc*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*session.key.enc*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/curl"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*models.litellm.cloud*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*X-Filename: tpcp.tar.gz*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_parent_binary:
+                          value: "*/python3*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*systemctl*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*--user*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*sysmon*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/python3*';
+  data_process_exec_process_arguments matches
+  '*exec(base64.b64decode('aW1wb3J0*'; data_process_exec_process_arguments
+  matches '*kI2NF9TQ1JJUFQgPSAiYV*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://novasky.io/hunts/hunting-litellm-supply-chain
+  - https://www.virustotal.com/gui/file/71e35aef03099cd1f2d6446734273025a163597de93912df321ef118bf135238/
+  - https://huskyhacks.io/posts/litellm-cred-stealer/
+  - https://www.wiz.io/blog/threes-a-crowd-teampcp-trojanizes-litellm-in-continuation-of-campaign
+  - https://attack.mitre.org/techniques/T1195/002/
+  - https://attack.mitre.org/techniques/T1560/001/
+  - https://attack.mitre.org/techniques/T1543/002/
+
+response:
+  message: >
+    LiteLLM / TeamPCP Supply Chain Attack Indicators detected on host
+    $agent_name$. Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1195.002, T1560.001, T1543.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1195.002
+    - T1560.001
+    - T1543.002
+  custom_tags:
+    - litellm
+    - teampcp
+    - supply
+    - linux
+    - tetragon
+    - process_creation
+    - initial_access
+    - collection
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: "((data_process_exec_process_binary:/.*\\/[Pp][Yy][Tt][Hh][Oo][Nn]3.*/ AND data_process_exec_process_arguments:/.*[Ee][Xx][Ee][Cc]\\([Bb][Aa][Ss][Ee]64\\.[Bb]64[Dd][Ee][Cc][Oo][Dd][Ee]\\('[Aa][Ww]1[Ww][Bb]3[Jj]0.*/ AND data_process_exec_process_arguments:/.*[Kk][Ii]2[Nn][Ff]9[Tt][Qq]1[Jj][Jj][Uu][Ff][Qq][Gg][Pp][Ss][Aa][Ii][Yy][Vv].*/) OR (data_process_exec_process_binary:/.*\\/[Tt][Aa][Rr]/ AND data_process_exec_process_arguments:/.*[Tt][Pp][Cc][Pp]\\.[Tt][Aa][Rr]\\.[Gg][Zz].*/ AND data_process_exec_process_arguments:/.*[Pp][Aa][Yy][Ll][Oo][Aa][Dd]\\.[Ee][Nn][Cc].*/ AND data_process_exec_process_arguments:/.*[Ss][Ee][Ss][Ss][Ii][Oo][Nn]\\.[Kk][Ee][Yy]\\.[Ee][Nn][Cc].*/) OR (data_process_exec_process_binary:/.*\\/[Cc][Uu][Rr][Ll]/ AND data_process_exec_process_arguments:/.*[Mm][Oo][Dd][Ee][Ll][Ss]\\.[Ll][Ii][Tt][Ee][Ll][Ll][Mm]\\.[Cc][Ll][Oo][Uu][Dd].*/ AND data_process_exec_process_arguments:/.*[Xx]-[Ff][Ii][Ll][Ee][Nn][Aa][Mm][Ee]: [Tt][Pp][Cc][Pp]\\.[Tt][Aa][Rr]\\.[Gg][Zz].*/) OR (data_process_exec_parent_binary:/.*\\/[Pp][Yy][Tt][Hh][Oo][Nn]3.*/ AND data_process_exec_process_arguments:/.*[Ss][Yy][Ss][Tt][Ee][Mm][Cc][Tt][Ll].*/ AND data_process_exec_process_arguments:/.*--[Uu][Ss][Ee][Rr].*/ AND data_process_exec_process_arguments:/.*[Ss][Yy][Ss][Mm][Oo][Nn].*/))"

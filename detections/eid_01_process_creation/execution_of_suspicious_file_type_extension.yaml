@@ -1,0 +1,304 @@
+name: Execution of Suspicious File Type Extension
+id: c09dad97-1c78-4f71-b127-7edb2b8e491a
+version: 1
+schema_version: "1.0"
+date: "2023-11-23"
+author: Max Altgelt (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c09dad97-1c78-4f71-b127-7edb2b8e491a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects whether the image specified in a process creation event doesn't refer
+  to an ".exe" (or other known executable extension) file. This can be caused by
+  process ghosting or other unorthodox methods to start a process. This rule
+  might require some initial baselining to align with some third party tooling
+  in the user environment.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*.bin"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*.cgi"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*.com"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*.scr"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*.tmp"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "System"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "Registry"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "MemCompression"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "vmmem"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\Installer\\\\MSI*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\System32\\\\DriverStore\\\\FileRepository\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*:\\\\Config.Msi\\\\*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*.rbf"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*.rbs"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\Windows\\\\Temp\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\Temp\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\$Extend\\\\$Deleted\\\\*"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image: "-"
+                    - term:
+                        data_win_eventdata_image: ""
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_image"
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\ProgramData\\\\Avira\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*NVIDIA\\\\NvBackend\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*.dat"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*:\\\\Program Files (x86)\\\\WINPAKPRO\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "*:\\\\Program Files\\\\WINPAKPRO\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*.ngn"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files (x86)\\\\MyQ\\\\Server\\\\pcltool.dll"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\MyQ\\\\Server\\\\pcltool.dll"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\AppData\\\\Local\\\\Packages\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\LocalState\\\\rootfs\\\\*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\LZMA_EXE"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\Mozilla Firefox\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\System32\\services.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*com.docker.service"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*.bin';
+  data_win_eventdata_image matches '*.cgi'; data_win_eventdata_image matches
+  '*.com', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://pentestlaboratories.com/2021/12/08/process-ghosting/
+
+response:
+  message: >
+    Execution of Suspicious File Type Extension detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - extension
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\.[Bb][Ii][Nn]/ OR data_win_eventdata_image:/.*\.[Cc][Gg][Ii]/ OR data_win_eventdata_image:/.*\.[Cc][Oo][Mm]/ OR data_win_eventdata_image:/.*\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\.[Ss][Cc][Rr]/ OR data_win_eventdata_image:/.*\.[Tt][Mm][Pp]/) AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_image:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_image:/[Rr][Ee][Gg][Ii][Ss][Tt][Rr][Yy]/ OR data_win_eventdata_image:/[Mm][Ee][Mm][Cc][Oo][Mm][Pp][Rr][Ee][Ss][Ss][Ii][Oo][Nn]/ OR data_win_eventdata_image:/[Vv][Mm][Mm][Ee][Mm]/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\[Mm][Ss][Ii].*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Rr][Ii][Vv][Ee][Rr][Ss][Tt][Oo][Rr][Ee]\\[Ff][Ii][Ll][Ee][Rr][Ee][Pp][Oo][Ss][Ii][Tt][Oo][Rr][Yy]\\.*/ OR (data_win_eventdata_image:/.*:\\[Cc][Oo][Nn][Ff][Ii][Gg]\.[Mm][Ss][Ii]\\.*/ AND (data_win_eventdata_image:/.*\.[Rr][Bb][Ff]/ OR data_win_eventdata_image:/.*\.[Rr][Bb][Ss]/)) OR data_win_eventdata_parentImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_image:/.*:\\\$[Ee][Xx][Tt][Ee][Nn][Dd]\\\$[Dd][Ee][Ll][Ee][Tt][Ee][Dd]\\.*/ OR data_win_eventdata_image:"-" OR data_win_eventdata_image:"" OR NOT _exists_:data_win_eventdata_image) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Aa][Vv][Ii][Rr][Aa]\\.*/ OR (data_win_eventdata_image:/.*[Nn][Vv][Ii][Dd][Ii][Aa]\\[Nn][Vv][Bb][Aa][Cc][Kk][Ee][Nn][Dd]\\.*/ AND data_win_eventdata_image:/.*\.[Dd][Aa][Tt]/) OR ((data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Ww][Ii][Nn][Pp][Aa][Kk][Pp][Rr][Oo]\\.*/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Pp][Aa][Kk][Pp][Rr][Oo]\\.*/) AND data_win_eventdata_image:/.*\.[Nn][Gg][Nn]/) OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Yy][Qq]\\[Ss][Ee][Rr][Vv][Ee][Rr]\\[Pp][Cc][Ll][Tt][Oo][Oo][Ll]\.[Dd][Ll][Ll]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Yy][Qq]\\[Ss][Ee][Rr][Vv][Ee][Rr]\\[Pp][Cc][Ll][Tt][Oo][Oo][Ll]\.[Dd][Ll][Ll]/ OR (data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss]\\.*/ AND data_win_eventdata_image:/.*\\[Ll][Oo][Cc][Aa][Ll][Ss][Tt][Aa][Tt][Ee]\\[Rr][Oo][Oo][Tt][Ff][Ss]\\.*/) OR data_win_eventdata_image:/.*\\[Ll][Zz][Mm][Aa]_[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Oo][Zz][Ii][Ll][Ll][Aa] [Ff][Ii][Rr][Ee][Ff][Oo][Xx]\\.*/ OR (data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_image:/.*[Cc][Oo][Mm]\.[Dd][Oo][Cc][Kk][Ee][Rr]\.[Ss][Ee][Rr][Vv][Ii][Cc][Ee]/))

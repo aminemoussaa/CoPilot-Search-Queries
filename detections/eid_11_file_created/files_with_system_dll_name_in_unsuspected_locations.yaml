@@ -1,0 +1,181 @@
+name: Files With System DLL Name In Unsuspected Locations
+id: 13c02350-4177-4e45-ac17-cf7ca628ff5e
+version: 1
+schema_version: "1.0"
+date: "2024-06-24"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 13c02350-4177-4e45-ac17-cf7ca628ff5e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a file with the ".dll" extension that has the name of
+  a System DLL in uncommon or unsuspected locations. (Outisde of "System32",
+  "SysWOW64", etc.). It is highly recommended to perform an initial baseline
+  before using this rule in production. MITRE ATT&CK: T1036.005.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\secur32.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\tdh.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*C:\\\\$WINDOWS.~BT\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*C:\\\\$WinREAgent\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*C:\\\\Windows\\\\SoftwareDistribution\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*C:\\\\Windows\\\\System32\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*C:\\\\Windows\\\\SysWOW64\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*C:\\\\Windows\\\\WinSxS\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*C:\\\\Windows\\\\uus\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\secur32.dll'; data_win_eventdata_targetFilename matches '*\tdh.dll';
+  data_win_eventdata_targetFilename matches '*C:\$WINDOWS.~BT\*', among other
+  conditions.
+
+known_false_positives: >
+  Third party software might bundle specific versions of system DLLs. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - Internal Research
+  - https://attack.mitre.org/techniques/T1036/005/
+
+response:
+  message: >
+    Files With System DLL Name In Unsuspected Locations detected on host
+    $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1036.005
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036.005
+  custom_tags:
+    - system
+    - unsuspected
+    - locations
+    - file_event
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*\\[Ss][Ee][Cc][Uu][Rr]32\.[Dd][Ll][Ll]/ OR data_win_eventdata_targetFilename:/.*\\[Tt][Dd][Hh]\.[Dd][Ll][Ll]/) AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_targetFilename:/.*[Cc]:\\\$[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.\~[Bb][Tt]\\.*/ OR data_win_eventdata_targetFilename:/.*[Cc]:\\\$[Ww][Ii][Nn][Rr][Ee][Aa][Gg][Ee][Nn][Tt]\\.*/ OR data_win_eventdata_targetFilename:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee][Dd][Ii][Ss][Tt][Rr][Ii][Bb][Uu][Tt][Ii][Oo][Nn]\\.*/ OR data_win_eventdata_targetFilename:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_targetFilename:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR data_win_eventdata_targetFilename:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Xx][Ss]\\.*/ OR data_win_eventdata_targetFilename:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Uu][Uu][Ss]\\.*/)

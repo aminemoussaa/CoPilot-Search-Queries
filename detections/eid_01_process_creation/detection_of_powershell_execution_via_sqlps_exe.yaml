@@ -1,0 +1,171 @@
+name: Detection of PowerShell Execution via Sqlps.exe
+id: 0152550d-3a26-4efd-9f0e-54a0b28ae2f3
+version: 1
+schema_version: "1.0"
+date: "2022-12-09"
+author: Agro (@agro_sev) oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0152550d-3a26-4efd-9f0e-54a0b28ae2f3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  This rule detects execution of a PowerShell code through the sqlps.exe
+  utility, which is included in the standard set of utilities supplied with the
+  MSSQL Server. Script blocks are not logged in this case, so this utility helps
+  to bypass protection mechanisms based on the analysis of these logs. MITRE
+  ATT&CK: T1059.001, T1127.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\sqlps.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\sqlps.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "sqlps.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - exists:
+                        field: "data_win_eventdata_parentImage"
+                    - bool:
+                        must_not:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\sqlagent.exe"
+                                case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\sqlps.exe'; data_win_eventdata_image matches '*\sqlps.exe';
+  data_win_eventdata_originalFileName equals 'sqlps.exe', among other
+  conditions.
+
+known_false_positives: >
+  Direct PS command execution through SQLPS.exe is uncommon, childprocess
+  sqlps.exe spawned by sqlagent.exe is a legitimate action. Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/sql/tools/sqlps-utility?view=sql-server-ver15
+  - https://lolbas-project.github.io/lolbas/OtherMSBinaries/Sqlps/
+  - https://twitter.com/bryon_/status/975835709587075072
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1127/
+
+response:
+  message: >
+    Detection of PowerShell Execution via Sqlps.exe detected on host
+    $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1059.001, T1127
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1127
+  custom_tags:
+    - powershell
+    - sqlps
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Ss][Qq][Ll][Pp][Ss]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/.*\\[Ss][Qq][Ll][Pp][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Qq][Ll][Pp][Ss]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_parentImage:/.*\\[Ss][Qq][Ll][Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee]/)))

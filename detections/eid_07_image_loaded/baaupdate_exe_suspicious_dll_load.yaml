@@ -1,0 +1,212 @@
+name: BaaUpdate.exe Suspicious DLL Load
+id: 6e8fe0a8-ba0b-4a93-8f9e-82657e7a5984
+version: 1
+schema_version: "1.0"
+date: "2025-10-18"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6e8fe0a8-ba0b-4a93-8f9e-82657e7a5984
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects BitLocker Access Agent Update Utility (baaupdate.exe) loading DLLs
+  from suspicious locations that are publicly writable which could indicate an
+  attempt to lateral movement via BitLocker DCOM & COM Hijacking. This technique
+  abuses COM Classes configured as INTERACTIVE USER to spawn processes in the
+  context of the logged-on user's session. Specifically, it targets the
+  BDEUILauncher Class (CLSID ab93b6f1-be76-4185-a488-a9001b105b94) which can
+  launch BaaUpdate.exe, which is vulnerable to COM Hijacking when started with
+  input parameters. This allows attackers to execute code in the user's context
+  without needing to steal credentials or use additional techniques to
+  compromise the account. MITRE ATT&CK: T1218, T1021.003.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\BaaUpdate.exe"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_imageLoaded:
+              value: "*.dll"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*:\\\\Perflogs\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*:\\\\Users\\\\Default\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*:\\\\Users\\\\Public\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*:\\\\Windows\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\AppData\\\\Local\\\\Temp\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\AppData\\\\Roaming\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Contacts\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Favorites\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Favourites\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Links\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Music\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Pictures\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ProgramData\\\\*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Temporary Internet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\Videos\\\\*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signed
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\BaaUpdate.exe'; data_win_eventdata_imageLoaded matches '*.dll';
+  data_win_eventdata_imageLoaded matches '*:\Perflogs\*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/rtecCyberSec/BitlockMove
+  - https://attack.mitre.org/techniques/T1218/
+  - https://attack.mitre.org/techniques/T1021/003/
+
+response:
+  message: >
+    BaaUpdate.exe Suspicious DLL Load detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. MITRE
+    ATT&CK: T1218, T1021.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_imageLoaded
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+    - T1021.003
+  custom_tags:
+    - baaupdate
+    - image_load
+    - sysmon
+    - stealth
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_image:/.*\\[Bb][Aa][Aa][Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_imageLoaded:/.*\.[Dd][Ll][Ll]/ AND (data_win_eventdata_imageLoaded:/.*:\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Dd][Ee][Ff][Aa][Uu][Ll][Tt]\\.*/ OR data_win_eventdata_imageLoaded:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_imageLoaded:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Cc][Oo][Nn][Tt][Aa][Cc][Tt][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Ff][Aa][Vv][Oo][Rr][Ii][Tt][Ee][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Ff][Aa][Vv][Oo][Uu][Rr][Ii][Tt][Ee][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Ll][Ii][Nn][Kk][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Uu][Ss][Ii][Cc]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Ii][Cc][Tt][Uu][Rr][Ee][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Tt][Ee][Mm][Pp][Oo][Rr][Aa][Rr][Yy] [Ii][Nn][Tt][Ee][Rr][Nn][Ee][Tt].*/ OR data_win_eventdata_imageLoaded:/.*\\[Vv][Ii][Dd][Ee][Oo][Ss]\\.*/)

@@ -1,0 +1,276 @@
+name: Windows Shell/Scripting Processes Spawning Suspicious Programs
+id: 3a6586ad-127a-4d3b-a677-1e6eacdf8fde
+version: 1
+schema_version: "1.0"
+date: "2023-05-23"
+author: Florian Roth (Nextron Systems), Tim Shelton
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3a6586ad-127a-4d3b-a677-1e6eacdf8fde
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious child processes of a Windows shell and scripting processes
+  such as wscript, rundll32, powershell, mshta...etc. MITRE ATT&CK: T1059.005,
+  T1059.001, T1218.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\mshta.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\rundll32.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\cscript.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\wscript.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\wmiprvse.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\regsvr32.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\schtasks.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\nslookup.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\certutil.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\bitsadmin.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\mshta.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_currentDirectory"
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_currentDirectory:
+                          value: "*\\\\ccmcache\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\Program Files\\\\Amazon\\\\WorkSpacesConfig\\\\Scripts\\\\setup-scheduledtask.ps1*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\Program Files\\\\Amazon\\\\WorkSpacesConfig\\\\Scripts\\\\set-selfhealing.ps1*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\Program Files\\\\Amazon\\\\WorkSpacesConfig\\\\Scripts\\\\check-workspacehealth.ps1*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentCommandLine:
+                          value: "*\\\\nessus_*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\nessus_*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\mshta.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\mshta.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*C:\\\\MEM_Configmgr_*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*\\\\splash.hta*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*{1E460BD7-F1C3-4B2E-88BF-4E770A288AF5}*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*C:\\\\MEM_Configmgr_*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\SMSSETUP\\\\BIN\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\autorun.hta*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*{1E460BD7-F1C3-4B2E-88BF-4E770A288AF5}*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_currentDirectory
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\mshta.exe'; data_win_eventdata_parentImage matches '*\powershell.exe';
+  data_win_eventdata_parentImage matches '*\pwsh.exe', among other conditions.
+
+known_false_positives: >
+  Administrative scripts. Microsoft SCCM. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://mgreen27.github.io/posts/2018/04/02/DownloadCradle.html
+  - https://attack.mitre.org/techniques/T1059/005/
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Windows Shell/Scripting Processes Spawning Suspicious Programs detected on
+    host $agent_name$. Matched data_win_eventdata_parentImage:
+    $data_win_eventdata_parentImage$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1059.005, T1059.001, T1218
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.005
+    - T1059.001
+    - T1218
+  custom_tags:
+    - shell
+    - scripting
+    - spawning
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_parentImage:/.*\\[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Cc][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ww][Ss][Cc][Rr][Ii][Pp][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ww][Mm][Ii][Pp][Rr][Vv][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Rr][Ee][Gg][Ss][Vv][Rr]32\.[Ee][Xx][Ee]/) AND (data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ss][Ll][Oo][Oo][Kk][Uu][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Cc][Ee][Rr][Tt][Uu][Tt][Ii][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Bb][Ii][Tt][Ss][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_currentDirectory AND _exists_:data_win_eventdata_parentCommandLine AND _exists_:data_win_eventdata_commandLine AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_currentDirectory:/.*\\[Cc][Cc][Mm][Cc][Aa][Cc][Hh][Ee]\\.*/ OR data_win_eventdata_parentCommandLine:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Mm][Aa][Zz][Oo][Nn]\\[Ww][Oo][Rr][Kk][Ss][Pp][Aa][Cc][Ee][Ss][Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Cc][Rr][Ii][Pp][Tt][Ss]\\[Ss][Ee][Tt][Uu][Pp]-[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk]\.[Pp][Ss]1.*/ OR data_win_eventdata_parentCommandLine:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Mm][Aa][Zz][Oo][Nn]\\[Ww][Oo][Rr][Kk][Ss][Pp][Aa][Cc][Ee][Ss][Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Cc][Rr][Ii][Pp][Tt][Ss]\\[Ss][Ee][Tt]-[Ss][Ee][Ll][Ff][Hh][Ee][Aa][Ll][Ii][Nn][Gg]\.[Pp][Ss]1.*/ OR data_win_eventdata_parentCommandLine:/.*\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Mm][Aa][Zz][Oo][Nn]\\[Ww][Oo][Rr][Kk][Ss][Pp][Aa][Cc][Ee][Ss][Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Cc][Rr][Ii][Pp][Tt][Ss]\\[Cc][Hh][Ee][Cc][Kk]-[Ww][Oo][Rr][Kk][Ss][Pp][Aa][Cc][Ee][Hh][Ee][Aa][Ll][Tt][Hh]\.[Pp][Ss]1.*/ OR data_win_eventdata_parentCommandLine:/.*\\[Nn][Ee][Ss][Ss][Uu][Ss]_.*/ OR data_win_eventdata_commandLine:/.*\\[Nn][Ee][Ss][Ss][Uu][Ss]_.*/ OR (data_win_eventdata_parentImage:/.*\\[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]/ AND data_win_eventdata_image:/.*\\[Mm][Ss][Hh][Tt][Aa]\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*[Cc]:\\[Mm][Ee][Mm]_[Cc][Oo][Nn][Ff][Ii][Gg][Mm][Gg][Rr]_.*/ AND data_win_eventdata_parentCommandLine:/.*\\[Ss][Pp][Ll][Aa][Ss][Hh]\.[Hh][Tt][Aa].*/ AND data_win_eventdata_parentCommandLine:/.*\{1[Ee]460[Bb][Dd]7-[Ff]1[Cc]3-4[Bb]2[Ee]-88[Bb][Ff]-4[Ee]770[Aa]288[Aa][Ff]5\}.*/ AND data_win_eventdata_commandLine:/.*[Cc]:\\[Mm][Ee][Mm]_[Cc][Oo][Nn][Ff][Ii][Gg][Mm][Gg][Rr]_.*/ AND data_win_eventdata_commandLine:/.*\\[Ss][Mm][Ss][Ss][Ee][Tt][Uu][Pp]\\[Bb][Ii][Nn]\\.*/ AND data_win_eventdata_commandLine:/.*\\[Aa][Uu][Tt][Oo][Rr][Uu][Nn]\.[Hh][Tt][Aa].*/ AND data_win_eventdata_commandLine:/.*\{1[Ee]460[Bb][Dd]7-[Ff]1[Cc]3-4[Bb]2[Ee]-88[Bb][Ff]-4[Ee]770[Aa]288[Aa][Ff]5\}.*/))

@@ -1,0 +1,180 @@
+name: Sensitive File Dump Via Wbadmin.EXE
+id: 8b93a509-1cb8-42e1-97aa-ee24224cdc15
+version: 1
+schema_version: "1.0"
+date: "2024-05-10"
+author: Nasreddine Bencherchali (Nextron Systems), frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8b93a509-1cb8-42e1-97aa-ee24224cdc15
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the dump of highly sensitive files such as "NTDS.DIT" and "SECURITY"
+  hive. Attackers can leverage the "wbadmin" utility in order to dump sensitive
+  files that might contain credential or sensitive information. MITRE ATT&CK:
+  T1003.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\wbadmin.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "WBADMIN.EXE"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*start*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*backup*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\config\\\\SAM*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\config\\\\SECURITY*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\config\\\\SYSTEM*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*\\\\Windows\\\\NTDS\\\\NTDS.dit*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\wbadmin.exe'; data_win_eventdata_originalFileName equals 'WBADMIN.EXE';
+  data_win_eventdata_commandLine matches '*start*', among other conditions.
+
+known_false_positives: >
+  Legitimate backup operation by authorized administrators. Matches must be
+  investigated and allowed on a case by case basis. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/LOLBAS-Project/LOLBAS/blob/2cc01b01132b5c304027a658c698ae09dd6a92bf/yml/OSBinaries/Wbadmin.yml
+  - https://lolbas-project.github.io/lolbas/Binaries/Wbadmin/
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wbadmin-start-recovery
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wbadmin-start-backup
+  - https://attack.mitre.org/techniques/T1003/003/
+
+response:
+  message: >
+    Sensitive File Dump Via Wbadmin.EXE detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1003.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.003
+  custom_tags:
+    - sensitive
+    - wbadmin
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ww][Bb][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Bb][Aa][Dd][Mm][Ii][Nn]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Ss][Tt][Aa][Rr][Tt].*/ OR data_win_eventdata_commandLine:/.*[Bb][Aa][Cc][Kk][Uu][Pp].*/) AND (data_win_eventdata_commandLine:/.*\\[Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Aa][Mm].*/ OR data_win_eventdata_commandLine:/.*\\[Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy].*/ OR data_win_eventdata_commandLine:/.*\\[Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Yy][Ss][Tt][Ee][Mm].*/ OR data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Nn][Tt][Dd][Ss]\\[Nn][Tt][Dd][Ss]\.[Dd][Ii][Tt].*/)

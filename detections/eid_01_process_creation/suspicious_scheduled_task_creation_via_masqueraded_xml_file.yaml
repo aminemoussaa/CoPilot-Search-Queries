@@ -1,0 +1,241 @@
+name: Suspicious Scheduled Task Creation via Masqueraded XML File
+id: dd2a821e-3b07-4d3b-a9ac-929fe4c6ca0c
+version: 1
+schema_version: "1.0"
+date: "2024-12-01"
+author: Swachchhanda Shrawan Poudel, Elastic (idea)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: dd2a821e-3b07-4d3b-a9ac-929fe4c6ca0c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of a scheduled task using the "-XML" flag with a file
+  without the '.xml' extension. This behavior could be indicative of potential
+  defense evasion attempt during persistence. MITRE ATT&CK: T1036.005,
+  T1053.005.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\schtasks.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "schtasks.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/create*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-create*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/xml*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-xml*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - exists:
+            field: "data_win_eventdata_integrityLevel"
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_parentCommandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*.xml*"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_integrityLevel:
+                          value: "System"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_integrityLevel:
+                          value: "S-1-16-16384"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\rundll32.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*:\\\\WINDOWS\\\\Installer\\\\MSI*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentCommandLine:
+                                value: "*.tmp,zzzzInvokeManagedCustomActionOutOfProc*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\ProgramData\\\\OEM\\\\UpgradeTool\\\\CareCenter_*\\\\BUnzip\\\\Setup_msi.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\Program Files\\\\Axis Communications\\\\AXIS Camera Station\\\\SetupActions.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\Program Files\\\\Axis Communications\\\\AXIS Device Manager\\\\AdmSetupActions.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\Program Files (x86)\\\\Zemana\\\\AntiMalware\\\\AntiMalware.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_parentImage:
+                          value: "*:\\\\Program Files\\\\Dell\\\\SupportAssist\\\\pcdrcui.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_integrityLevel
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_parentCommandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\schtasks.exe'; data_win_eventdata_originalFileName equals 'schtasks.exe';
+  data_win_eventdata_commandLine matches '*/create*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows/win32/taskschd/daily-trigger-example--xml-
+  - https://github.com/elastic/protections-artifacts/blob/084067123d3328a823b1c3fdde305b694275c794/behavior/rules/persistence_suspicious_scheduled_task_creation_via_masqueraded_xml_file.toml
+  - https://attack.mitre.org/techniques/T1036/005/
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Suspicious Scheduled Task Creation via Masqueraded XML File detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1036.005, T1053.005
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1036.005
+    - T1053.005
+  custom_tags:
+    - scheduled
+    - masqueraded
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - execution
+    - persistence
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*\/[Cc][Rr][Ee][Aa][Tt][Ee].*/ OR data_win_eventdata_commandLine:/.*-[Cc][Rr][Ee][Aa][Tt][Ee].*/) AND (data_win_eventdata_commandLine:/.*\/[Xx][Mm][Ll].*/ OR data_win_eventdata_commandLine:/.*-[Xx][Mm][Ll].*/) AND _exists_:data_win_eventdata_commandLine AND _exists_:data_win_eventdata_integrityLevel AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_parentCommandLine AND NOT (data_win_eventdata_commandLine:/.*\.[Xx][Mm][Ll].*/ OR data_win_eventdata_integrityLevel:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_integrityLevel:/[Ss]-1-16-16384/ OR (data_win_eventdata_parentImage:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ AND data_win_eventdata_parentCommandLine:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\\[Mm][Ss][Ii].*/ AND data_win_eventdata_parentCommandLine:/.*\.[Tt][Mm][Pp],[Zz][Zz][Zz][Zz][Ii][Nn][Vv][Oo][Kk][Ee][Mm][Aa][Nn][Aa][Gg][Ee][Dd][Cc][Uu][Ss][Tt][Oo][Mm][Aa][Cc][Tt][Ii][Oo][Nn][Oo][Uu][Tt][Oo][Ff][Pp][Rr][Oo][Cc].*/)) AND _exists_:data_win_eventdata_parentImage AND NOT (data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Oo][Ee][Mm]\\[Uu][Pp][Gg][Rr][Aa][Dd][Ee][Tt][Oo][Oo][Ll]\\[Cc][Aa][Rr][Ee][Cc][Ee][Nn][Tt][Ee][Rr]_.*\\[Bb][Uu][Nn][Zz][Ii][Pp]\\[Ss][Ee][Tt][Uu][Pp]_[Mm][Ss][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Xx][Ii][Ss] [Cc][Oo][Mm][Mm][Uu][Nn][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Ss]\\[Aa][Xx][Ii][Ss] [Cc][Aa][Mm][Ee][Rr][Aa] [Ss][Tt][Aa][Tt][Ii][Oo][Nn]\\[Ss][Ee][Tt][Uu][Pp][Aa][Cc][Tt][Ii][Oo][Nn][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Xx][Ii][Ss] [Cc][Oo][Mm][Mm][Uu][Nn][Ii][Cc][Aa][Tt][Ii][Oo][Nn][Ss]\\[Aa][Xx][Ii][Ss] [Dd][Ee][Vv][Ii][Cc][Ee] [Mm][Aa][Nn][Aa][Gg][Ee][Rr]\\[Aa][Dd][Mm][Ss][Ee][Tt][Uu][Pp][Aa][Cc][Tt][Ii][Oo][Nn][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Zz][Ee][Mm][Aa][Nn][Aa]\\[Aa][Nn][Tt][Ii][Mm][Aa][Ll][Ww][Aa][Rr][Ee]\\[Aa][Nn][Tt][Ii][Mm][Aa][Ll][Ww][Aa][Rr][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Dd][Ee][Ll][Ll]\\[Ss][Uu][Pp][Pp][Oo][Rr][Tt][Aa][Ss][Ss][Ii][Ss][Tt]\\[Pp][Cc][Dd][Rr][Cc][Uu][Ii]\.[Ee][Xx][Ee]/)

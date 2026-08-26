@@ -1,0 +1,170 @@
+name: DPAPI Backup Keys And Certificate Export Activity IOC
+id: 7892ec59-c5bb-496d-8968-e5d210ca3ac4
+version: 1
+schema_version: "1.0"
+date: "2024-06-26"
+author: Nounou Mbeiri, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7892ec59-c5bb-496d-8968-e5d210ca3ac4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects file names with specific patterns seen generated and used by tools
+  such as Mimikatz and DSInternals related to exported or stolen DPAPI backup
+  keys and certificates. MITRE ATT&CK: T1555, T1552.004.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ntds_capi_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ntds_legacy_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*ntds_unknown_*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.cer"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.key"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.pfx"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.pvk"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*ntds_capi_*'; data_win_eventdata_targetFilename matches '*ntds_legacy_*';
+  data_win_eventdata_targetFilename matches '*ntds_unknown_*', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.dsinternals.com/en/dpapi-backup-key-theft-auditing/
+  - https://github.com/MichaelGrafnetter/DSInternals/blob/39ee8a69bbdc1cfd12c9afdd7513b4788c4895d4/Src/DSInternals.Common/Data/DPAPI/DPAPIBackupKey.cs#L28-L32
+  - https://attack.mitre.org/techniques/T1555/
+  - https://attack.mitre.org/techniques/T1552/004/
+
+response:
+  message: >
+    DPAPI Backup Keys And Certificate Export Activity IOC detected on host
+    $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1555, T1552.004
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1555
+    - T1552.004
+  custom_tags:
+    - dpapi
+    - backup
+    - certificate
+    - file_event
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*[Nn][Tt][Dd][Ss]_[Cc][Aa][Pp][Ii]_.*/ OR data_win_eventdata_targetFilename:/.*[Nn][Tt][Dd][Ss]_[Ll][Ee][Gg][Aa][Cc][Yy]_.*/ OR data_win_eventdata_targetFilename:/.*[Nn][Tt][Dd][Ss]_[Uu][Nn][Kk][Nn][Oo][Ww][Nn]_.*/) AND (data_win_eventdata_targetFilename:/.*\.[Cc][Ee][Rr]/ OR data_win_eventdata_targetFilename:/.*\.[Kk][Ee][Yy]/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Ff][Xx]/ OR data_win_eventdata_targetFilename:/.*\.[Pp][Vv][Kk]/)

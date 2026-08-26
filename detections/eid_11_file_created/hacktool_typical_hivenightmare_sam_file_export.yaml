@@ -1,0 +1,168 @@
+name: HackTool - Typical HiveNightmare SAM File Export
+id: 6ea858a8-ba71-4a12-b2cc-5d83312404c7
+version: 1
+schema_version: "1.0"
+date: "2024-06-27"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6ea858a8-ba71-4a12-b2cc-5d83312404c7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects files written by the different tools that exploit HiveNightmare. MITRE
+  ATT&CK: T1552.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\hive_sam_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\SAM-2021-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\SAM-2022-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\SAM-2023-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\SAM-haxx*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\Sam.save*"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_targetFilename:
+                    value: "C:\\windows\\temp\\sam"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\hive_sam_*'; data_win_eventdata_targetFilename matches '*\SAM-2021-*';
+  data_win_eventdata_targetFilename matches '*\SAM-2022-*', among other
+  conditions.
+
+known_false_positives: >
+  Files that accidentally contain these strings. Baseline expected activity in
+  your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/GossiTheDog/HiveNightmare
+  - https://github.com/FireFart/hivenightmare/
+  - https://github.com/WiredPulse/Invoke-HiveNightmare
+  - https://twitter.com/cube0x0/status/1418920190759378944
+  - https://attack.mitre.org/techniques/T1552/001/
+
+response:
+  message: >
+    HackTool - Typical HiveNightmare SAM File Export detected on host
+    $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1552.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1552.001
+  custom_tags:
+    - hacktool
+    - typical
+    - hivenightmare
+    - file_event
+    - sysmon
+    - credential_access
+    - cve_2021_36934
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*\\[Hh][Ii][Vv][Ee]_[Ss][Aa][Mm]_.*/ OR data_win_eventdata_targetFilename:/.*\\[Ss][Aa][Mm]-2021-.*/ OR data_win_eventdata_targetFilename:/.*\\[Ss][Aa][Mm]-2022-.*/ OR data_win_eventdata_targetFilename:/.*\\[Ss][Aa][Mm]-2023-.*/ OR data_win_eventdata_targetFilename:/.*\\[Ss][Aa][Mm]-[Hh][Aa][Xx][Xx].*/ OR data_win_eventdata_targetFilename:/.*\\[Ss][Aa][Mm]\.[Ss][Aa][Vv][Ee].*/ OR data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Ee][Mm][Pp]\\[Ss][Aa][Mm]/)

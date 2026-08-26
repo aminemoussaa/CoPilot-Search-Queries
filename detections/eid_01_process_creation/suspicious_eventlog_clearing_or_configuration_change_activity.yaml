@@ -1,0 +1,291 @@
+name: Suspicious Eventlog Clearing or Configuration Change Activity
+id: cc36992a-4671-4f21-a91d-6c2b72a2edf5
+version: 1
+schema_version: "1.0"
+date: "2026-06-01"
+author: Ecco, Daniil Yugoslavskiy, oscd.community, D3F7A5105, Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cc36992a-4671-4f21-a91d-6c2b72a2edf5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects the clearing or configuration tampering of EventLog using utilities
+  such as "wevtutil", "powershell" and "wmic". This technique were seen used by
+  threat actors and ransomware strains in order to evade defenses. MITRE ATT&CK:
+  T1685.005, T1685.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\wevtutil.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "wevtutil.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*clear-log *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* cl *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*set-log *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* sl *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*lfn:*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell_ise.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Clear-EventLog *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Remove-EventLog *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Limit-EventLog *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Clear-WinEvent *"
+                                case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*Eventing.Reader.EventLogSession*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*ClearLog*"
+                                      case_insensitive: true
+                          - bool:
+                              must:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*Diagnostics.EventLog*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*Clear*"
+                                      case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\powershell_ise.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\pwsh.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\wmic.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ClearEventLog*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\SysWOW64\\msiexec.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Windows\\System32\\msiexec.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* sl *"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\wevtutil.exe'; data_win_eventdata_originalFileName equals 'wevtutil.exe';
+  data_win_eventdata_commandLine matches '*clear-log *', among other conditions.
+
+known_false_positives: >
+  Admin activity. Scripts and administrative tools used in the monitored
+  environment. Maintenance activity. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1070.001/T1070.001.md
+  - https://eqllib.readthedocs.io/en/latest/analytics/5b223758-07d6-4100-9e11-238cfdd0fe97.html
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wevtutil
+  - https://gist.github.com/fovtran/ac0624983c7722e80a8f5a4babb170ee
+  - https://jdhnet.wordpress.com/2017/12/19/changing-the-location-of-the-windows-event-logs/
+  - https://www.linkedin.com/posts/huntress-labs_when-a-sketchy-incident-hits-your-network-activity-7304940371078238208-Th_l/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAJTlRcB28IaUtg03HUU-IdliwzoAL1flGc
+  - https://stackoverflow.com/questions/66011412/how-to-clear-a-event-log-in-powershell-7
+  - https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.eventing.reader.eventlogsession.clearlog?view=windowsdesktop-9.0&viewFallbackFrom=dotnet-plat-ext-5.0#System_Diagnostics_Eventing_Reader_EventLogSession_ClearLog_System_String_
+  - https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.eventlog.clear
+  - https://attack.mitre.org/techniques/T1685/005/
+  - https://attack.mitre.org/techniques/T1685/001/
+
+response:
+  message: >
+    Suspicious Eventlog Clearing or Configuration Change Activity detected on
+    host $agent_name$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1685.005, T1685.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685.005
+    - T1685.001
+  custom_tags:
+    - eventlog
+    - clearing
+    - configuration
+    - process_creation
+    - sysmon
+    - defense_impairment
+    - car_2016_04_002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (((data_win_eventdata_image:/.*\\[Ww][Ee][Vv][Tt][Uu][Tt][Ii][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ee][Vv][Tt][Uu][Tt][Ii][Ll]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Cc][Ll][Ee][Aa][Rr]-[Ll][Oo][Gg] .*/ OR data_win_eventdata_commandLine:/.* [Cc][Ll] .*/ OR data_win_eventdata_commandLine:/.*[Ss][Ee][Tt]-[Ll][Oo][Gg] .*/ OR data_win_eventdata_commandLine:/.* [Ss][Ll] .*/ OR data_win_eventdata_commandLine:/.*[Ll][Ff][Nn]:.*/)) OR ((data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Cc][Ll][Ee][Aa][Rr]-[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg] .*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg] .*/ OR data_win_eventdata_commandLine:/.*[Ll][Ii][Mm][Ii][Tt]-[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg] .*/ OR data_win_eventdata_commandLine:/.*[Cc][Ll][Ee][Aa][Rr]-[Ww][Ii][Nn][Ee][Vv][Ee][Nn][Tt] .*/ OR (data_win_eventdata_commandLine:/.*[Ee][Vv][Ee][Nn][Tt][Ii][Nn][Gg]\.[Rr][Ee][Aa][Dd][Ee][Rr]\.[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg][Ss][Ee][Ss][Ss][Ii][Oo][Nn].*/ AND data_win_eventdata_commandLine:/.*[Cc][Ll][Ee][Aa][Rr][Ll][Oo][Gg].*/) OR (data_win_eventdata_commandLine:/.*[Dd][Ii][Aa][Gg][Nn][Oo][Ss][Tt][Ii][Cc][Ss]\.[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg].*/ AND data_win_eventdata_commandLine:/.*[Cc][Ll][Ee][Aa][Rr].*/))) OR ((data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ww][Mm][Ii][Cc]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Cc][Ll][Ee][Aa][Rr][Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg].*/)) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_commandLine AND NOT ((data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.* [Ss][Ll] .*/)

@@ -1,0 +1,170 @@
+name: Potential Pikabot Discovery Activity
+id: 698d4431-514f-4c82-af4d-cf573872a9f5
+version: 1
+schema_version: "1.0"
+date: "2024-01-26"
+author: Andreas Braathen (mnemonic.io)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 698d4431-514f-4c82-af4d-cf573872a9f5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects system discovery activity carried out by Pikabot, such as incl.
+  network, user info and domain groups. The malware Pikabot has been seen to use
+  this technique as part of its C2-botnet registration with a short collection
+  time frame (less than 1 minute). MITRE ATT&CK: T1016, T1049, T1087.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_grandParentImage:
+                    value: "*\\\\rundll32.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\SearchFilterHost.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_parentImage:
+                    value: "*\\\\SearchProtocolHost.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_commandLine:
+                    value: "ipconfig.exe /all"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_commandLine:
+                    value: "netstat.exe -aon"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_commandLine:
+                    value: "whoami.exe /all"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_grandParentImage
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_grandParentImage matches
+  '*\rundll32.exe'; data_win_eventdata_parentImage matches
+  '*\SearchFilterHost.exe'; data_win_eventdata_parentImage matches
+  '*\SearchProtocolHost.exe', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.virustotal.com/gui/file/72f1a5476a845ea02344c9b7edecfe399f64b52409229edaf856fcb9535e3242
+  - https://tria.ge/231023-lpw85she57/behavioral2
+  - https://attack.mitre.org/techniques/T1016/
+  - https://attack.mitre.org/techniques/T1049/
+  - https://attack.mitre.org/techniques/T1087/
+
+response:
+  message: >
+    Potential Pikabot Discovery Activity detected on host $agent_name$. Matched
+    data_win_eventdata_grandParentImage: $data_win_eventdata_grandParentImage$.
+    Matched data_win_eventdata_parentImage: $data_win_eventdata_parentImage$.
+    MITRE ATT&CK: T1016, T1049, T1087
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_grandParentImage
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1016
+    - T1049
+    - T1087
+  custom_tags:
+    - pikabot
+    - process_creation
+    - sysmon
+    - discovery
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_grandParentImage:/.*\\[Rr][Uu][Nn][Dd][Ll][Ll]32\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ss][Ee][Aa][Rr][Cc][Hh][Ff][Ii][Ll][Tt][Ee][Rr][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ss][Ee][Aa][Rr][Cc][Hh][Pp][Rr][Oo][Tt][Oo][Cc][Oo][Ll][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/[Ii][Pp][Cc][Oo][Nn][Ff][Ii][Gg]\.[Ee][Xx][Ee] \/[Aa][Ll][Ll]/ OR data_win_eventdata_commandLine:/[Nn][Ee][Tt][Ss][Tt][Aa][Tt]\.[Ee][Xx][Ee] -[Aa][Oo][Nn]/ OR data_win_eventdata_commandLine:/[Ww][Hh][Oo][Aa][Mm][Ii]\.[Ee][Xx][Ee] \/[Aa][Ll][Ll]/)

@@ -1,0 +1,220 @@
+name: WSL Kali-Linux Usage
+id: 6f1a11aa-4b8a-4b7f-9e13-4d3e4ff0e0d4
+version: 1
+schema_version: "1.0"
+date: "2025-10-10"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6f1a11aa-4b8a-4b7f-9e13-4d3e4ff0e0d4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of Kali Linux through Windows Subsystem for Linux. MITRE
+  ATT&CK: T1202.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\AppData\\\\Local\\\\packages\\\\KaliLinux*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Users\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\WindowsApps\\\\kali.exe*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\WindowsApps\\\\KaliLinux.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\kali.exe"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\wsl.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\wslhost.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\kali.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\KaliLinux*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Kali.exe*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Kali-linux*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*kalilinux*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - exists:
+                        field: "data_win_eventdata_commandLine"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "* -i *"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "* --install *"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "* --unregister *"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*:\Users\*'; data_win_eventdata_image matches
+  '*\AppData\Local\packages\KaliLinux*'; data_win_eventdata_image matches
+  '*:\Users\*', among other conditions.
+
+known_false_positives: >
+  Legitimate installation or usage of Kali Linux WSL by administrators or
+  security teams. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://medium.com/@redfanatic7/running-kali-linux-on-windows-51ad95166e6e
+  - https://learn.microsoft.com/en-us/windows/wsl/install
+  - https://attack.mitre.org/techniques/T1202/
+
+response:
+  message: >
+    WSL Kali-Linux Usage detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. MITRE
+    ATT&CK: T1202
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_parentImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1202
+  custom_tags:
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_image:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss]\\[Kk][Aa][Ll][Ii][Ll][Ii][Nn][Uu][Xx].*/) OR (data_win_eventdata_image:/.*:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]\\[Kk][Aa][Ll][Ii]\.[Ee][Xx][Ee].*/) OR (data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss][Aa][Pp][Pp][Ss]\\[Kk][Aa][Ll][Ii][Ll][Ii][Nn][Uu][Xx]\..*/ AND data_win_eventdata_image:/.*\\[Kk][Aa][Ll][Ii]\.[Ee][Xx][Ee]/) OR ((data_win_eventdata_parentImage:/.*\\[Ww][Ss][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/.*\\[Ww][Ss][Ll][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_image:/.*\\[Kk][Aa][Ll][Ii]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/.*\\[Kk][Aa][Ll][Ii][Ll][Ii][Nn][Uu][Xx].*/ OR data_win_eventdata_commandLine:/.*[Kk][Aa][Ll][Ii]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*[Kk][Aa][Ll][Ii]-[Ll][Ii][Nn][Uu][Xx].*/ OR data_win_eventdata_commandLine:/.*[Kk][Aa][Ll][Ii][Ll][Ii][Nn][Uu][Xx].*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.* -[Ii] .*/ OR data_win_eventdata_commandLine:/.* --[Ii][Nn][Ss][Tt][Aa][Ll][Ll] .*/ OR data_win_eventdata_commandLine:/.* --[Uu][Nn][Rr][Ee][Gg][Ii][Ss][Tt][Ee][Rr] .*/)))

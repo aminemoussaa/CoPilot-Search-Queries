@@ -1,0 +1,217 @@
+name: Potential AutoLogger Sessions Tampering
+id: f37b4bce-49d0-4087-9f5b-58bffda77316
+version: 1
+schema_version: "1.0"
+date: "2025-12-26"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f37b4bce-49d0-4087-9f5b-58bffda77316
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects tampering with autologger trace sessions which is a technique used by
+  attackers to disable logging. The AutoLogger event tracing session records
+  events up that occur early in the operating system boot process. Applications
+  and device drivers can use the AutoLogger session to capture traces before the
+  user logs in, and also used by security solutions as telemetry source.
+  Adversaries may disable these sessions to evade detection and prevent security
+  monitoring of early boot activities and system events. MITRE ATT&CK:
+  T1685.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Control\\\\WMI\\\\Autologger\\\\*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\EventLog-*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Defender*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Enabled"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Start"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - term:
+            data_win_eventdata_details:
+              value: "DWORD (0x00000000)"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\system32\\wevtutil.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\ProgramData\\\\Microsoft\\\\Windows Defender\\\\Platform\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Windows Defender\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\Windows Defender\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\MsMpEng.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\DefenderApiLogger\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\DefenderAuditLogger\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Control\WMI\Autologger\*'; data_win_eventdata_targetObject matches
+  '*\EventLog-*'; data_win_eventdata_targetObject matches '*\Defender*', among
+  other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/MichalKoczwara/status/1553634816016498688
+  - https://thedfirreport.com/2021/10/18/icedid-to-xinglocker-ransomware-in-24-hours/
+  - https://i.blackhat.com/EU-21/Wednesday/EU-21-Teodorescu-Veni-No-Vidi-No-Vici-Attacks-On-ETW-Blind-EDRs.pdf
+  - https://learn.microsoft.com/en-us/windows/win32/etw/configuring-and-starting-an-autologger-session
+  - https://blog.palantir.com/tampering-with-windows-event-tracing-background-offense-and-defense-4be7ac62ac63
+  - https://attack.mitre.org/techniques/T1685/001/
+
+response:
+  message: >
+    Potential AutoLogger Sessions Tampering detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_details: $data_win_eventdata_details$. MITRE
+    ATT&CK: T1685.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685.001
+  custom_tags:
+    - autologger
+    - sessions
+    - tampering
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Ww][Mm][Ii]\\[Aa][Uu][Tt][Oo][Ll][Oo][Gg][Gg][Ee][Rr]\\.*/ AND (data_win_eventdata_targetObject:/.*\\[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg]-.*/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr].*/) AND (data_win_eventdata_targetObject:/.*\\[Ee][Nn][Aa][Bb][Ll][Ee][Dd]/ OR data_win_eventdata_targetObject:/.*\\[Ss][Tt][Aa][Rr][Tt]/) AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000000\)/ AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Ee][Vv][Tt][Uu][Tt][Ii][Ll]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Pp][Ll][Aa][Tt][Ff][Oo][Rr][Mm]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/) AND data_win_eventdata_image:/.*\\[Mm][Ss][Mm][Pp][Ee][Nn][Gg]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_targetObject:/.*\\[Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr][Aa][Pp][Ii][Ll][Oo][Gg][Gg][Ee][Rr]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr][Aa][Uu][Dd][Ii][Tt][Ll][Oo][Gg][Gg][Ee][Rr]\\.*/)))

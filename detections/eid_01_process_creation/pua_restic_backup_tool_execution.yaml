@@ -1,0 +1,219 @@
+name: PUA - Restic Backup Tool Execution
+id: 6ddff2e8-ea1a-45d0-8938-93dfc1d67ae7
+version: 1
+schema_version: "1.0"
+date: "2025-10-17"
+author: Nounou Mbeiri, Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6ddff2e8-ea1a-45d0-8938-93dfc1d67ae7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of the Restic backup tool, which can be used for data
+  exfiltration. Threat actors may leverage Restic to back up and exfiltrate
+  sensitive data to remote storage locations, including cloud services. If not
+  legitimately used in the enterprise environment, its presence may indicate
+  malicious activity. MITRE ATT&CK: T1048, T1567.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--password-file*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*init*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -r *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*--use-fs-snapshot*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*backup*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -r *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*sftp:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*rest:http*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*s3:s3.*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*s3.http*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*azure:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* gs:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*rclone:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*swift:*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* b2:*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* init *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -r *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*--password-file*'; data_win_eventdata_commandLine matches '*init*';
+  data_win_eventdata_commandLine matches '* -r *', among other conditions.
+
+known_false_positives: >
+  Legitimate use of Restic for backup purposes within the organization. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://thedfirreport.com/2024/09/30/nitrogen-campaign-drops-sliver-and-ends-with-blackcat-ransomware/#exfiltration
+  - https://restic.net/
+  - https://restic.readthedocs.io/en/stable/030_preparing_a_new_repo.html
+  - https://attack.mitre.org/techniques/T1048/
+  - https://attack.mitre.org/techniques/T1567/002/
+
+response:
+  message: >
+    PUA - Restic Backup Tool Execution detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK: T1048,
+    T1567.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1048
+    - T1567.002
+  custom_tags:
+    - restic
+    - backup
+    - process_creation
+    - sysmon
+    - exfiltration
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*--[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd]-[Ff][Ii][Ll][Ee].*/ AND data_win_eventdata_commandLine:/.*[Ii][Nn][Ii][Tt].*/ AND data_win_eventdata_commandLine:/.* -[Rr] .*/) OR (data_win_eventdata_commandLine:/.*--[Uu][Ss][Ee]-[Ff][Ss]-[Ss][Nn][Aa][Pp][Ss][Hh][Oo][Tt].*/ AND data_win_eventdata_commandLine:/.*[Bb][Aa][Cc][Kk][Uu][Pp].*/ AND data_win_eventdata_commandLine:/.* -[Rr] .*/) OR ((data_win_eventdata_commandLine:/.*[Ss][Ff][Tt][Pp]:.*/ OR data_win_eventdata_commandLine:/.*[Rr][Ee][Ss][Tt]:[Hh][Tt][Tt][Pp].*/ OR data_win_eventdata_commandLine:/.*[Ss]3:[Ss]3\..*/ OR data_win_eventdata_commandLine:/.*[Ss]3\.[Hh][Tt][Tt][Pp].*/ OR data_win_eventdata_commandLine:/.*[Aa][Zz][Uu][Rr][Ee]:.*/ OR data_win_eventdata_commandLine:/.* [Gg][Ss]:.*/ OR data_win_eventdata_commandLine:/.*[Rr][Cc][Ll][Oo][Nn][Ee]:.*/ OR data_win_eventdata_commandLine:/.*[Ss][Ww][Ii][Ff][Tt]:.*/ OR data_win_eventdata_commandLine:/.* [Bb]2:.*/) AND data_win_eventdata_commandLine:/.* [Ii][Nn][Ii][Tt] .*/ AND data_win_eventdata_commandLine:/.* -[Rr] .*/))

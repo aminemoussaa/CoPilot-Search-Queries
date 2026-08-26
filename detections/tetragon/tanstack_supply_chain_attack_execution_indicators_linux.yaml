@@ -1,0 +1,174 @@
+name: TanStack Supply-Chain Attack Execution Indicators - Linux
+id: 3c6f5e4a-8d0b-6abc-d9e2-4f7a6b8c9d0e
+version: 1
+schema_version: "1.0"
+date: "2026-05-12"
+author: Leonardo Gasparini
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3c6f5e4a-8d0b-6abc-d9e2-4f7a6b8c9d0e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects process execution indicators associated with the Mini Shai-Hulud
+  supply-chain campaign targeting TanStack npm packages and others such as
+  mistralai and uipath reported on early May 2026. The preinstall hook runs
+  setup.mjs, which downloads a platform-specific Bun runtime. MITRE ATT&CK:
+  T1059.007, T1059.006, T1204.002.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/bun"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*bun*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*run*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*tanstack_runner.js*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_process_exec_process_binary:
+                          value: "*/python3*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "*/tmp/transformers.pyz*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/bun';
+  data_process_exec_process_arguments matches '*bun*';
+  data_process_exec_process_arguments matches '*run*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://socket.dev/blog/tanstack-npm-packages-compromised-mini-shai-hulud-supply-chain-attack
+  - https://socket.dev/supply-chain-attacks/mini-shai-hulud
+  - https://safedep.io/mass-npm-supply-chain-attack-tanstack-mistral/
+  - https://attack.mitre.org/techniques/T1059/007/
+  - https://attack.mitre.org/techniques/T1059/006/
+  - https://attack.mitre.org/techniques/T1204/002/
+
+response:
+  message: >
+    TanStack Supply-Chain Attack Execution Indicators - Linux detected on host
+    $agent_name$. Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1059.007, T1059.006, T1204.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.007
+    - T1059.006
+    - T1204.002
+  custom_tags:
+    - tanstack
+    - supply
+    - chain
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_process_exec_process_binary:/.*\/[Bb][Uu][Nn]/ AND data_process_exec_process_arguments:/.*[Bb][Uu][Nn].*/ AND data_process_exec_process_arguments:/.*[Rr][Uu][Nn].*/ AND data_process_exec_process_arguments:/.*[Tt][Aa][Nn][Ss][Tt][Aa][Cc][Kk]_[Rr][Uu][Nn][Nn][Ee][Rr]\.[Jj][Ss].*/) OR (data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]3.*/ AND data_process_exec_process_arguments:/.*\/[Tt][Mm][Pp]\/[Tt][Rr][Aa][Nn][Ss][Ff][Oo][Rr][Mm][Ee][Rr][Ss]\.[Pp][Yy][Zz].*/))

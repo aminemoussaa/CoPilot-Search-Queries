@@ -1,0 +1,194 @@
+name: Obfuscated PowerShell MSI Install via WindowsInstaller COM
+id: 7b6a7418-3afc-11f0-aff4-000d3abf478c
+version: 1
+schema_version: "1.0"
+date: "2025-05-27"
+author: Meroujan Antonyan (vx3r)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7b6a7418-3afc-11f0-aff4-000d3abf478c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of obfuscated PowerShell commands that attempt to
+  install MSI packages via the Windows Installer COM object
+  (`WindowsInstaller.Installer`). The technique involves manipulating strings to
+  hide functionality, such as constructing class names using string insertion
+  (e.g., 'indowsInstaller.Installer'.Insert(0,'W')) and correcting malformed
+  URLs (e.g., converting 'htps://' to 'https://') at runtime. This behavior is
+  commonly associated with malware loaders or droppers that aim to bypass static
+  detection by hiding intent in runtime-generated strings and using legitimate
+  tools for code execution. The use of `InstallProduct` and COM object creation,
+  particularly combined with hidden window execution and suppressed UI,
+  indicates an attempt to install software (likely malicious) without user
+  interaction. MITRE ATT&CK: T1027.010, T1218.007, T1059.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell_ise.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powershell.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\pwsh.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PowerShell_ISE.EXE"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PowerShell.EXE"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "pwsh.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*-ComObject*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*InstallProduct(*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*.Insert(*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*UILevel*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powershell_ise.exe'; data_win_eventdata_image matches '*\powershell.exe';
+  data_win_eventdata_image matches '*\pwsh.exe', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://informationsecuritybuzz.com/the-real-danger-behind-a-simple-windows-shortcut/
+  - https://redcanary.com/blog/threat-intelligence/intelligence-insights-may-2025/
+  - https://www.virustotal.com/gui/file/f9710b0ba4de5fa0e7ec27da462d4d2fc6838eba83a19f23f6617a466bbad457
+  - https://attack.mitre.org/techniques/T1027/010/
+  - https://attack.mitre.org/techniques/T1218/007/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Obfuscated PowerShell MSI Install via WindowsInstaller COM detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1027.010, T1218.007,
+    T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1027.010
+    - T1218.007
+    - T1059.001
+  custom_tags:
+    - obfuscated
+    - powershell
+    - install
+    - process_creation
+    - sysmon
+    - stealth
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ww][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]_[Ii][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Ww][Ss][Hh]\.[Dd][Ll][Ll]/) AND data_win_eventdata_commandLine:/.*-[Cc][Oo][Mm][Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_commandLine:/.*[Ii][Nn][Ss][Tt][Aa][Ll][Ll][Pp][Rr][Oo][Dd][Uu][Cc][Tt]\(.*/ AND data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ss][Ee][Rr][Tt]\(.*/ AND data_win_eventdata_commandLine:/.*[Uu][Ii][Ll][Ee][Vv][Ee][Ll].*/

@@ -1,0 +1,414 @@
+name: Windows Filtering Platform Blocked Connection From EDR Agent Binary
+id: bacf58c6-e199-4040-a94f-95dea0f1e45a
+version: 1
+schema_version: "1.0"
+date: "2024-01-08"
+author: "@gott_cyber"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bacf58c6-e199-4040-a94f-95dea0f1e45a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects a Windows Filtering Platform (WFP) blocked connection event involving
+  common Endpoint Detection and Response (EDR) agents. Adversaries may use WFP
+  filters to prevent Endpoint Detection and Response (EDR) agents from reporting
+  security events. MITRE ATT&CK: T1685.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5157"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\AmSvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\cb.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CETASvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CNTAoSMgr.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CrAmTray.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CrsSvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CSFalconContainer.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CSFalconService.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CybereasonAV.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CylanceSvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\cyserver.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CyveraService.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\CyvrFsFlt.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\EIConnector.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\elastic-agent.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\elastic-endpoint.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\EndpointBasecamp.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\ExecutionPreventionSvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\filebeat.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\fortiedr.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\hmpalert.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\hurukai.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\LogProcessorService.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\mcsagent.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\mcsclient.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\MsMpEng.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\MsSense.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\Ntrtscan.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\PccNTMon.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\QualysAgent.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\RepMgr.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\RepUtils.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\RepUx.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\RepWAV.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\RepWSC.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sedservice.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SenseCncProxy.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SenseIR.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SenseNdr.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SenseSampleUploader.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SentinelAgent.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SentinelAgentWorker.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SentinelBrowserNativeHost.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SentinelHelperService.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SentinelServiceHost.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SentinelStaticEngine.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\SentinelStaticEngineScanner.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sfc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophos ui.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophosfilescanner.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophosfs.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophoshealth.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophosips.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophosLivequeryservice.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophosnetfilter.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophosntpservice.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sophososquery.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\sspservice.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\TaniumClient.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\TaniumCX.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\TaniumDetectEngine.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\TMBMSRV.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\TmCCSF.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\TmListen.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\TmWSCSvc.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\Traps.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\winlogbeat.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\WSCommunicator.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_application:
+                    value: "*\\\\xagt.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_application
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5157'; data_win_eventdata_application matches
+  '*\AmSvc.exe'; data_win_eventdata_application matches '*\cb.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/netero1010/EDRSilencer
+  - https://github.com/amjcyber/EDRNoiseMaker
+  - https://ghoulsec.medium.com/misc-series-4-forensics-on-edrsilencer-events-428b20b3f983
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Windows Filtering Platform Blocked Connection From EDR Agent Binary detected
+    on host $agent_name$. Matched data_win_eventdata_application:
+    $data_win_eventdata_application$. Matched
+    data_win_eventdata_subjectUserName: $data_win_eventdata_subjectUserName$.
+    MITRE ATT&CK: T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_application
+      type: other
+    - field: data_win_eventdata_subjectUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - filtering
+    - platform
+    - blocked
+    - windows_security
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5157" AND (data_win_eventdata_application:/.*\\[Aa][Mm][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Bb]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Ee][Tt][Aa][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Nn][Tt][Aa][Oo][Ss][Mm][Gg][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Rr][Aa][Mm][Tt][Rr][Aa][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Rr][Ss][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Ss][Ff][Aa][Ll][Cc][Oo][Nn][Cc][Oo][Nn][Tt][Aa][Ii][Nn][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Ss][Ff][Aa][Ll][Cc][Oo][Nn][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Yy][Bb][Ee][Rr][Ee][Aa][Ss][Oo][Nn][Aa][Vv]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Yy][Ll][Aa][Nn][Cc][Ee][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Yy][Ss][Ee][Rr][Vv][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Yy][Vv][Ee][Rr][Aa][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Cc][Yy][Vv][Rr][Ff][Ss][Ff][Ll][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ee][Ii][Cc][Oo][Nn][Nn][Ee][Cc][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ee][Ll][Aa][Ss][Tt][Ii][Cc]-[Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ee][Ll][Aa][Ss][Tt][Ii][Cc]-[Ee][Nn][Dd][Pp][Oo][Ii][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ee][Nn][Dd][Pp][Oo][Ii][Nn][Tt][Bb][Aa][Ss][Ee][Cc][Aa][Mm][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Rr][Ee][Vv][Ee][Nn][Tt][Ii][Oo][Nn][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ff][Ii][Ll][Ee][Bb][Ee][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ff][Oo][Rr][Tt][Ii][Ee][Dd][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Hh][Mm][Pp][Aa][Ll][Ee][Rr][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Hh][Uu][Rr][Uu][Kk][Aa][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ll][Oo][Gg][Pp][Rr][Oo][Cc][Ee][Ss][Ss][Oo][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Mm][Cc][Ss][Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Mm][Cc][Ss][Cc][Ll][Ii][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Mm][Ss][Mm][Pp][Ee][Nn][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Mm][Ss][Ss][Ee][Nn][Ss][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Nn][Tt][Rr][Tt][Ss][Cc][Aa][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Pp][Cc][Cc][Nn][Tt][Mm][Oo][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Qq][Uu][Aa][Ll][Yy][Ss][Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Rr][Ee][Pp][Mm][Gg][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Rr][Ee][Pp][Uu][Tt][Ii][Ll][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Rr][Ee][Pp][Uu][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Rr][Ee][Pp][Ww][Aa][Vv]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Rr][Ee][Pp][Ww][Ss][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Dd][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Ss][Ee][Cc][Nn][Cc][Pp][Rr][Oo][Xx][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Ss][Ee][Ii][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Ss][Ee][Nn][Dd][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Ss][Ee][Ss][Aa][Mm][Pp][Ll][Ee][Uu][Pp][Ll][Oo][Aa][Dd][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Tt][Ii][Nn][Ee][Ll][Aa][Gg][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Tt][Ii][Nn][Ee][Ll][Aa][Gg][Ee][Nn][Tt][Ww][Oo][Rr][Kk][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Tt][Ii][Nn][Ee][Ll][Bb][Rr][Oo][Ww][Ss][Ee][Rr][Nn][Aa][Tt][Ii][Vv][Ee][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Tt][Ii][Nn][Ee][Ll][Hh][Ee][Ll][Pp][Ee][Rr][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Tt][Ii][Nn][Ee][Ll][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Tt][Ii][Nn][Ee][Ll][Ss][Tt][Aa][Tt][Ii][Cc][Ee][Nn][Gg][Ii][Nn][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ee][Nn][Tt][Ii][Nn][Ee][Ll][Ss][Tt][Aa][Tt][Ii][Cc][Ee][Nn][Gg][Ii][Nn][Ee][Ss][Cc][Aa][Nn][Nn][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ff][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss] [Uu][Ii]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Ff][Ii][Ll][Ee][Ss][Cc][Aa][Nn][Nn][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Ff][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Hh][Ee][Aa][Ll][Tt][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Ii][Pp][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Ll][Ii][Vv][Ee][Qq][Uu][Ee][Rr][Yy][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Nn][Ee][Tt][Ff][Ii][Ll][Tt][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Nn][Tt][Pp][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Oo][Pp][Hh][Oo][Ss][Oo][Ss][Qq][Uu][Ee][Rr][Yy]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ss][Ss][Pp][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Aa][Nn][Ii][Uu][Mm][Cc][Ll][Ii][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Aa][Nn][Ii][Uu][Mm][Cc][Xx]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Aa][Nn][Ii][Uu][Mm][Dd][Ee][Tt][Ee][Cc][Tt][Ee][Nn][Gg][Ii][Nn][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Mm][Bb][Mm][Ss][Rr][Vv]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Mm][Cc][Cc][Ss][Ff]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Mm][Ll][Ii][Ss][Tt][Ee][Nn]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Mm][Ww][Ss][Cc][Ss][Vv][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Tt][Rr][Aa][Pp][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Bb][Ee][Aa][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Ww][Ss][Cc][Oo][Mm][Mm][Uu][Nn][Ii][Cc][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_application:/.*\\[Xx][Aa][Gg][Tt]\.[Ee][Xx][Ee]/)

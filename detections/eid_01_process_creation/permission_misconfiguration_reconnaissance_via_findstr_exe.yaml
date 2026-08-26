@@ -1,0 +1,191 @@
+name: Permission Misconfiguration Reconnaissance Via Findstr.EXE
+id: 47e4bab7-c626-47dc-967b-255608c9a920
+version: 1
+schema_version: "1.0"
+date: "2023-11-11"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 47e4bab7-c626-47dc-967b-255608c9a920
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of findstr with the "EVERYONE" or "BUILTIN" keywords. This was
+  seen being used in combination with "icacls" and other utilities to spot
+  misconfigured files or folders permissions. MITRE ATT&CK: T1552.006.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\find.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\findstr.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "FIND.EXE"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "FINDSTR.EXE"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\"Everyone\"*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*'Everyone'*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\"BUILTIN\\\\\"*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*'BUILTIN\\\\'*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*icacls *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*findstr *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Everyone*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\find.exe'; data_win_eventdata_image matches '*\findstr.exe';
+  data_win_eventdata_originalFileName equals 'FIND.EXE', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.absolomb.com/2018-01-26-Windows-Privilege-Escalation-Guide/
+  - https://attack.mitre.org/techniques/T1552/006/
+
+response:
+  message: >
+    Permission Misconfiguration Reconnaissance Via Findstr.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1552.006
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1552.006
+  custom_tags:
+    - permission
+    - misconfiguration
+    - reconnaissance
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (((data_win_eventdata_image:/.*\\[Ff][Ii][Nn][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ff][Ii][Nn][Dd][Ss][Tt][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ff][Ii][Nn][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ff][Ii][Nn][Dd][Ss][Tt][Rr]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*\"[Ee][Vv][Ee][Rr][Yy][Oo][Nn][Ee]\".*/ OR data_win_eventdata_commandLine:/.*'[Ee][Vv][Ee][Rr][Yy][Oo][Nn][Ee]'.*/ OR data_win_eventdata_commandLine:/.*\"[Bb][Uu][Ii][Ll][Tt][Ii][Nn]\\\".*/ OR data_win_eventdata_commandLine:/.*'[Bb][Uu][Ii][Ll][Tt][Ii][Nn]\\'.*/)) OR (data_win_eventdata_commandLine:/.*[Ii][Cc][Aa][Cc][Ll][Ss] .*/ AND data_win_eventdata_commandLine:/.*[Ff][Ii][Nn][Dd][Ss][Tt][Rr] .*/ AND data_win_eventdata_commandLine:/.*[Ee][Vv][Ee][Rr][Yy][Oo][Nn][Ee].*/))

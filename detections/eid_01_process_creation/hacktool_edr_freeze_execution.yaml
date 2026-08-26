@@ -1,0 +1,189 @@
+name: Hacktool - EDR-Freeze Execution
+id: c598cc0c-9e70-4852-b9eb-8921af79f598
+version: 1
+schema_version: "1.0"
+date: "2025-11-27"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c598cc0c-9e70-4852-b9eb-8921af79f598
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of EDR-Freeze, a tool that exploits the MiniDumpWriteDump
+  function and WerFaultSecure.exe to suspend EDR and Antivirus processes on
+  Windows. EDR-Freeze leverages a race-condition attack to put security
+  processes into a dormant state by suspending WerFaultSecure at the moment it
+  freezes the target process. This technique does not require kernel-level
+  exploits or BYOVD, but instead abuses user-mode functionality to temporarily
+  disable monitoring by EDR or Antimalware solutions. MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\EDR-Freeze*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\EDRFreeze*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*.exe"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=1195F7935954A2CD09157390C33F8E8C*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=129F58DE3D687FB7F012BF6C3D679997*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=2C617A175D0086251642C6619F7CC8BA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=8828F0B906F7844358FB92A899E9520F*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=AF76D95157EC554DC1EF178E4E66D447*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=E1B04316B61ACA31DD52ABBEC0A37FD5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=8B2D5B54AFCFEC60D54F6B31D80ED4A0*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=AB8BB31EDD91D2A05FE7B62A535E9EB7*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\EDR-Freeze*'; data_win_eventdata_image matches '*\EDRFreeze*';
+  data_win_eventdata_image matches '*.exe', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.zerosalarium.com/2025/09/EDR-Freeze-Puts-EDRs-Antivirus-Into-Coma.html
+  - https://github.com/TwoSevenOneT/EDR-Freeze
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Hacktool - EDR-Freeze Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. MITRE ATT&CK: T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - hacktool
+    - freeze
+    - process_creation
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (((data_win_eventdata_image:/.*\\[Ee][Dd][Rr]-[Ff][Rr][Ee][Ee][Zz][Ee].*/ OR data_win_eventdata_image:/.*\\[Ee][Dd][Rr][Ff][Rr][Ee][Ee][Zz][Ee].*/) AND data_win_eventdata_image:/.*\.[Ee][Xx][Ee]/) OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=1195[Ff]7935954[Aa]2[Cc][Dd]09157390[Cc]33[Ff]8[Ee]8[Cc].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=129[Ff]58[Dd][Ee]3[Dd]687[Ff][Bb]7[Ff]012[Bb][Ff]6[Cc]3[Dd]679997.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=2[Cc]617[Aa]175[Dd]0086251642[Cc]6619[Ff]7[Cc][Cc]8[Bb][Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=8828[Ff]0[Bb]906[Ff]7844358[Ff][Bb]92[Aa]899[Ee]9520[Ff].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa][Ff]76[Dd]95157[Ee][Cc]554[Dd][Cc]1[Ee][Ff]178[Ee]4[Ee]66[Dd]447.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Ee]1[Bb]04316[Bb]61[Aa][Cc][Aa]31[Dd][Dd]52[Aa][Bb][Bb][Ee][Cc]0[Aa]37[Ff][Dd]5.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=8[Bb]2[Dd]5[Bb]54[Aa][Ff][Cc][Ff][Ee][Cc]60[Dd]54[Ff]6[Bb]31[Dd]80[Ee][Dd]4[Aa]0.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Aa][Bb]8[Bb][Bb]31[Ee][Dd][Dd]91[Dd]2[Aa]05[Ff][Ee]7[Bb]62[Aa]535[Ee]9[Ee][Bb]7.*/)

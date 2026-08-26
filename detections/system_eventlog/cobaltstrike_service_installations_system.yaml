@@ -1,0 +1,185 @@
+name: CobaltStrike Service Installations - System
+id: 5a105d34-05fc-401e-8553-272b45c1522d
+version: 1
+schema_version: "1.0"
+date: "2022-11-27"
+author: Florian Roth (Nextron Systems), Wojciech Lesicki
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5a105d34-05fc-401e-8553-272b45c1522d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects known malicious service installs that appear in cases in which a
+  Cobalt Strike beacon elevates privileges or lateral movement. MITRE ATT&CK:
+  T1021.002, T1543.003, T1569.002.
+
+data_source:
+  - Windows System Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "Service Control Manager"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "7045"
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_imagePath:
+                          value: "*ADMIN$*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imagePath:
+                          value: "*.exe*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_imagePath:
+                          value: "*%COMSPEC%*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imagePath:
+                          value: "*start*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imagePath:
+                          value: "*powershell*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imagePath:
+                    value: "*powershell -nop -w hidden -encodedcommand*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imagePath:
+                    value: "*SUVYIChOZXctT2JqZWN0IE5ldC5XZWJjbGllbnQpLkRvd25sb2FkU3RyaW5nKCdodHRwOi8vMTI3LjAuMC4xO*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imagePath:
+                    value: "*lFWCAoTmV3LU9iamVjdCBOZXQuV2ViY2xpZW50KS5Eb3dubG9hZFN0cmluZygnaHR0cDovLzEyNy4wLjAuMT*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imagePath:
+                    value: "*JRVggKE5ldy1PYmplY3QgTmV0LldlYmNsaWVudCkuRG93bmxvYWRTdHJpbmcoJ2h0dHA6Ly8xMjcuMC4wLjE6*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_imagePath
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals 'Service Control Manager';
+  data_win_system_eventID equals '7045'; data_win_eventdata_imagePath matches
+  '*ADMIN$*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.sans.org/webcasts/119395
+  - https://www.crowdstrike.com/blog/getting-the-bacon-from-cobalt-strike-beacon/
+  - https://thedfirreport.com/2021/08/29/cobalt-strike-a-defenders-guide/
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://attack.mitre.org/techniques/T1569/002/
+
+response:
+  message: >
+    CobaltStrike Service Installations - System detected on host $agent_name$.
+    Matched data_win_system_providerName: $data_win_system_providerName$.
+    Matched data_win_eventdata_imagePath: $data_win_eventdata_imagePath$. MITRE
+    ATT&CK: T1021.002, T1543.003, T1569.002
+  risk_score: 90
+  severity: critical
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 90
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_imagePath
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1021.002
+    - T1543.003
+    - T1569.002
+  custom_tags:
+    - cobaltstrike
+    - service
+    - installations
+    - windows_system
+    - persistence
+    - execution
+    - privilege_escalation
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Ss][Ee][Rr][Vv][Ii][Cc][Ee] [Cc][Oo][Nn][Tt][Rr][Oo][Ll] [Mm][Aa][Nn][Aa][Gg][Ee][Rr]/ AND data_win_system_eventID:"7045" AND ((data_win_eventdata_imagePath:/.*[Aa][Dd][Mm][Ii][Nn]\$.*/ AND data_win_eventdata_imagePath:/.*\.[Ee][Xx][Ee].*/) OR (data_win_eventdata_imagePath:/.*%[Cc][Oo][Mm][Ss][Pp][Ee][Cc]%.*/ AND data_win_eventdata_imagePath:/.*[Ss][Tt][Aa][Rr][Tt].*/ AND data_win_eventdata_imagePath:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/) OR data_win_eventdata_imagePath:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll] -[Nn][Oo][Pp] -[Ww] [Hh][Ii][Dd][Dd][Ee][Nn] -[Ee][Nn][Cc][Oo][Dd][Ee][Dd][Cc][Oo][Mm][Mm][Aa][Nn][Dd].*/ OR data_win_eventdata_imagePath:/.*[Ss][Uu][Vv][Yy][Ii][Cc][Hh][Oo][Zz][Xx][Cc][Tt][Tt]2[Jj][Qq][Zz][Ww][Nn]0[Ii][Ee]5[Ll][Dd][Cc]5[Xx][Zz][Ww][Jj][Jj][Bb][Gg][Ll][Ll][Bb][Nn][Qq][Pp][Ll][Kk][Rr][Vv][Dd]25[Ss][Bb]2[Ff][Kk][Uu]3[Rr][Yy][Aa][Ww]5[Nn][Kk][Cc][Dd][Oo][Dd][Hh][Rr][Ww][Oo][Ii]8[Vv][Mm][Tt][Ii]3[Ll][Jj][Aa][Uu][Mm][Cc]4[Xx][Oo].*/ OR data_win_eventdata_imagePath:/.*[Ll][Ff][Ww][Cc][Aa][Oo][Tt][Mm][Vv]3[Ll][Uu]9[Ii][Aa][Mm][Vv][Jj][Dd][Cc][Bb][Oo][Zz][Xx][Qq][Uu][Vv]2[Vv][Ii][Yy]2[Xx][Pp][Zz][Ww]50[Kk][Ss]5[Ee][Bb]3[Dd][Uu][Bb][Gg]9[Hh][Zz][Ff][Nn]0[Cc][Mm][Ll][Uu][Zz][Yy][Gg][Nn][Aa][Hh][Rr]0[Cc][Dd][Oo][Vv][Ll][Zz][Ee][Yy][Nn][Yy]4[Ww][Ll][Jj][Aa][Uu][Mm][Tt].*/ OR data_win_eventdata_imagePath:/.*[Jj][Rr][Vv][Gg][Gg][Kk][Ee]5[Ll][Dd][Yy]1[Pp][Yy][Mm][Pp][Ll][Yy]3[Qq][Gg][Tt][Mm][Vv]0[Ll][Ll][Dd][Ll][Yy][Mm][Nn][Ss][Aa][Ww][Vv][Uu][Dd][Cc][Kk][Uu][Rr][Gg]93[Bb][Mm][Xx][Vv][Yy][Ww][Rr][Tt][Dd][Hh][Jj][Pp][Bb][Mm][Cc][Oo][Jj]2[Hh]0[Dd][Hh][Aa]6[Ll][Yy]8[Xx][Mm][Jj][Cc][Uu][Mm][Cc]4[Ww][Ll][Jj][Ee]6.*/)

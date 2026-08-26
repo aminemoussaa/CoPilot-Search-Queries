@@ -1,0 +1,190 @@
+name: Python One-Liners with Base64 Decoding - Linux
+id: 55e862a8-dd9c-4651-807a-f21fcad56716
+version: 1
+schema_version: "1.0"
+date: "2026-03-09"
+author: Hugh Ryan (HueCodes), Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 55e862a8-dd9c-4651-807a-f21fcad56716
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the use of Python's base64 decoding functions in command line
+  executions on Linux systems. Malicious scripts often use python one-liners to
+  decode and execute base64-encoded payloads, which is a common technique for
+  obfuscation and evasion. MITRE ATT&CK: T1059.006, T1027.010.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/python*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*import*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*base64*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "* -c*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*.decode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*b16decode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*b32decode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*b32hexdecode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*b64decode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*b85decode*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*z85decode*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/python*';
+  data_process_exec_process_arguments matches '*import*';
+  data_process_exec_process_arguments matches '*base64*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate use of Python for decoding data, which is uncommon in typical
+  enterprise environments but possible in development or data analysis contexts.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - https://docs.python.org/3/library/base64.html
+  - https://www.virustotal.com/gui/file/bc43e925d7b4b74319f6e74e836a96f1997ba404e14ac566cf12a21e9da463db/behavior
+  - https://cloud.google.com/blog/topics/threat-intelligence/cybercriminals-weaponize-fake-ai-websites
+  - https://attack.mitre.org/techniques/T1059/006/
+  - https://attack.mitre.org/techniques/T1027/010/
+
+response:
+  message: >
+    Python One-Liners with Base64 Decoding - Linux detected on host
+    $agent_name$. Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1059.006, T1027.010
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.006
+    - T1027.010
+  custom_tags:
+    - python
+    - liners
+    - base64
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn].*/ AND data_process_exec_process_arguments:/.*[Ii][Mm][Pp][Oo][Rr][Tt].*/ AND data_process_exec_process_arguments:/.*[Bb][Aa][Ss][Ee]64.*/ AND data_process_exec_process_arguments:/.* -[Cc].*/ AND (data_process_exec_process_arguments:/.*\.[Dd][Ee][Cc][Oo][Dd][Ee].*/ OR data_process_exec_process_arguments:/.*[Bb]16[Dd][Ee][Cc][Oo][Dd][Ee].*/ OR data_process_exec_process_arguments:/.*[Bb]32[Dd][Ee][Cc][Oo][Dd][Ee].*/ OR data_process_exec_process_arguments:/.*[Bb]32[Hh][Ee][Xx][Dd][Ee][Cc][Oo][Dd][Ee].*/ OR data_process_exec_process_arguments:/.*[Bb]64[Dd][Ee][Cc][Oo][Dd][Ee].*/ OR data_process_exec_process_arguments:/.*[Bb]85[Dd][Ee][Cc][Oo][Dd][Ee].*/ OR data_process_exec_process_arguments:/.*[Zz]85[Dd][Ee][Cc][Oo][Dd][Ee].*/)

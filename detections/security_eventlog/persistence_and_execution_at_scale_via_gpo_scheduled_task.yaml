@@ -1,0 +1,190 @@
+name: Persistence and Execution at Scale via GPO Scheduled Task
+id: a8f29a7b-b137-4446-80a0-b804272f3da2
+version: 1
+schema_version: "1.0"
+date: "2024-09-04"
+author: Samir Bousseaden
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a8f29a7b-b137-4446-80a0-b804272f3da2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect lateral movement using GPO scheduled task, usually used to deploy
+  ransomware at scale. MITRE ATT&CK: T1053.005.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "5136"
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_attributeLDAPDisplayName:
+                                value: "gPCMachineExtensionNames"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_attributeLDAPDisplayName:
+                                value: "gPCUserExtensionNames"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_attributeValue:
+                                value: "*CAB54552-DEEA-4691-817E-ED4A4D1AFC72*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_attributeValue:
+                                value: "*AADCED64-746C-4633-A97C-D61349046527*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - term:
+                        data_win_system_eventID: "5145"
+                    - wildcard:
+                        data_win_eventdata_shareName:
+                          value: "*\\\\SYSVOL"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_relativeTargetName:
+                          value: "*ScheduledTasks.xml"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_accessList:
+                                value: "*WriteData*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_accessList: "*%%4417*"
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_attributeLDAPDisplayName
+    - data_win_eventdata_attributeValue
+    - data_win_eventdata_shareName
+    - data_win_eventdata_relativeTargetName
+    - data_win_eventdata_accessList
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '5136';
+  data_win_eventdata_attributeLDAPDisplayName equals 'gPCMachineExtensionNames';
+  data_win_eventdata_attributeLDAPDisplayName equals 'gPCUserExtensionNames',
+  among other conditions.
+
+known_false_positives: >
+  If the source IP is not localhost then it's super suspicious, better to
+  monitor both local and remote changes to GPO scheduled tasks. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://twitter.com/menasec1/status/1106899890377052160
+  - https://www.secureworks.com/blog/ransomware-as-a-distraction
+  - https://www.elastic.co/guide/en/security/7.17/prebuilt-rule-0-16-1-scheduled-task-execution-at-scale-via-gpo.html
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Persistence and Execution at Scale via GPO Scheduled Task detected on host
+    $agent_name$. Matched data_win_eventdata_attributeLDAPDisplayName:
+    $data_win_eventdata_attributeLDAPDisplayName$. Matched
+    data_win_eventdata_attributeValue: $data_win_eventdata_attributeValue$.
+    MITRE ATT&CK: T1053.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_attributeLDAPDisplayName
+      type: other
+    - field: data_win_eventdata_attributeValue
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053.005
+  custom_tags:
+    - persistence
+    - scale
+    - scheduled
+    - windows_security
+    - privilege_escalation
+    - execution
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: ((data_win_system_eventID:"5136" AND (data_win_eventdata_attributeLDAPDisplayName:/[Gg][Pp][Cc][Mm][Aa][Cc][Hh][Ii][Nn][Ee][Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Nn][Aa][Mm][Ee][Ss]/ OR data_win_eventdata_attributeLDAPDisplayName:/[Gg][Pp][Cc][Uu][Ss][Ee][Rr][Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Nn][Aa][Mm][Ee][Ss]/) AND (data_win_eventdata_attributeValue:/.*[Cc][Aa][Bb]54552-[Dd][Ee][Ee][Aa]-4691-817[Ee]-[Ee][Dd]4[Aa]4[Dd]1[Aa][Ff][Cc]72.*/ OR data_win_eventdata_attributeValue:/.*[Aa][Aa][Dd][Cc][Ee][Dd]64-746[Cc]-4633-[Aa]97[Cc]-[Dd]61349046527.*/)) OR (data_win_system_eventID:"5145" AND data_win_eventdata_shareName:/.*\\[Ss][Yy][Ss][Vv][Oo][Ll]/ AND data_win_eventdata_relativeTargetName:/.*[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk][Ss]\.[Xx][Mm][Ll]/ AND (data_win_eventdata_accessList:/.*[Ww][Rr][Ii][Tt][Ee][Dd][Aa][Tt][Aa].*/ OR data_win_eventdata_accessList:/.*%%4417.*/)))

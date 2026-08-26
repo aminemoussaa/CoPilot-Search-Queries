@@ -1,0 +1,192 @@
+name: Suspicious File Created in Outlook Temporary Directory
+id: fabb0e80-030c-4e3e-a104-d09676991ac3
+version: 1
+schema_version: "1.0"
+date: "2025-07-22"
+author: Florian Roth (Nextron Systems), Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fabb0e80-030c-4e3e-a104-d09676991ac3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of files with suspicious file extensions in the temporary
+  directory that Outlook uses when opening attachments. This can be used to
+  detect spear-phishing campaigns that use suspicious files as attachments,
+  which may contain malicious code. MITRE ATT&CK: T1566.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.cpl"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.hta"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.iso"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.rdp"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.svg"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vba"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*.vbs"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\AppData\\\\Local\\\\Packages\\\\Microsoft.Outlook_*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\Olk\\\\Attachments\\\\*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\Windows\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\Content.Outlook\\\\*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*.cpl'; data_win_eventdata_targetFilename matches '*.hta';
+  data_win_eventdata_targetFilename matches '*.iso', among other conditions.
+
+known_false_positives: >
+  Opening of headers or footers in email signatures that include SVG images or
+  legitimate SVG attachments. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://vipre.com/blog/svg-phishing-attacks-the-new-trick-in-the-cybercriminals-playbook/
+  - https://thecyberexpress.com/rogue-rdp-files-used-in-ukraine-cyberattacks/
+  - https://www.microsoft.com/en-us/security/blog/2024/10/29/midnight-blizzard-conducts-large-scale-spear-phishing-campaign-using-rdp-files/
+  - https://attack.mitre.org/techniques/T1566/001/
+
+response:
+  message: >
+    Suspicious File Created in Outlook Temporary Directory detected on host
+    $agent_name$. Matched data_win_eventdata_targetFilename:
+    $data_win_eventdata_targetFilename$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1566.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1566.001
+  custom_tags:
+    - outlook
+    - temporary
+    - directory
+    - file_event
+    - sysmon
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND (data_win_eventdata_targetFilename:/.*\.[Cc][Pp][Ll]/ OR data_win_eventdata_targetFilename:/.*\.[Hh][Tt][Aa]/ OR data_win_eventdata_targetFilename:/.*\.[Ii][Ss][Oo]/ OR data_win_eventdata_targetFilename:/.*\.[Rr][Dd][Pp]/ OR data_win_eventdata_targetFilename:/.*\.[Ss][Vv][Gg]/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Aa]/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ee]/ OR data_win_eventdata_targetFilename:/.*\.[Vv][Bb][Ss]/) AND (data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Aa][Cc][Kk][Aa][Gg][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Oo][Uu][Tt][Ll][Oo][Oo][Kk]_.*/ OR data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Ll][Kk]\\[Aa][Tt][Tt][Aa][Cc][Hh][Mm][Ee][Nn][Tt][Ss]\\.*/ OR (data_win_eventdata_targetFilename:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\.*/ AND data_win_eventdata_targetFilename:/.*\\[Cc][Oo][Nn][Tt][Ee][Nn][Tt]\.[Oo][Uu][Tt][Ll][Oo][Oo][Kk]\\.*/))

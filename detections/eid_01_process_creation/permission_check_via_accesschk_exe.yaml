@@ -1,0 +1,186 @@
+name: Permission Check Via Accesschk.EXE
+id: c625d754-6a3d-4f65-9c9a-536aea960d37
+version: 1
+schema_version: "1.0"
+date: "2026-06-29"
+author: Teymur Kheirkhabarov (idea), Mangatas Tondang, oscd.community, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: c625d754-6a3d-4f65-9c9a-536aea960d37
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the usage of the "Accesschk" utility, an access and privilege audit
+  tool developed by SysInternal and often being abused by attacker to verify
+  process privileges. MITRE ATT&CK: T1069.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_product:
+                    value: "*AccessChk"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_description:
+                    value: "*Reports effective permissions*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\accesschk.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\accesschk64.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\accesschk64a.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "accesschk.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*uwcqv *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*kwsu *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*qwsu *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*uwdqs *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_product
+    - data_win_eventdata_description
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_product matches
+  '*AccessChk'; data_win_eventdata_description matches '*Reports effective
+  permissions*'; data_win_eventdata_image matches '*\accesschk.exe', among other
+  conditions.
+
+known_false_positives: >
+  System administrator Usage. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://speakerdeck.com/heirhabarov/hunting-for-privilege-escalation-in-windows-environment?slide=43
+  - https://www.youtube.com/watch?v=JGs-aKf2OtU&ab_channel=OFFZONEMOSCOW
+  - https://github.com/carlospolop/PEASS-ng/blob/fa0f2e17fbc1d86f1fd66338a40e665e7182501d/winPEAS/winPEASbat/winPEAS.bat
+  - https://github.com/gladiatx0r/Powerless/blob/04f553bbc0c65baf4e57344deff84e3f016e6b51/Powerless.bat
+  - https://attack.mitre.org/techniques/T1069/001/
+
+response:
+  message: >
+    Permission Check Via Accesschk.EXE detected on host $agent_name$. Matched
+    data_win_eventdata_product: $data_win_eventdata_product$. Matched
+    data_win_eventdata_description: $data_win_eventdata_description$. MITRE
+    ATT&CK: T1069.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_product
+      type: other
+    - field: data_win_eventdata_description
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1069.001
+  custom_tags:
+    - permission
+    - check
+    - accesschk
+    - process_creation
+    - sysmon
+    - discovery
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_product:/.*[Aa][Cc][Cc][Ee][Ss][Ss][Cc][Hh][Kk]/ OR data_win_eventdata_description:/.*[Rr][Ee][Pp][Oo][Rr][Tt][Ss] [Ee][Ff][Ff][Ee][Cc][Tt][Ii][Vv][Ee] [Pp][Ee][Rr][Mm][Ii][Ss][Ss][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_image:/.*\\[Aa][Cc][Cc][Ee][Ss][Ss][Cc][Hh][Kk]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Cc][Cc][Ee][Ss][Ss][Cc][Hh][Kk]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Cc][Cc][Ee][Ss][Ss][Cc][Hh][Kk]64[Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Aa][Cc][Cc][Ee][Ss][Ss][Cc][Hh][Kk]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*[Uu][Ww][Cc][Qq][Vv] .*/ OR data_win_eventdata_commandLine:/.*[Kk][Ww][Ss][Uu] .*/ OR data_win_eventdata_commandLine:/.*[Qq][Ww][Ss][Uu] .*/ OR data_win_eventdata_commandLine:/.*[Uu][Ww][Dd][Qq][Ss] .*/)

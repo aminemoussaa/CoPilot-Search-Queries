@@ -1,0 +1,160 @@
+name: PetitPotam Suspicious Kerberos TGT Request
+id: 6a53d871-682d-40b6-83e0-b7c1a6c4e3a5
+version: 1
+schema_version: "1.0"
+date: "2022-10-05"
+author: Mauricio Velazco, Michael Haag
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6a53d871-682d-40b6-83e0-b7c1a6c4e3a5
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect suspicious Kerberos TGT requests. Once an attacer obtains a computer
+  certificate by abusing Active Directory Certificate Services in combination
+  with PetitPotam, the next step would be to leverage the certificate for
+  malicious purposes. One way of doing this is to request a Kerberos Ticket
+  Granting Ticket using a tool like Rubeus. This request will generate a 4768
+  event with some unusual fields depending on the environment. This analytic
+  will require tuning, we recommend filtering Account_Name to the Domain
+  Controller computer accounts. MITRE ATT&CK: T1187.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4768"
+        - wildcard:
+            data_win_eventdata_targetUserName: "*$"
+        - wildcard:
+            data_win_eventdata_certThumbprint: "*"
+        - exists:
+            field: "data_win_eventdata_ipAddress"
+        - exists:
+            field: "data_win_eventdata_certThumbprint"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_ipAddress: "::1"
+                    - term:
+                        data_win_eventdata_certThumbprint: ""
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetUserName
+    - data_win_eventdata_certThumbprint
+    - data_win_eventdata_ipAddress
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4768'; data_win_eventdata_targetUserName
+  matches '*$'; data_win_eventdata_certThumbprint matches '*', among other
+  conditions.
+
+known_false_positives: >
+  False positives are possible if the environment is using certificates for
+  authentication. We recommend filtering Account_Name to the Domain Controller
+  computer accounts. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://github.com/topotam/PetitPotam
+  - https://isc.sans.edu/forums/diary/Active+Directory+Certificate+Services+ADCS+PKI+domain+admin+vulnerability/27668/
+  - https://github.com/splunk/security_content/blob/88d689fe8a055d8284337b9fad5d9152b42043db/detections/endpoint/petitpotam_suspicious_kerberos_tgt_request.yml
+  - https://attack.mitre.org/techniques/T1187/
+
+response:
+  message: >
+    PetitPotam Suspicious Kerberos TGT Request detected on host $agent_name$.
+    Matched data_win_eventdata_targetUserName:
+    $data_win_eventdata_targetUserName$. Matched
+    data_win_eventdata_certThumbprint: $data_win_eventdata_certThumbprint$.
+    MITRE ATT&CK: T1187
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetUserName
+      type: user
+    - field: data_win_eventdata_certThumbprint
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1187
+  custom_tags:
+    - petitpotam
+    - kerberos
+    - request
+    - windows_security
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4768" AND data_win_eventdata_targetUserName:/.*\$/ AND data_win_eventdata_certThumbprint:/.*/ AND _exists_:data_win_eventdata_ipAddress AND _exists_:data_win_eventdata_certThumbprint AND NOT (data_win_eventdata_ipAddress:"::1" OR data_win_eventdata_certThumbprint:"")

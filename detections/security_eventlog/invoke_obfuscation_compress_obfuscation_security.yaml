@@ -1,0 +1,157 @@
+name: Invoke-Obfuscation COMPRESS OBFUSCATION - Security
+id: 7a922f1b-2635-4d6c-91ef-af228b198ad3
+version: 1
+schema_version: "1.0"
+date: "2022-11-29"
+author: Timur Zinniatullin, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7a922f1b-2635-4d6c-91ef-af228b198ad3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Obfuscated Powershell via COMPRESS OBFUSCATION. MITRE ATT&CK: T1027,
+  T1059.001.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4697"
+        - wildcard:
+            data_win_eventdata_serviceFileName:
+              value: "*new-object*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_serviceFileName:
+              value: "*text.encoding]::ascii*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_serviceFileName:
+              value: "*readtoend*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_serviceFileName:
+                    value: "*system.io.compression.deflatestream*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_serviceFileName:
+                    value: "*system.io.streamreader*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_serviceFileName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4697'; data_win_eventdata_serviceFileName
+  matches '*new-object*'; data_win_eventdata_serviceFileName matches
+  '*text.encoding]::ascii*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/SigmaHQ/sigma/issues/1009
+  - https://attack.mitre.org/techniques/T1027/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Invoke-Obfuscation COMPRESS OBFUSCATION - Security detected on host
+    $agent_name$. Matched data_win_eventdata_serviceFileName:
+    $data_win_eventdata_serviceFileName$. Matched
+    data_win_eventdata_subjectUserName: $data_win_eventdata_subjectUserName$.
+    MITRE ATT&CK: T1027, T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_serviceFileName
+      type: file_name
+    - field: data_win_eventdata_subjectUserName
+      type: user
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1027
+    - T1059.001
+  custom_tags:
+    - invoke
+    - obfuscation
+    - compress
+    - windows_security
+    - stealth
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4697" AND data_win_eventdata_serviceFileName:/.*[Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt].*/ AND data_win_eventdata_serviceFileName:/.*[Tt][Ee][Xx][Tt]\.[Ee][Nn][Cc][Oo][Dd][Ii][Nn][Gg]\]::[Aa][Ss][Cc][Ii][Ii].*/ AND data_win_eventdata_serviceFileName:/.*[Rr][Ee][Aa][Dd][Tt][Oo][Ee][Nn][Dd].*/ AND (data_win_eventdata_serviceFileName:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Ii][Oo]\.[Cc][Oo][Mm][Pp][Rr][Ee][Ss][Ss][Ii][Oo][Nn]\.[Dd][Ee][Ff][Ll][Aa][Tt][Ee][Ss][Tt][Rr][Ee][Aa][Mm].*/ OR data_win_eventdata_serviceFileName:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Ii][Oo]\.[Ss][Tt][Rr][Ee][Aa][Mm][Rr][Ee][Aa][Dd][Ee][Rr].*/)

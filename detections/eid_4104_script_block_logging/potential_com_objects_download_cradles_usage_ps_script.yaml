@@ -1,0 +1,182 @@
+name: Potential COM Objects Download Cradles Usage - PS Script
+id: 3c7d1587-3b13-439f-9941-7d14313dbdfe
+version: 1
+schema_version: "1.0"
+date: "2022-12-25"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3c7d1587-3b13-439f-9941-7d14313dbdfe
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of COM objects that can be abused to download files in
+  PowerShell by CLSID. MITRE ATT&CK: T1105.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*[Type]::GetTypeFromCLSID(*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*0002DF01-0000-0000-C000-000000000046*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*F6D90F16-9C73-11D3-B32E-00C04F990BB4*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*F5078F35-C551-11D3-89B9-0000F81FE221*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*88d96a0a-f192-11d4-a65f-0040963251e5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*AFBA6B42-5692-48EA-8141-DC517DCF0EF1*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*AFB40FFD-B609-40A3-9828-F88BBE11E4E3*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*88d96a0b-f192-11d4-a65f-0040963251e5*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*2087c2f4-2cef-4953-a8ab-66779b670495*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*000209FF-0000-0000-C000-000000000046*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*00024500-0000-0000-C000-000000000046*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*[Type]::GetTypeFromCLSID(*';
+  data_win_eventdata_scriptBlockText matches
+  '*0002DF01-0000-0000-C000-000000000046*'; data_win_eventdata_scriptBlockText
+  matches '*F6D90F16-9C73-11D3-B32E-00C04F990BB4*', among other conditions.
+
+known_false_positives: >
+  Legitimate use of the library. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/dotnet/api/system.type.gettypefromclsid?view=net-7.0
+  - https://speakerdeck.com/heirhabarov/hunting-for-powershell-abuse?slide=57
+  - https://attack.mitre.org/techniques/T1105/
+
+response:
+  message: >
+    Potential COM Objects Download Cradles Usage - PS Script detected on host
+    $agent_name$. Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1105
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1105
+  custom_tags:
+    - objects
+    - download
+    - cradles
+    - powershell
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*\[[Tt][Yy][Pp][Ee]\]::[Gg][Ee][Tt][Tt][Yy][Pp][Ee][Ff][Rr][Oo][Mm][Cc][Ll][Ss][Ii][Dd]\(.*/ AND (data_win_eventdata_scriptBlockText:/.*0002[Dd][Ff]01-0000-0000-[Cc]000-000000000046.*/ OR data_win_eventdata_scriptBlockText:/.*[Ff]6[Dd]90[Ff]16-9[Cc]73-11[Dd]3-[Bb]32[Ee]-00[Cc]04[Ff]990[Bb][Bb]4.*/ OR data_win_eventdata_scriptBlockText:/.*[Ff]5078[Ff]35-[Cc]551-11[Dd]3-89[Bb]9-0000[Ff]81[Ff][Ee]221.*/ OR data_win_eventdata_scriptBlockText:/.*88[Dd]96[Aa]0[Aa]-[Ff]192-11[Dd]4-[Aa]65[Ff]-0040963251[Ee]5.*/ OR data_win_eventdata_scriptBlockText:/.*[Aa][Ff][Bb][Aa]6[Bb]42-5692-48[Ee][Aa]-8141-[Dd][Cc]517[Dd][Cc][Ff]0[Ee][Ff]1.*/ OR data_win_eventdata_scriptBlockText:/.*[Aa][Ff][Bb]40[Ff][Ff][Dd]-[Bb]609-40[Aa]3-9828-[Ff]88[Bb][Bb][Ee]11[Ee]4[Ee]3.*/ OR data_win_eventdata_scriptBlockText:/.*88[Dd]96[Aa]0[Bb]-[Ff]192-11[Dd]4-[Aa]65[Ff]-0040963251[Ee]5.*/ OR data_win_eventdata_scriptBlockText:/.*2087[Cc]2[Ff]4-2[Cc][Ee][Ff]-4953-[Aa]8[Aa][Bb]-66779[Bb]670495.*/ OR data_win_eventdata_scriptBlockText:/.*000209[Ff][Ff]-0000-0000-[Cc]000-000000000046.*/ OR data_win_eventdata_scriptBlockText:/.*00024500-0000-0000-[Cc]000-000000000046.*/)

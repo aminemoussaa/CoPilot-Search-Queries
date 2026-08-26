@@ -1,0 +1,139 @@
+name: Potential Persistence Via Scrobj.dll COM Hijacking
+id: fe20dda1-6f37-4379-bbe0-a98d400cae90
+version: 1
+schema_version: "1.0"
+date: "2023-08-17"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: fe20dda1-6f37-4379-bbe0-a98d400cae90
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect use of scrobj.dll as this DLL looks for the ScriptletURL key to get the
+  location of the script to execute. MITRE ATT&CK: T1546.015.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*InprocServer32\\\\(Default)"
+              case_insensitive: true
+        - term:
+            data_win_eventdata_details:
+              value: "C:\\WINDOWS\\system32\\scrobj.dll"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*InprocServer32\(Default)'; data_win_eventdata_details equals
+  'C:\WINDOWS\system32\scrobj.dll'.
+
+known_false_positives: >
+  Legitimate use of the dll. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/40b77d63808dd4f4eafb83949805636735a1fd15/atomics/T1546.015/T1546.015.md
+  - https://attack.mitre.org/techniques/T1546/015/
+
+response:
+  message: >
+    Potential Persistence Via Scrobj.dll COM Hijacking detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1546.015
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1546.015
+  custom_tags:
+    - persistence
+    - scrobj
+    - hijacking
+    - registry
+    - sysmon
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*[Ii][Nn][Pp][Rr][Oo][Cc][Ss][Ee][Rr][Vv][Ee][Rr]32\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ AND data_win_eventdata_details:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Cc][Rr][Oo][Bb][Jj]\.[Dd][Ll][Ll]/

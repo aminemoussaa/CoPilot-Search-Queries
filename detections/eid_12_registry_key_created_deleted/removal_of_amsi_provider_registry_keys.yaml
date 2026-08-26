@@ -1,0 +1,169 @@
+name: Removal Of AMSI Provider Registry Keys
+id: 41d1058a-aea7-4952-9293-29eaaf516465
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 41d1058a-aea7-4952-9293-29eaaf516465
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the deletion of AMSI provider registry key entries in
+  HKLM\Software\Microsoft\AMSI. This technique could be used by an attacker in
+  order to disable AMSI inspection. MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 12 - Registry Key Deleted
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "12"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*{2781761E-28E0-4109-99FE-B9D127C57AFE}"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*{A7C452EF-8E9F-42EB-9F2B-245613CA0DC9}"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\ProgramData\\\\Microsoft\\\\Windows Defender\\\\Platform\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Program Files\\\\Windows Defender\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Program Files (x86)\\\\Windows Defender\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\MsMpEng.exe"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*{2781761E-28E0-4109-99FE-B9D127C57AFE}'; data_win_eventdata_targetObject
+  matches '*{A7C452EF-8E9F-42EB-9F2B-245613CA0DC9}'; data_win_eventdata_image
+  matches 'C:\ProgramData\Microsoft\Windows Defender\Platform\*', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1562.001/T1562.001.md
+  - https://seclists.org/fulldisclosure/2020/Mar/45
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Removal Of AMSI Provider Registry Keys detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - removal
+    - provider
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"12" AND (data_win_eventdata_targetObject:/.*\{2781761[Ee]-28[Ee]0-4109-99[Ff][Ee]-[Bb]9[Dd]127[Cc]57[Aa][Ff][Ee]\}/ OR data_win_eventdata_targetObject:/.*\{[Aa]7[Cc]452[Ee][Ff]-8[Ee]9[Ff]-42[Ee][Bb]-9[Ff]2[Bb]-245613[Cc][Aa]0[Dd][Cc]9\}/) AND _exists_:data_win_eventdata_image AND NOT ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Pp][Ll][Aa][Tt][Ff][Oo][Rr][Mm]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\.*/) AND data_win_eventdata_image:/.*\\[Mm][Ss][Mm][Pp][Ee][Nn][Gg]\.[Ee][Xx][Ee]/)

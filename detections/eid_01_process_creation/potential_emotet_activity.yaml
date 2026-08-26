@@ -1,0 +1,205 @@
+name: Potential Emotet Activity
+id: d02e8cf5-6099-48cf-9bfc-1eec2d0c7b18
+version: 1
+schema_version: "1.0"
+date: "2023-02-04"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d02e8cf5-6099-48cf-9bfc-1eec2d0c7b18
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects all Emotet like process executions that are not covered by the more
+  generic rules. MITRE ATT&CK: T1059.001, T1027.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* -e* PAA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*JABlAG4AdgA6AHUAcwBlAHIAcAByAG8AZgBpAGwAZQ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*QAZQBuAHYAOgB1AHMAZQByAHAAcgBvAGYAaQBsAGUA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*kAGUAbgB2ADoAdQBzAGUAcgBwAHIAbwBmAGkAbABlA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*IgAoACcAKgAnACkAOwAkA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*IAKAAnACoAJwApADsAJA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*iACgAJwAqACcAKQA7ACQA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*JABGAGwAeAByAGgAYwBmAGQ*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*PQAkAGUAbgB2ADoAdABlAG0AcAArACgA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*0AJABlAG4AdgA6AHQAZQBtAHAAKwAoA*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*9ACQAZQBuAHYAOgB0AGUAbQBwACsAKA*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*fAAgAEMAbwBuAHYAZQByAHQAVABvAC0ASgBzAG8AbgAgAC0ARQByAHIAbwByAEEAYwB0AGkAbwBuACAAUwBpAGwAZQBuAHQAbAB5AEMAbwBuAHQAaQBuAHUAZQ*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*wAIABDAG8AbgB2AGUAcgB0AFQAbwAtAEoAcwBvAG4AIAAtAEUAcgByAG8AcgBBAGMAdABpAG8AbgAgAFMAaQBsAGUAbgB0AGwAeQBDAG8AbgB0AGkAbgB1AGUA*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*8ACAAQwBvAG4AdgBlAHIAdABUAG8ALQBKAHMAbwBuACAALQBFAHIAcgBvAHIAQQBjAHQAaQBvAG4AIABTAGkAbABlAG4AdABsAHkAQwBvAG4AdABpAG4AdQBlA*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches '* -e*
+  PAA*'; data_win_eventdata_commandLine matches
+  '*JABlAG4AdgA6AHUAcwBlAHIAcAByAG8AZgBpAGwAZQ*'; data_win_eventdata_commandLine
+  matches '*QAZQBuAHYAOgB1AHMAZQByAHAAcgBvAGYAaQBsAGUA*', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://app.any.run/tasks/e13ab713-64cf-4b23-ad93-6dceaa5429ac/
+  - https://app.any.run/tasks/81f3c28c-c686-425d-8a2b-a98198d244e1/
+  - https://app.any.run/tasks/97f875e8-0e08-4328-815f-055e971ba754/
+  - https://app.any.run/tasks/84fc9b4a-ea2b-47b1-8aa6-9014402dfb56/
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1027/
+
+response:
+  message: >
+    Potential Emotet Activity detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1059.001, T1027
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+    - T1027
+  custom_tags:
+    - emotet
+    - process_creation
+    - sysmon
+    - execution
+    - stealth
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.* -[Ee].* [Pp][Aa][Aa].*/ OR data_win_eventdata_commandLine:/.*[Jj][Aa][Bb][Ll][Aa][Gg]4[Aa][Dd][Gg][Aa]6[Aa][Hh][Uu][Aa][Cc][Ww][Bb][Ll][Aa][Hh][Ii][Aa][Cc][Aa][Bb][Yy][Aa][Gg]8[Aa][Zz][Gg][Bb][Pp][Aa][Gg][Ww][Aa][Zz][Qq].*/ OR data_win_eventdata_commandLine:/.*[Qq][Aa][Zz][Qq][Bb][Uu][Aa][Hh][Yy][Aa][Oo][Gg][Bb]1[Aa][Hh][Mm][Aa][Zz][Qq][Bb][Yy][Aa][Hh][Aa][Aa][Cc][Gg][Bb][Vv][Aa][Gg][Yy][Aa][Aa][Qq][Bb][Ss][Aa][Gg][Uu][Aa].*/ OR data_win_eventdata_commandLine:/.*[Kk][Aa][Gg][Uu][Aa][Bb][Gg][Bb]2[Aa][Dd][Oo][Aa][Dd][Qq][Bb][Zz][Aa][Gg][Uu][Aa][Cc][Gg][Bb][Ww][Aa][Hh][Ii][Aa][Bb][Ww][Bb][Mm][Aa][Gg][Kk][Aa][Bb][Aa][Bb][Ll][Aa].*/ OR data_win_eventdata_commandLine:/.*[Ii][Gg][Aa][Oo][Aa][Cc][Cc][Aa][Kk][Gg][Aa][Nn][Aa][Cc][Kk][Aa][Oo][Ww][Aa][Kk][Aa].*/ OR data_win_eventdata_commandLine:/.*[Ii][Aa][Kk][Aa][Aa][Nn][Aa][Cc][Oo][Aa][Jj][Ww][Aa][Pp][Aa][Dd][Ss][Aa][Jj][Aa].*/ OR data_win_eventdata_commandLine:/.*[Ii][Aa][Cc][Gg][Aa][Jj][Ww][Aa][Qq][Aa][Cc][Cc][Aa][Kk][Qq][Aa]7[Aa][Cc][Qq][Aa].*/ OR data_win_eventdata_commandLine:/.*[Jj][Aa][Bb][Gg][Aa][Gg][Ww][Aa][Ee][Aa][Bb][Yy][Aa][Gg][Gg][Aa][Yy][Ww][Bb][Mm][Aa][Gg][Qq].*/ OR data_win_eventdata_commandLine:/.*[Pp][Qq][Aa][Kk][Aa][Gg][Uu][Aa][Bb][Gg][Bb]2[Aa][Dd][Oo][Aa][Dd][Aa][Bb][Ll][Aa][Gg]0[Aa][Cc][Aa][Aa][Rr][Aa][Cc][Gg][Aa].*/ OR data_win_eventdata_commandLine:/.*0[Aa][Jj][Aa][Bb][Ll][Aa][Gg]4[Aa][Dd][Gg][Aa]6[Aa][Hh][Qq][Aa][Zz][Qq][Bb][Tt][Aa][Hh][Aa][Aa][Kk][Ww][Aa][Oo][Aa].*/ OR data_win_eventdata_commandLine:/.*9[Aa][Cc][Qq][Aa][Zz][Qq][Bb][Uu][Aa][Hh][Yy][Aa][Oo][Gg][Bb]0[Aa][Gg][Uu][Aa][Bb][Qq][Bb][Ww][Aa][Cc][Ss][Aa][Kk][Aa].*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Ff][Aa][Aa][Gg][Aa][Ee][Mm][Aa][Bb][Ww][Bb][Uu][Aa][Hh][Yy][Aa][Zz][Qq][Bb][Yy][Aa][Hh][Qq][Aa][Vv][Aa][Bb][Vv][Aa][Cc]0[Aa][Ss][Gg][Bb][Zz][Aa][Gg]8[Aa][Bb][Gg][Aa][Gg][Aa][Cc]0[Aa][Rr][Qq][Bb][Yy][Aa][Hh][Ii][Aa][Bb][Ww][Bb][Yy][Aa][Ee][Ee][Aa][Yy][Ww][Bb]0[Aa][Gg][Kk][Aa][Bb][Ww][Bb][Uu][Aa][Cc][Aa][Aa][Uu][Ww][Bb][Pp][Aa][Gg][Ww][Aa][Zz][Qq][Bb][Uu][Aa][Hh][Qq][Aa][Bb][Aa][Bb]5[Aa][Ee][Mm][Aa][Bb][Ww][Bb][Uu][Aa][Hh][Qq][Aa][Aa][Qq][Bb][Uu][Aa][Hh][Uu][Aa][Zz][Qq].*/ OR data_win_eventdata_commandLine:/.*[Ww][Aa][Ii][Aa][Bb][Dd][Aa][Gg]8[Aa][Bb][Gg][Bb]2[Aa][Gg][Uu][Aa][Cc][Gg][Bb]0[Aa][Ff][Qq][Aa][Bb][Ww][Aa][Tt][Aa][Ee][Oo][Aa][Cc][Ww][Bb][Vv][Aa][Gg]4[Aa][Ii][Aa][Aa][Tt][Aa][Ee][Uu][Aa][Cc][Gg][Bb][Yy][Aa][Gg]8[Aa][Cc][Gg][Bb][Bb][Aa][Gg][Mm][Aa][Dd][Aa][Bb][Pp][Aa][Gg]8[Aa][Bb][Gg][Aa][Gg][Aa][Ff][Mm][Aa][Aa][Qq][Bb][Ss][Aa][Gg][Uu][Aa][Bb][Gg][Bb]0[Aa][Gg][Ww][Aa][Ee][Qq][Bb][Dd][Aa][Gg]8[Aa][Bb][Gg][Bb]0[Aa][Gg][Kk][Aa][Bb][Gg][Bb]1[Aa][Gg][Uu][Aa].*/ OR data_win_eventdata_commandLine:/.*8[Aa][Cc][Aa][Aa][Qq][Ww][Bb][Vv][Aa][Gg]4[Aa][Dd][Gg][Bb][Ll][Aa][Hh][Ii][Aa][Dd][Aa][Bb][Uu][Aa][Gg]8[Aa][Ll][Qq][Bb][Kk][Aa][Hh][Mm][Aa][Bb][Ww][Bb][Uu][Aa][Cc][Aa][Aa][Ll][Qq][Bb][Ff][Aa][Hh][Ii][Aa][Cc][Gg][Bb][Vv][Aa][Hh][Ii][Aa][Qq][Qq][Bb][Jj][Aa][Hh][Qq][Aa][Aa][Qq][Bb][Vv][Aa][Gg]4[Aa][Ii][Aa][Bb][Tt][Aa][Gg][Kk][Aa][Bb][Aa][Bb][Ll][Aa][Gg]4[Aa][Dd][Aa][Bb][Ss][Aa][Hh][Kk][Aa][Qq][Ww][Bb][Vv][Aa][Gg]4[Aa][Dd][Aa][Bb][Pp][Aa][Gg]4[Aa][Dd][Qq][Bb][Ll][Aa].*/)

@@ -1,0 +1,203 @@
+name: New Port Forwarding Rule Added Via Netsh.EXE
+id: 322ed9ec-fcab-4f67-9a34-e7c6aef43614
+version: 1
+schema_version: "1.0"
+date: "2023-09-01"
+author: Florian Roth (Nextron Systems), omkar72, oscd.community, Swachchhanda Shrawan Poudel
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 322ed9ec-fcab-4f67-9a34-e7c6aef43614
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of netsh commands that configure a new port forwarding
+  (PortProxy) rule. MITRE ATT&CK: T1090.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\netsh.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "netsh.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*interface*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*portproxy*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*add*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*v4tov4*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*i *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*p *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*a *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*v *"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*connectp*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*listena*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*c=*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\netsh.exe'; data_win_eventdata_originalFileName equals 'netsh.exe';
+  data_win_eventdata_commandLine matches '*interface*', among other conditions.
+
+known_false_positives: >
+  Legitimate administration activity. WSL2 network bridge PowerShell script used
+  for WSL/Kubernetes/Docker (e.g.
+  https://github.com/microsoft/WSL/issues/4150#issuecomment-504209723). Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://www.fireeye.com/blog/threat-research/2019/01/bypassing-network-restrictions-through-rdp-tunneling.html
+  - https://adepts.of0x.cc/netsh-portproxy-code/
+  - https://www.dfirnotes.net/portproxy_detection/
+  - https://attack.mitre.org/techniques/T1090/
+
+response:
+  message: >
+    New Port Forwarding Rule Added Via Netsh.EXE detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1090
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1090
+  custom_tags:
+    - forwarding
+    - added
+    - netsh
+    - process_creation
+    - sysmon
+    - lateral_movement
+    - command_and_control
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Nn][Ee][Tt][Ss][Hh]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ee][Tt][Ss][Hh]\.[Ee][Xx][Ee]/) AND ((data_win_eventdata_commandLine:/.*[Ii][Nn][Tt][Ee][Rr][Ff][Aa][Cc][Ee].*/ AND data_win_eventdata_commandLine:/.*[Pp][Oo][Rr][Tt][Pp][Rr][Oo][Xx][Yy].*/ AND data_win_eventdata_commandLine:/.*[Aa][Dd][Dd].*/ AND data_win_eventdata_commandLine:/.*[Vv]4[Tt][Oo][Vv]4.*/) OR (data_win_eventdata_commandLine:/.*[Ii] .*/ AND data_win_eventdata_commandLine:/.*[Pp] .*/ AND data_win_eventdata_commandLine:/.*[Aa] .*/ AND data_win_eventdata_commandLine:/.*[Vv] .*/) OR (data_win_eventdata_commandLine:/.*[Cc][Oo][Nn][Nn][Ee][Cc][Tt][Pp].*/ AND data_win_eventdata_commandLine:/.*[Ll][Ii][Ss][Tt][Ee][Nn][Aa].*/ AND data_win_eventdata_commandLine:/.*[Cc]=.*/))

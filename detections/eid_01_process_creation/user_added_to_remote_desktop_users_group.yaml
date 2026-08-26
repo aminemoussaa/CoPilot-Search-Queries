@@ -1,0 +1,177 @@
+name: User Added to Remote Desktop Users Group
+id: ffa28e60-bdb1-46e0-9f82-05f7a61cc06e
+version: 1
+schema_version: "1.0"
+date: "2022-09-09"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ffa28e60-bdb1-46e0-9f82-05f7a61cc06e
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects addition of users to the local Remote Desktop Users group via "Net" or
+  "Add-LocalGroupMember". MITRE ATT&CK: T1133, T1136.001, T1021.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*localgroup *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* /add*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*Add-LocalGroupMember *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "* -Group *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Remote Desktop Users*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Utilisateurs du Bureau à distance*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Usuarios de escritorio remoto*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*localgroup *'; data_win_eventdata_commandLine matches '* /add*';
+  data_win_eventdata_commandLine matches '*Add-LocalGroupMember *', among other
+  conditions.
+
+known_false_positives: >
+  Administrative activity. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://www.microsoft.com/security/blog/2021/11/16/evolving-trends-in-iranian-threat-actor-activity-mstic-presentation-at-cyberwarcon-2021/
+  - https://attack.mitre.org/techniques/T1133/
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://attack.mitre.org/techniques/T1021/001/
+
+response:
+  message: >
+    User Added to Remote Desktop Users Group detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1133, T1136.001, T1021.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1133
+    - T1136.001
+    - T1021.001
+  custom_tags:
+    - added
+    - desktop
+    - users
+    - process_creation
+    - sysmon
+    - initial_access
+    - persistence
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Ll][Oo][Cc][Aa][Ll][Gg][Rr][Oo][Uu][Pp] .*/ AND data_win_eventdata_commandLine:/.* \/[Aa][Dd][Dd].*/) OR (data_win_eventdata_commandLine:/.*[Aa][Dd][Dd]-[Ll][Oo][Cc][Aa][Ll][Gg][Rr][Oo][Uu][Pp][Mm][Ee][Mm][Bb][Ee][Rr] .*/ AND data_win_eventdata_commandLine:/.* -[Gg][Rr][Oo][Uu][Pp] .*/)) AND (data_win_eventdata_commandLine:/.*[Rr][Ee][Mm][Oo][Tt][Ee] [Dd][Ee][Ss][Kk][Tt][Oo][Pp] [Uu][Ss][Ee][Rr][Ss].*/ OR data_win_eventdata_commandLine:/.*[Uu][Tt][Ii][Ll][Ii][Ss][Aa][Tt][Ee][Uu][Rr][Ss] [Dd][Uu] [Bb][Uu][Rr][Ee][Aa][Uu] [Àà] [Dd][Ii][Ss][Tt][Aa][Nn][Cc][Ee].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Uu][Aa][Rr][Ii][Oo][Ss] [Dd][Ee] [Ee][Ss][Cc][Rr][Ii][Tt][Oo][Rr][Ii][Oo] [Rr][Ee][Mm][Oo][Tt][Oo].*/)

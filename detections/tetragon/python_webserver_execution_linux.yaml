@@ -1,0 +1,172 @@
+name: Python WebServer Execution - Linux
+id: 3f0f5957-04f8-4792-ad89-192b0303bde6
+version: 1
+schema_version: "1.0"
+date: "2025-10-17"
+author: Mohamed LAKRI
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3f0f5957-04f8-4792-ad89-192b0303bde6
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of Python web servers via command line interface (CLI).
+  After gaining access to target systems, adversaries may use Python's built-in
+  HTTP server modules to quickly establish a web server without requiring
+  additional software. This technique is commonly used in post-exploitation
+  scenarios as it provides a simple method for transferring files between the
+  compromised host and attacker-controlled systems. MITRE ATT&CK: T1048.003.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python2"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python3"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python2.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/python3.*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*http.server*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*SimpleHTTPServer*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/python';
+  data_process_exec_process_binary matches '*/python2';
+  data_process_exec_process_binary matches '*/python3', among other conditions.
+
+known_false_positives: >
+  Testing or development activity. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1048.003#atomic-test-8---python3-httpserver
+  - https://docs.python.org/3/library/http.server.html
+  - https://docs.python.org/2/library/simplehttpserver.html
+  - https://attack.mitre.org/techniques/T1048/003/
+
+response:
+  message: >
+    Python WebServer Execution - Linux detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1048.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1048.003
+  custom_tags:
+    - python
+    - webserver
+    - linux
+    - tetragon
+    - process_creation
+    - exfiltration
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]2/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]3/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]2\..*/ OR data_process_exec_process_binary:/.*\/[Pp][Yy][Tt][Hh][Oo][Nn]3\..*/) AND (data_process_exec_process_arguments:/.*[Hh][Tt][Tt][Pp]\.[Ss][Ee][Rr][Vv][Ee][Rr].*/ OR data_process_exec_process_arguments:/.*[Ss][Ii][Mm][Pp][Ll][Ee][Hh][Tt][Tt][Pp][Ss][Ee][Rr][Vv][Ee][Rr].*/)

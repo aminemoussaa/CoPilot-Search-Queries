@@ -1,0 +1,152 @@
+name: Suspicious Unsigned Dbghelp/Dbgcore DLL Loaded
+id: bdc64095-d59a-42a2-8588-71fd9c9d9abc
+version: 1
+schema_version: "1.0"
+date: "2022-12-09"
+author: Perez Diego (@darkquassar), oscd.community, Ecco
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bdc64095-d59a-42a2-8588-71fd9c9d9abc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the load of dbghelp/dbgcore DLL (used to make memory dumps) by
+  suspicious processes. Tools like ProcessHacker and some attacker tradecract
+  use MiniDumpWriteDump API found in dbghelp.dll or dbgcore.dll. As an example,
+  SilentTrynity C2 Framework has a module that leverages this API to dump the
+  contents of Lsass.exe and transfer it over the network back to the attacker's
+  machine. MITRE ATT&CK: T1003.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\dbghelp.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\dbgcore.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - term:
+            data_win_eventdata_signed:
+              value: "false"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signed
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\dbghelp.dll'; data_win_eventdata_imageLoaded matches '*\dbgcore.dll';
+  data_win_eventdata_signed equals 'false'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows/win32/api/minidumpapiset/nf-minidumpapiset-minidumpwritedump
+  - https://www.pinvoke.net/default.aspx/dbghelp/MiniDumpWriteDump.html
+  - https://medium.com/@fsx30/bypass-edrs-memory-protection-introduction-to-hooking-2efb21acffd6
+  - https://attack.mitre.org/techniques/T1003/001/
+
+response:
+  message: >
+    Suspicious Unsigned Dbghelp/Dbgcore DLL Loaded detected on host
+    $agent_name$. Matched data_win_eventdata_imageLoaded:
+    $data_win_eventdata_imageLoaded$. Matched data_win_eventdata_signed:
+    $data_win_eventdata_signed$. MITRE ATT&CK: T1003.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_signed
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.001
+  custom_tags:
+    - unsigned
+    - dbghelp
+    - dbgcore
+    - image_load
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND (data_win_eventdata_imageLoaded:/.*\\[Dd][Bb][Gg][Hh][Ee][Ll][Pp]\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Bb][Gg][Cc][Oo][Rr][Ee]\.[Dd][Ll][Ll]/) AND data_win_eventdata_signed:/[Ff][Aa][Ll][Ss][Ee]/

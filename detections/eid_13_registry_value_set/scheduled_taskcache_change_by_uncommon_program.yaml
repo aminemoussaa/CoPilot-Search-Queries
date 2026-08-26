@@ -1,0 +1,283 @@
+name: Scheduled TaskCache Change by Uncommon Program
+id: 4720b7df-40c3-48fd-bbdf-fd4b3c464f0d
+version: 1
+schema_version: "1.0"
+date: "2025-10-22"
+author: Syed Hasan (@syedhasan009)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 4720b7df-40c3-48fd-bbdf-fd4b3c464f0d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Monitor the creation of a new key under 'TaskCache' when a new scheduled task
+  is registered by a process that is not svchost.exe, which is suspicious. MITRE
+  ATT&CK: T1053, T1053.005.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*SOFTWARE\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Schedule\\\\TaskCache\\\\*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_details:
+                          value: "(Empty)"
+                          case_insensitive: true
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_details"
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*Microsoft\\\\Windows\\\\UpdateOrchestrator*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*Microsoft\\\\Windows\\\\SoftwareProtectionPlatform\\\\SvcRestartTask\\\\Index*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*Microsoft\\\\Windows\\\\Flighting\\\\OneSettings\\\\RefreshCache\\\\Index*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\System32\\\\MoUsoCoreWorker.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Windows\\\\System32\\\\services.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Windows\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\TiWorker.exe"
+                                case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\WINDOWS\\system32\\svchost.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Windows\\\\Microsoft.NET\\\\Framework*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\ngen.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Schedule\\\\TaskCache\\\\Tasks\\\\{B66B135D-DA06-4FC4-95F8-7458E1D10129}*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Schedule\\\\TaskCache\\\\Tree\\\\Microsoft\\\\Windows\\\\.NET Framework\\\\.NET Framework NGEN*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\Microsoft Office\\root\\Integration\\Integrator.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\Microsoft Office\\root\\Integration\\Integrator.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\Common Files\\microsoft shared\\ClickToRun\\OfficeC2RClient.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\Common Files\\microsoft shared\\ClickToRun\\OfficeC2RClient.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\msiexec.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\explorer.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Schedule\\\\TaskCache\\\\Tree\\\\Microsoft\\\\Windows\\\\PLA\\\\Server Manager Performance Monitor\\\\*"
+                                case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "System"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\RuntimeBroker.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\Dropbox\\Update\\DropboxUpdate.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\Dropbox\\Update\\DropboxUpdate.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Program Files (x86)\\\\Microsoft\\\\EdgeUpdate\\\\MicrosoftEdgeUpdate.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Program Files\\\\Microsoft\\\\EdgeUpdate\\\\MicrosoftEdgeUpdate.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Program Files (x86)\\\\Microsoft OneDrive\\\\OneDrive.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*C:\\\\Program Files\\\\Microsoft OneDrive\\\\OneDrive.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\*';
+  data_win_eventdata_details equals '(Empty)'; data_win_eventdata_details is
+  absent, among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://thedfirreport.com/2021/03/29/sodinokibi-aka-revil-ransomware/
+  - https://labs.f-secure.com/blog/scheduled-task-tampering/
+  - https://attack.mitre.org/techniques/T1053/
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Scheduled TaskCache Change by Uncommon Program detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1053, T1053.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053
+    - T1053.005
+  custom_tags:
+    - scheduled
+    - taskcache
+    - change
+    - registry
+    - sysmon
+    - privilege_escalation
+    - execution
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee]\\[Tt][Aa][Ss][Kk][Cc][Aa][Cc][Hh][Ee]\\.*/ AND _exists_:data_win_eventdata_targetObject AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_details:/\([Ee][Mm][Pp][Tt][Yy]\)/ OR NOT _exists_:data_win_eventdata_details OR data_win_eventdata_targetObject:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Uu][Pp][Dd][Aa][Tt][Ee][Oo][Rr][Cc][Hh][Ee][Ss][Tt][Rr][Aa][Tt][Oo][Rr].*/ OR data_win_eventdata_targetObject:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn][Pp][Ll][Aa][Tt][Ff][Oo][Rr][Mm]\\[Ss][Vv][Cc][Rr][Ee][Ss][Tt][Aa][Rr][Tt][Tt][Aa][Ss][Kk]\\[Ii][Nn][Dd][Ee][Xx].*/ OR data_win_eventdata_targetObject:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ff][Ll][Ii][Gg][Hh][Tt][Ii][Nn][Gg]\\[Oo][Nn][Ee][Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]\\[Rr][Ee][Ff][Rr][Ee][Ss][Hh][Cc][Aa][Cc][Hh][Ee]\\[Ii][Nn][Dd][Ee][Xx].*/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Mm][Oo][Uu][Ss][Oo][Cc][Oo][Rr][Ee][Ww][Oo][Rr][Kk][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\.*/ AND data_win_eventdata_image:/.*\\[Tt][Ii][Ww][Oo][Rr][Kk][Ee][Rr]\.[Ee][Xx][Ee]/) OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk].*/ AND data_win_eventdata_image:/.*\\[Nn][Gg][Ee][Nn]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee]\\[Tt][Aa][Ss][Kk][Cc][Aa][Cc][Hh][Ee]\\[Tt][Aa][Ss][Kk][Ss]\\\{[Bb]66[Bb]135[Dd]-[Dd][Aa]06-4[Ff][Cc]4-95[Ff]8-7458[Ee]1[Dd]10129\}.*/ OR data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee]\\[Tt][Aa][Ss][Kk][Cc][Aa][Cc][Hh][Ee]\\[Tt][Rr][Ee][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\\.[Nn][Ee][Tt] [Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk]\\\.[Nn][Ee][Tt] [Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk] [Nn][Gg][Ee][Nn].*/)) OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Ii][Oo][Nn]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Ii][Oo][Nn]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\[Oo][Ff][Ff][Ii][Cc][Ee][Cc]2[Rr][Cc][Ll][Ii][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\[Oo][Ff][Ff][Ii][Cc][Ee][Cc]2[Rr][Cc][Ll][Ii][Ee][Nn][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Mm][Ss][Ii][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee]\\[Tt][Aa][Ss][Kk][Cc][Aa][Cc][Hh][Ee]\\[Tt][Rr][Ee][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Pp][Ll][Aa]\\[Ss][Ee][Rr][Vv][Ee][Rr] [Mm][Aa][Nn][Aa][Gg][Ee][Rr] [Pp][Ee][Rr][Ff][Oo][Rr][Mm][Aa][Nn][Cc][Ee] [Mm][Oo][Nn][Ii][Tt][Oo][Rr]\\.*/) OR data_win_eventdata_image:/[Ss][Yy][Ss][Tt][Ee][Mm]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Rr][Uu][Nn][Tt][Ii][Mm][Ee][Bb][Rr][Oo][Kk][Ee][Rr]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Dd][Rr][Oo][Pp][Bb][Oo][Xx]\\[Uu][Pp][Dd][Aa][Tt][Ee]\\[Dd][Rr][Oo][Pp][Bb][Oo][Xx][Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Dd][Rr][Oo][Pp][Bb][Oo][Xx]\\[Uu][Pp][Dd][Aa][Tt][Ee]\\[Dd][Rr][Oo][Pp][Bb][Oo][Xx][Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt][Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt][Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee]\\[Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee]\\[Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee]\.[Ee][Xx][Ee]/)

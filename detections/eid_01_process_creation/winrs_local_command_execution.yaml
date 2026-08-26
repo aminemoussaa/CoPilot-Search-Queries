@@ -1,0 +1,338 @@
+name: Winrs Local Command Execution
+id: bcfece3d-56fe-4545-9931-3b8e92927db1
+version: 1
+schema_version: "1.0"
+date: "2025-10-22"
+author: Liran Ravich, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: bcfece3d-56fe-4545-9931-3b8e92927db1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of Winrs.exe where it is used to execute commands
+  locally. Commands executed this way are launched under Winrshost.exe and can
+  represent proxy execution used for defense evasion or lateral movement. MITRE
+  ATT&CK: T1021.006, T1218.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\winrs.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "winrs.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-r:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/r:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–r:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—r:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―r:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-r:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/r:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–r:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—r:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―r:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-r:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/r:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–r:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—r:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―r:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-remote:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/remote:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–remote:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—remote:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―remote:localhost*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-remote:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/remote:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–remote:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—remote:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―remote:127.0.0.1*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*-remote:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/remote:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*–remote:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*—remote:[::1]*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*―remote:[::1]*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\winrs.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_originalFileName:
+                                value: "winrs.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - exists:
+                        field: "data_win_eventdata_commandLine"
+                    - bool:
+                        must_not:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*-r:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*/r:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*–r:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*—r:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*―r:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*-remote:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*/remote:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*–remote:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*—remote:*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_commandLine:
+                                      value: "*―remote:*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\winrs.exe'; data_win_eventdata_originalFileName equals 'winrs.exe';
+  data_win_eventdata_commandLine matches '*-r:localhost*', among other
+  conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://cardinalops.com/blog/living-off-winrm-abusing-complexity-in-remote-management/
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/winrs
+  - https://attack.mitre.org/techniques/T1021/006/
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Winrs Local Command Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1021.006, T1218
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1021.006
+    - T1218
+  custom_tags:
+    - winrs
+    - local
+    - process_creation
+    - sysmon
+    - lateral_movement
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (((data_win_eventdata_image:/.*\\[Ww][Ii][Nn][Rr][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ii][Nn][Rr][Ss]\.[Ee][Xx][Ee]/) AND (data_win_eventdata_commandLine:/.*-[Rr]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*\/[Rr]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*–[Rr]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*—[Rr]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*―[Rr]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*-[Rr]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*\/[Rr]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*–[Rr]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*—[Rr]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*―[Rr]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*-[Rr]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*\/[Rr]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*–[Rr]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*—[Rr]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*―[Rr]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*-[Rr][Ee][Mm][Oo][Tt][Ee]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*\/[Rr][Ee][Mm][Oo][Tt][Ee]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*–[Rr][Ee][Mm][Oo][Tt][Ee]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*—[Rr][Ee][Mm][Oo][Tt][Ee]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*―[Rr][Ee][Mm][Oo][Tt][Ee]:[Ll][Oo][Cc][Aa][Ll][Hh][Oo][Ss][Tt].*/ OR data_win_eventdata_commandLine:/.*-[Rr][Ee][Mm][Oo][Tt][Ee]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*\/[Rr][Ee][Mm][Oo][Tt][Ee]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*–[Rr][Ee][Mm][Oo][Tt][Ee]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*—[Rr][Ee][Mm][Oo][Tt][Ee]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*―[Rr][Ee][Mm][Oo][Tt][Ee]:127\.0\.0\.1.*/ OR data_win_eventdata_commandLine:/.*-[Rr][Ee][Mm][Oo][Tt][Ee]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*\/[Rr][Ee][Mm][Oo][Tt][Ee]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*–[Rr][Ee][Mm][Oo][Tt][Ee]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*—[Rr][Ee][Mm][Oo][Tt][Ee]:\[::1\].*/ OR data_win_eventdata_commandLine:/.*―[Rr][Ee][Mm][Oo][Tt][Ee]:\[::1\].*/)) OR ((data_win_eventdata_image:/.*\\[Ww][Ii][Nn][Rr][Ss]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ww][Ii][Nn][Rr][Ss]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*-[Rr]:.*/ OR data_win_eventdata_commandLine:/.*\/[Rr]:.*/ OR data_win_eventdata_commandLine:/.*–[Rr]:.*/ OR data_win_eventdata_commandLine:/.*—[Rr]:.*/ OR data_win_eventdata_commandLine:/.*―[Rr]:.*/ OR data_win_eventdata_commandLine:/.*-[Rr][Ee][Mm][Oo][Tt][Ee]:.*/ OR data_win_eventdata_commandLine:/.*\/[Rr][Ee][Mm][Oo][Tt][Ee]:.*/ OR data_win_eventdata_commandLine:/.*–[Rr][Ee][Mm][Oo][Tt][Ee]:.*/ OR data_win_eventdata_commandLine:/.*—[Rr][Ee][Mm][Oo][Tt][Ee]:.*/ OR data_win_eventdata_commandLine:/.*―[Rr][Ee][Mm][Oo][Tt][Ee]:.*/)))

@@ -1,0 +1,271 @@
+name: RDP Sensitive Settings Changed
+id: 3f6b7b62-61aa-45db-96bd-9c31b36b653c
+version: 1
+schema_version: "1.0"
+date: "2025-11-22"
+author: Samir Bousseaden, David ANDRE, Roberto Rodriguez @Cyb3rWard0g, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3f6b7b62-61aa-45db-96bd-9c31b36b653c
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects tampering of RDP Terminal Service/Server sensitive settings. Such as
+  allowing unauthorized users access to a system via the 'fAllowUnsolicited' or
+  enabling RDP via 'fDenyTSConnections', etc. Below is a list of registry
+  keys/values that are monitored by this rule: - Shadow: Used to enable Remote
+  Desktop shadowing, which allows an administrator to view or control a user's
+  session. - DisableRemoteDesktopAntiAlias: Disables anti-aliasing for remote
+  desktop sessions. - DisableSecuritySettings: Disables certain security
+  settings for Remote Desktop connections. - fAllowUnsolicited: Allows
+  unsolicited remote assistance offers. - fAllowUnsolicitedFullControl: Allows
+  unsolicited remote assistance offers with full control. - InitialProgram:
+  Specifies a program to run automatically when a user logs on to a remote
+  computer. - ServiceDll: Used in RDP hijacking techniques to specify a custom
+  DLL to be loaded by the Terminal Services service. - SecurityLayer: Specifies
+  the security layer used for RDP connections. MITRE ATT&CK: T1112.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Control\\\\Terminal Server\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Windows NT\\\\Terminal Services\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\Shadow"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_details:
+                                value: "DWORD (0x00000001)"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_details:
+                                value: "DWORD (0x00000002)"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_details:
+                                value: "DWORD (0x00000003)"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_details:
+                                value: "DWORD (0x00000004)"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Control\\\\Terminal Server\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Windows NT\\\\Terminal Services\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableRemoteDesktopAntiAlias"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\DisableSecuritySettings"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\fAllowUnsolicited"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\fAllowUnsolicitedFullControl"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - term:
+                        data_win_eventdata_details:
+                          value: "DWORD (0x00000001)"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\Terminal Server\\\\InitialProgram*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\Terminal Server\\\\WinStations\\\\RDP-Tcp\\\\InitialProgram*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\services\\\\TermService\\\\Parameters\\\\ServiceDll*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Terminal Server\\\\WinStations\\\\RDP-Tcp\\\\SecurityLayer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Windows NT\\\\Terminal Services\\\\InitialProgram*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\SecurityLayer"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_details:
+                          value: "DWORD (0x00000002)"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Control\Terminal Server\*'; data_win_eventdata_targetObject matches
+  '*\Windows NT\Terminal Services\*'; data_win_eventdata_targetObject matches
+  '*\Shadow', among other conditions.
+
+known_false_positives: >
+  Some of the keys mentioned here could be modified by an administrator while
+  setting group policy (it should be investigated either way). Baseline expected
+  activity in your environment and tune this detection before relying on it for
+  automated response.
+
+references:
+  - http://etutorials.org/Microsoft+Products/microsoft+windows+server+2003+terminal+services/Chapter+6+Registry/Registry+Keys+for+Terminal+Services/
+  - http://woshub.com/rds-shadow-how-to-connect-to-a-user-session-in-windows-server-2012-r2/
+  - https://admx.help/HKLM/SOFTWARE/Policies/Microsoft/Windows%20NT/Terminal%20Services
+  - https://bazaar.abuse.ch/sample/6f3aa9362d72e806490a8abce245331030d1ab5ac77e400dd475748236a6cc81/
+  - https://blog.sekoia.io/darkgate-internals/
+  - https://blog.talosintelligence.com/understanding-the-phobos-affiliate-structure/
+  - https://github.com/redcanaryco/atomic-red-team/blob/02c7d02fe1f1feb0fc7944550408ea8224273994/atomics/T1112/T1112.md#atomic-test-63---disable-remote-desktop-anti-alias-setting-through-registry
+  - https://github.com/redcanaryco/atomic-red-team/blob/02c7d02fe1f1feb0fc7944550408ea8224273994/atomics/T1112/T1112.md#atomic-test-64---disable-remote-desktop-security-settings-through-registry
+  - https://github.com/redcanaryco/atomic-red-team/blob/dd526047b8c399c312fee47d1e6fb531164da54d/atomics/T1112/T1112.yaml#L790
+  - https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/microsoft-windows-terminalservices-rdp-winstationextensions-securitylayer
+  - https://threathunterplaybook.com/hunts/windows/190407-RegModEnableRDPConnections/notebook.html
+  - https://twitter.com/SagieSec/status/1469001618863624194?t=HRf0eA0W1YYzkTSHb-Ky1A&s=03
+  - https://web.archive.org/web/20200929062532/https://blog.menasec.net/2019/02/threat-hunting-rdp-hijacking-via.html
+  - https://www.trendmicro.com/en_us/research/25/i/unmasking-the-gentlemen-ransomware.html
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    RDP Sensitive Settings Changed detected on host $agent_name$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. Matched
+    data_win_eventdata_details: $data_win_eventdata_details$. MITRE ATT&CK:
+    T1112
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1112
+  custom_tags:
+    - sensitive
+    - settings
+    - changed
+    - registry
+    - sysmon
+    - persistence
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (((data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\.*/) AND data_win_eventdata_targetObject:/.*\\[Ss][Hh][Aa][Dd][Oo][Ww]/ AND (data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000001\)/ OR data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000002\)/ OR data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000003\)/ OR data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000004\)/)) OR ((data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\.*/) AND (data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Rr][Ee][Mm][Oo][Tt][Ee][Dd][Ee][Ss][Kk][Tt][Oo][Pp][Aa][Nn][Tt][Ii][Aa][Ll][Ii][Aa][Ss]/ OR data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]/ OR data_win_eventdata_targetObject:/.*\\[Ff][Aa][Ll][Ll][Oo][Ww][Uu][Nn][Ss][Oo][Ll][Ii][Cc][Ii][Tt][Ee][Dd]/ OR data_win_eventdata_targetObject:/.*\\[Ff][Aa][Ll][Ll][Oo][Ww][Uu][Nn][Ss][Oo][Ll][Ii][Cc][Ii][Tt][Ee][Dd][Ff][Uu][Ll][Ll][Cc][Oo][Nn][Tt][Rr][Oo][Ll]/) AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000001\)/) OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\[Ii][Nn][Ii][Tt][Ii][Aa][Ll][Pp][Rr][Oo][Gg][Rr][Aa][Mm].*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\[Ww][Ii][Nn][Ss][Tt][Aa][Tt][Ii][Oo][Nn][Ss]\\[Rr][Dd][Pp]-[Tt][Cc][Pp]\\[Ii][Nn][Ii][Tt][Ii][Aa][Ll][Pp][Rr][Oo][Gg][Rr][Aa][Mm].*/ OR data_win_eventdata_targetObject:/.*\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\[Tt][Ee][Rr][Mm][Ss][Ee][Rr][Vv][Ii][Cc][Ee]\\[Pp][Aa][Rr][Aa][Mm][Ee][Tt][Ee][Rr][Ss]\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Dd][Ll][Ll].*/ OR data_win_eventdata_targetObject:/.*\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ee][Rr]\\[Ww][Ii][Nn][Ss][Tt][Aa][Tt][Ii][Oo][Nn][Ss]\\[Rr][Dd][Pp]-[Tt][Cc][Pp]\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Ll][Aa][Yy][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Tt][Ee][Rr][Mm][Ii][Nn][Aa][Ll] [Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\[Ii][Nn][Ii][Tt][Ii][Aa][Ll][Pp][Rr][Oo][Gg][Rr][Aa][Mm].*/) AND _exists_:data_win_eventdata_targetObject AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_targetObject:/.*\\[Ss][Ee][Cc][Uu][Rr][Ii][Tt][Yy][Ll][Aa][Yy][Ee][Rr]/ AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000002\)/)

@@ -1,0 +1,165 @@
+name: Change PowerShell Policies to an Insecure Level - PowerShell
+id: 61d0475c-173f-4844-86f7-f3eebae1c66b
+version: 1
+schema_version: "1.0"
+date: "2023-12-14"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 61d0475c-173f-4844-86f7-f3eebae1c66b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changing the PowerShell script execution policy to a potentially
+  insecure level using the "Set-ExecutionPolicy" cmdlet. MITRE ATT&CK:
+  T1059.001.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Set-ExecutionPolicy*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Unrestricted*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*bypass*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_scriptBlockText"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*(New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*(New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Set-ExecutionPolicy*';
+  data_win_eventdata_scriptBlockText matches '*Unrestricted*';
+  data_win_eventdata_scriptBlockText matches '*bypass*', among other conditions.
+
+known_false_positives: >
+  Administrator script. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-executionpolicy?view=powershell-7.4
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.4
+  - https://adsecurity.org/?p=2604
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Change PowerShell Policies to an Insecure Level - PowerShell detected on
+    host $agent_name$. Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1059.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - change
+    - powershell
+    - policies
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn][Pp][Oo][Ll][Ii][Cc][Yy].*/ AND (data_win_eventdata_scriptBlockText:/.*[Uu][Nn][Rr][Ee][Ss][Tt][Rr][Ii][Cc][Tt][Ee][Dd].*/ OR data_win_eventdata_scriptBlockText:/.*[Bb][Yy][Pp][Aa][Ss][Ss].*/) AND _exists_:data_win_eventdata_scriptBlockText AND NOT (data_win_eventdata_scriptBlockText:/.*\([Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt] [Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt]\)\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg]\('[Hh][Tt][Tt][Pp][Ss]:\/\/[Cc][Oo][Mm][Mm][Uu][Nn][Ii][Tt][Yy]\.[Cc][Hh][Oo][Cc][Oo][Ll][Aa][Tt][Ee][Yy]\.[Oo][Rr][Gg]\/[Ii][Nn][Ss][Tt][Aa][Ll][Ll]\.[Pp][Ss]1'\).*/ OR data_win_eventdata_scriptBlockText:/.*\([Nn][Ee][Ww]-[Oo][Bb][Jj][Ee][Cc][Tt] [Ss][Yy][Ss][Tt][Ee][Mm]\.[Nn][Ee][Tt]\.[Ww][Ee][Bb][Cc][Ll][Ii][Ee][Nn][Tt]\)\.[Dd][Oo][Ww][Nn][Ll][Oo][Aa][Dd][Ss][Tt][Rr][Ii][Nn][Gg]\('[Hh][Tt][Tt][Pp][Ss]:\/\/[Cc][Hh][Oo][Cc][Oo][Ll][Aa][Tt][Ee][Yy]\.[Oo][Rr][Gg]\/[Ii][Nn][Ss][Tt][Aa][Ll][Ll]\.[Pp][Ss]1'\).*/)

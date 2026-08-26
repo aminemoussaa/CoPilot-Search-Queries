@@ -1,0 +1,173 @@
+name: Suspicious Powercfg Execution To Change Lock Screen Timeout
+id: f8d6a15e-4bc8-4c27-8e5d-2b10f0b73e5b
+version: 1
+schema_version: "1.0"
+date: "2022-11-18"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: f8d6a15e-4bc8-4c27-8e5d-2b10f0b73e5b
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious execution of 'Powercfg.exe' to change lock screen timeout.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\powercfg.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "PowerCfg.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/setacvalueindex *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*SCHEME_CURRENT*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*SUB_VIDEO*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*VIDEOCONLOCK*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-change *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-standby-timeout-*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\powercfg.exe'; data_win_eventdata_originalFileName equals 'PowerCfg.exe';
+  data_win_eventdata_commandLine matches '*/setacvalueindex *', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://blogs.vmware.com/security/2022/11/batloader-the-evasive-downloader-malware.html
+  - https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options
+
+response:
+  message: >
+    Suspicious Powercfg Execution To Change Lock Screen Timeout detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - powercfg
+    - change
+    - screen
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Pp][Oo][Ww][Ee][Rr][Cc][Ff][Gg]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Pp][Oo][Ww][Ee][Rr][Cc][Ff][Gg]\.[Ee][Xx][Ee]/) AND ((data_win_eventdata_commandLine:/.*\/[Ss][Ee][Tt][Aa][Cc][Vv][Aa][Ll][Uu][Ee][Ii][Nn][Dd][Ee][Xx] .*/ AND data_win_eventdata_commandLine:/.*[Ss][Cc][Hh][Ee][Mm][Ee]_[Cc][Uu][Rr][Rr][Ee][Nn][Tt].*/ AND data_win_eventdata_commandLine:/.*[Ss][Uu][Bb]_[Vv][Ii][Dd][Ee][Oo].*/ AND data_win_eventdata_commandLine:/.*[Vv][Ii][Dd][Ee][Oo][Cc][Oo][Nn][Ll][Oo][Cc][Kk].*/) OR (data_win_eventdata_commandLine:/.*-[Cc][Hh][Aa][Nn][Gg][Ee] .*/ AND data_win_eventdata_commandLine:/.*-[Ss][Tt][Aa][Nn][Dd][Bb][Yy]-[Tt][Ii][Mm][Ee][Oo][Uu][Tt]-.*/))

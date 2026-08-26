@@ -1,0 +1,216 @@
+name: Potentially Suspicious Command Executed Via Run Dialog Box - Registry
+id: a7df0e9e-91a5-459a-a003-4cde67c2ff5d
+version: 1
+schema_version: "1.0"
+date: "2024-11-01"
+author: Ahmed Farouk, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a7df0e9e-91a5-459a-a003-4cde67c2ff5d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of commands via the run dialog box on Windows by checking
+  values of the "RunMRU" registry key. This technique was seen being abused by
+  threat actors to deceive users into pasting and executing malicious commands,
+  often disguised as CAPTCHA verification steps. MITRE ATT&CK: T1059.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\RunMRU*"
+              case_insensitive: true
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*powershell*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*pwsh*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "* -e *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "* -ec *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "* -en *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "* -enc *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "* -enco*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*ftp*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*Hidden*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*http*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*iex*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*Invoke-*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*wmic*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*shadowcopy*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*process call create*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Microsoft\Windows\CurrentVersion\Explorer\RunMRU*';
+  data_win_eventdata_details matches '*powershell*'; data_win_eventdata_details
+  matches '*pwsh*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://medium.com/@ahmed.moh.farou2/fake-captcha-campaign-on-arabic-pirated-movie-sites-delivers-lumma-stealer-4f203f7adabf
+  - https://medium.com/@shaherzakaria8/downloading-trojan-lumma-infostealer-through-capatcha-1f25255a0e71
+  - https://www.forensafe.com/blogs/runmrukey.html
+  - https://redcanary.com/blog/threat-intelligence/intelligence-insights-october-2024/
+  - https://attack.mitre.org/techniques/T1059/001/
+
+response:
+  message: >
+    Potentially Suspicious Command Executed Via Run Dialog Box - Registry
+    detected on host $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1059.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.001
+  custom_tags:
+    - executed
+    - dialog
+    - registry
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\\[Rr][Uu][Nn][Mm][Rr][Uu].*/ AND (((data_win_eventdata_details:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_details:/.*[Pp][Ww][Ss][Hh].*/) AND (data_win_eventdata_details:/.* -[Ee] .*/ OR data_win_eventdata_details:/.* -[Ee][Cc] .*/ OR data_win_eventdata_details:/.* -[Ee][Nn] .*/ OR data_win_eventdata_details:/.* -[Ee][Nn][Cc] .*/ OR data_win_eventdata_details:/.* -[Ee][Nn][Cc][Oo].*/ OR data_win_eventdata_details:/.*[Ff][Tt][Pp].*/ OR data_win_eventdata_details:/.*[Hh][Ii][Dd][Dd][Ee][Nn].*/ OR data_win_eventdata_details:/.*[Hh][Tt][Tt][Pp].*/ OR data_win_eventdata_details:/.*[Ii][Ee][Xx].*/ OR data_win_eventdata_details:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-.*/)) OR (data_win_eventdata_details:/.*[Ww][Mm][Ii][Cc].*/ AND (data_win_eventdata_details:/.*[Ss][Hh][Aa][Dd][Oo][Ww][Cc][Oo][Pp][Yy].*/ OR data_win_eventdata_details:/.*[Pp][Rr][Oo][Cc][Ee][Ss][Ss] [Cc][Aa][Ll][Ll] [Cc][Rr][Ee][Aa][Tt][Ee].*/)))

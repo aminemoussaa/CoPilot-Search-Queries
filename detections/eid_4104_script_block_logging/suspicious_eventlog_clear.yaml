@@ -1,0 +1,178 @@
+name: Suspicious Eventlog Clear
+id: 0f017df3-8f5a-414f-ad6b-24aff1128278
+version: 1
+schema_version: "1.0"
+date: "2025-10-06"
+author: Nasreddine Bencherchali (Nextron Systems), Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0f017df3-8f5a-414f-ad6b-24aff1128278
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects usage of known powershell cmdlets such as "Clear-EventLog" to clear
+  the Windows event logs. MITRE ATT&CK: T1685.005.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Clear-EventLog *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Remove-EventLog *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Limit-EventLog *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Clear-WinEvent *"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Eventing.Reader.EventLogSession*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*ClearLog*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Diagnostics.EventLog*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Clear*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Clear-EventLog *';
+  data_win_eventdata_scriptBlockText matches '*Remove-EventLog *';
+  data_win_eventdata_scriptBlockText matches '*Limit-EventLog *', among other
+  conditions.
+
+known_false_positives: >
+  Rare need to clear logs before doing something. Sometimes used by installers
+  or cleaner scripts. The script should be investigated to determine if it's
+  legitimate. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/oroneequalsone/status/1568432028361830402
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1070.001/T1070.001.md
+  - https://eqllib.readthedocs.io/en/latest/analytics/5b223758-07d6-4100-9e11-238cfdd0fe97.html
+  - https://stackoverflow.com/questions/66011412/how-to-clear-a-event-log-in-powershell-7
+  - https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.eventing.reader.eventlogsession.clearlog?view=windowsdesktop-9.0&viewFallbackFrom=dotnet-plat-ext-5.0#System_Diagnostics_Eventing_Reader_EventLogSession_ClearLog_System_String_
+  - https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.eventlog.clear
+  - https://attack.mitre.org/techniques/T1685/005/
+
+response:
+  message: >
+    Suspicious Eventlog Clear detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1685.005
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685.005
+  custom_tags:
+    - eventlog
+    - clear
+    - powershell
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Cc][Ll][Ee][Aa][Rr]-[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg] .*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Mm][Oo][Vv][Ee]-[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg] .*/ OR data_win_eventdata_scriptBlockText:/.*[Ll][Ii][Mm][Ii][Tt]-[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg] .*/ OR data_win_eventdata_scriptBlockText:/.*[Cc][Ll][Ee][Aa][Rr]-[Ww][Ii][Nn][Ee][Vv][Ee][Nn][Tt] .*/ OR (data_win_eventdata_scriptBlockText:/.*[Ee][Vv][Ee][Nn][Tt][Ii][Nn][Gg]\.[Rr][Ee][Aa][Dd][Ee][Rr]\.[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg][Ss][Ee][Ss][Ss][Ii][Oo][Nn].*/ AND data_win_eventdata_scriptBlockText:/.*[Cc][Ll][Ee][Aa][Rr][Ll][Oo][Gg].*/) OR (data_win_eventdata_scriptBlockText:/.*[Dd][Ii][Aa][Gg][Nn][Oo][Ss][Tt][Ii][Cc][Ss]\.[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg].*/ AND data_win_eventdata_scriptBlockText:/.*[Cc][Ll][Ee][Aa][Rr].*/))

@@ -1,0 +1,192 @@
+name: PowerShell Set-Acl On Windows Folder - PsScript
+id: 3bf1d859-3a7e-44cb-8809-a99e066d3478
+version: 1
+schema_version: "1.0"
+date: "2023-07-18"
+author: frack113, Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3bf1d859-3a7e-44cb-8809-a99e066d3478
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects PowerShell scripts to set the ACL to a file in the Windows folder.
+  MITRE ATT&CK: T1222.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*Set-Acl *"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_scriptBlockText:
+              value: "*-AclObject *"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path \"C:\\\\Windows*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path \"C:/Windows*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path 'C:\\\\Windows*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path 'C:/Windows*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path C:\\\\Windows*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path C:/Windows*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path $env:windir*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path \"$env:windir*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*-Path '$env:windir*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*FullControl*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Allow*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Set-Acl *';
+  data_win_eventdata_scriptBlockText matches '*-AclObject *';
+  data_win_eventdata_scriptBlockText matches '*-Path "C:\Windows*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/74438b0237d141ee9c99747976447dc884cb1a39/atomics/T1505.005/T1505.005.md
+  - https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/set-acl?view=powershell-5.1
+  - https://attack.mitre.org/techniques/T1222/
+
+response:
+  message: >
+    PowerShell Set-Acl On Windows Folder - PsScript detected on host
+    $agent_name$. Matched data_win_eventdata_scriptBlockText:
+    $data_win_eventdata_scriptBlockText$. Matched
+    data_win_eventdata_scriptBlockId: $data_win_eventdata_scriptBlockId$. MITRE
+    ATT&CK: T1222
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1222
+  custom_tags:
+    - powershell
+    - folder
+    - psscript
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND data_win_eventdata_scriptBlockText:/.*[Ss][Ee][Tt]-[Aa][Cc][Ll] .*/ AND data_win_eventdata_scriptBlockText:/.*-[Aa][Cc][Ll][Oo][Bb][Jj][Ee][Cc][Tt] .*/ AND (data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] \"[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] \"[Cc]:\/[Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] '[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] '[Cc]:\/[Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] [Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] [Cc]:\/[Ww][Ii][Nn][Dd][Oo][Ww][Ss].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] \$[Ee][Nn][Vv]:[Ww][Ii][Nn][Dd][Ii][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] \"\$[Ee][Nn][Vv]:[Ww][Ii][Nn][Dd][Ii][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*-[Pp][Aa][Tt][Hh] '\$[Ee][Nn][Vv]:[Ww][Ii][Nn][Dd][Ii][Rr].*/) AND (data_win_eventdata_scriptBlockText:/.*[Ff][Uu][Ll][Ll][Cc][Oo][Nn][Tt][Rr][Oo][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Aa][Ll][Ll][Oo][Ww].*/)

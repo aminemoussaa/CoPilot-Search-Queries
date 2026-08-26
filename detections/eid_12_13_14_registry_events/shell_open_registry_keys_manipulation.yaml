@@ -1,0 +1,194 @@
+name: Shell Open Registry Keys Manipulation
+id: 152f3630-77c1-4284-bcc0-4cc68ab2f6e7
+version: 1
+schema_version: "1.0"
+date: "2022-01-13"
+author: Christian Burkard (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 152f3630-77c1-4284-bcc0-4cc68ab2f6e7
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the shell open key manipulation (exefile and ms-settings) used for
+  persistence and the pattern of UAC Bypass using fodhelper.exe,
+  computerdefaults.exe, slui.exe via registry keys (e.g. UACMe 33 or 62). MITRE
+  ATT&CK: T1548.002, T1546.001.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_eventType:
+                          value: "SetValue"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*Classes\\\\ms-settings\\\\shell\\\\open\\\\command\\\\SymbolicLinkValue"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*\\\\Software\\\\Classes\\\\{*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*Classes\\\\ms-settings\\\\shell\\\\open\\\\command\\\\DelegateExecute"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - term:
+                        data_win_eventdata_eventType:
+                          value: "SetValue"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*Classes\\\\ms-settings\\\\shell\\\\open\\\\command\\\\(Default)"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*Classes\\\\exefile\\\\shell\\\\open\\\\command\\\\(Default)"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - exists:
+                        field: "data_win_eventdata_details"
+                    - bool:
+                        must_not:
+                          - term:
+                              data_win_eventdata_details:
+                                value: "(Empty)"
+                                case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_eventType
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_eventType equals
+  'SetValue'; data_win_eventdata_targetObject matches
+  '*Classes\ms-settings\shell\open\command\SymbolicLinkValue';
+  data_win_eventdata_details matches '*\Software\Classes\{*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/hfiref0x/UACME
+  - https://winscripting.blog/2017/05/12/first-entry-welcome-and-uac-bypass/
+  - https://github.com/RhinoSecurityLabs/Aggressor-Scripts/tree/master/UACBypass
+  - https://tria.ge/211119-gs7rtshcfr/behavioral2 [Lokibot sample from Nov 2021]
+  - https://attack.mitre.org/techniques/T1548/002/
+  - https://attack.mitre.org/techniques/T1546/001/
+
+response:
+  message: >
+    Shell Open Registry Keys Manipulation detected on host $agent_name$. Matched
+    data_win_eventdata_eventType: $data_win_eventdata_eventType$. Matched
+    data_win_eventdata_targetObject: $data_win_eventdata_targetObject$. MITRE
+    ATT&CK: T1548.002, T1546.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_eventType
+      type: other
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1548.002
+    - T1546.001
+  custom_tags:
+    - shell
+    - registry
+    - manipulation
+    - sysmon
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND ((data_win_eventdata_eventType:/[Ss][Ee][Tt][Vv][Aa][Ll][Uu][Ee]/ AND data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Mm][Ss]-[Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\\[Ss][Yy][Mm][Bb][Oo][Ll][Ii][Cc][Ll][Ii][Nn][Kk][Vv][Aa][Ll][Uu][Ee]/ AND data_win_eventdata_details:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\\{.*/) OR data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Mm][Ss]-[Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\\[Dd][Ee][Ll][Ee][Gg][Aa][Tt][Ee][Ee][Xx][Ee][Cc][Uu][Tt][Ee]/ OR (data_win_eventdata_eventType:/[Ss][Ee][Tt][Vv][Aa][Ll][Uu][Ee]/ AND (data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Mm][Ss]-[Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/ OR data_win_eventdata_targetObject:/.*[Cc][Ll][Aa][Ss][Ss][Ee][Ss]\\[Ee][Xx][Ee][Ff][Ii][Ll][Ee]\\[Ss][Hh][Ee][Ll][Ll]\\[Oo][Pp][Ee][Nn]\\[Cc][Oo][Mm][Mm][Aa][Nn][Dd]\\\([Dd][Ee][Ff][Aa][Uu][Ll][Tt]\)/) AND _exists_:data_win_eventdata_details AND NOT (data_win_eventdata_details:/\([Ee][Mm][Pp][Tt][Yy]\)/)))

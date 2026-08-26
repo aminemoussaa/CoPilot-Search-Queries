@@ -1,0 +1,160 @@
+name: Powershell DNSExfiltration
+id: d59d7842-9a21-4bc6-ba98-64bfe0091355
+version: 1
+schema_version: "1.0"
+date: "2022-01-07"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d59d7842-9a21-4bc6-ba98-64bfe0091355
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  DNSExfiltrator allows for transferring (exfiltrate) a file over a DNS request
+  covert channel. MITRE ATT&CK: T1048.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Invoke-DNSExfiltrator*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -i *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -d *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -p *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -doh *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "* -t *"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*Invoke-DNSExfiltrator*';
+  data_win_eventdata_scriptBlockText matches '* -i *';
+  data_win_eventdata_scriptBlockText matches '* -d *', among other conditions.
+
+known_false_positives: >
+  Legitimate script. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1048/T1048.md#atomic-test-3---dnsexfiltration-doh
+  - https://github.com/Arno0x/DNSExfiltrator
+  - https://attack.mitre.org/techniques/T1048/
+
+response:
+  message: >
+    Powershell DNSExfiltration detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1048
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1048
+  custom_tags:
+    - powershell
+    - dnsexfiltration
+    - exfiltration
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Dd][Nn][Ss][Ee][Xx][Ff][Ii][Ll][Tt][Rr][Aa][Tt][Oo][Rr].*/ OR (data_win_eventdata_scriptBlockText:/.* -[Ii] .*/ AND data_win_eventdata_scriptBlockText:/.* -[Dd] .*/ AND data_win_eventdata_scriptBlockText:/.* -[Pp] .*/ AND data_win_eventdata_scriptBlockText:/.* -[Dd][Oo][Hh] .*/ AND data_win_eventdata_scriptBlockText:/.* -[Tt] .*/))

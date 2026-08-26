@@ -1,0 +1,163 @@
+name: PowerShell SAM Copy
+id: 1af57a4b-460a-4738-9034-db68b880c665
+version: 1
+schema_version: "1.0"
+date: "2023-01-06"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 1af57a4b-460a-4738-9034-db68b880c665
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious PowerShell scripts accessing SAM hives. MITRE ATT&CK:
+  T1003.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*\\\\HarddiskVolumeShadowCopy*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*System32\\\\config\\\\sam*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*Copy-Item*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cp $_.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*cpi $_.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*copy $_.*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.File]::Copy(*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*\HarddiskVolumeShadowCopy*'; data_win_eventdata_commandLine matches
+  '*System32\config\sam*'; data_win_eventdata_commandLine matches '*Copy-Item*',
+  among other conditions.
+
+known_false_positives: >
+  Some rare backup scenarios. PowerShell scripts fixing HiveNightmare /
+  SeriousSAM ACLs. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://twitter.com/splinter_code/status/1420546784250769408
+  - https://attack.mitre.org/techniques/T1003/002/
+
+response:
+  message: >
+    PowerShell SAM Copy detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1003.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.002
+  custom_tags:
+    - powershell
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_commandLine:/.*\\[Hh][Aa][Rr][Dd][Dd][Ii][Ss][Kk][Vv][Oo][Ll][Uu][Mm][Ee][Ss][Hh][Aa][Dd][Oo][Ww][Cc][Oo][Pp][Yy].*/ AND data_win_eventdata_commandLine:/.*[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Oo][Nn][Ff][Ii][Gg]\\[Ss][Aa][Mm].*/ AND (data_win_eventdata_commandLine:/.*[Cc][Oo][Pp][Yy]-[Ii][Tt][Ee][Mm].*/ OR data_win_eventdata_commandLine:/.*[Cc][Pp] \$_\..*/ OR data_win_eventdata_commandLine:/.*[Cc][Pp][Ii] \$_\..*/ OR data_win_eventdata_commandLine:/.*[Cc][Oo][Pp][Yy] \$_\..*/ OR data_win_eventdata_commandLine:/.*\.[Ff][Ii][Ll][Ee]\]::[Cc][Oo][Pp][Yy]\(.*/)

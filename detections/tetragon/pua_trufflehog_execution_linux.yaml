@@ -1,0 +1,191 @@
+name: PUA - TruffleHog Execution - Linux
+id: d7a650c4-226c-451e-948f-cc490db506aa
+version: 1
+schema_version: "1.0"
+date: "2025-09-24"
+author: Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d7a650c4-226c-451e-948f-cc490db506aa
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of TruffleHog, a tool used to search for secrets in
+  different platforms like Git, Jira, Slack, SharePoint, etc. that could be used
+  maliciously. While it is a legitimate tool, intended for use in CI pipelines
+  and security assessments, It was observed in the Shai-Hulud malware campaign
+  targeting npm packages to steal sensitive information. MITRE ATT&CK: T1083,
+  T1552.001.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/trufflehog"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* docker --image *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* Git *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* GitHub *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* Jira *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* Slack *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* Confluence *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* SharePoint *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* s3 *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "* gcs *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "* --results=verified*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/trufflehog';
+  data_process_exec_process_arguments matches '* docker --image *';
+  data_process_exec_process_arguments matches '* Git *', among other conditions.
+
+known_false_positives: >
+  Legitimate use of TruffleHog by security teams or developers. Baseline
+  expected activity in your environment and tune this detection before relying
+  on it for automated response.
+
+references:
+  - https://github.com/trufflesecurity/trufflehog
+  - https://www.getsafety.com/blog-posts/shai-hulud-npm-attack
+  - https://attack.mitre.org/techniques/T1083/
+  - https://attack.mitre.org/techniques/T1552/001/
+
+response:
+  message: >
+    PUA - TruffleHog Execution - Linux detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1083, T1552.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1083
+    - T1552.001
+  custom_tags:
+    - trufflehog
+    - linux
+    - tetragon
+    - process_creation
+    - discovery
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_binary:/.*\/[Tt][Rr][Uu][Ff][Ff][Ll][Ee][Hh][Oo][Gg]/ OR ((data_process_exec_process_arguments:/.* [Dd][Oo][Cc][Kk][Ee][Rr] --[Ii][Mm][Aa][Gg][Ee] .*/ OR data_process_exec_process_arguments:/.* [Gg][Ii][Tt] .*/ OR data_process_exec_process_arguments:/.* [Gg][Ii][Tt][Hh][Uu][Bb] .*/ OR data_process_exec_process_arguments:/.* [Jj][Ii][Rr][Aa] .*/ OR data_process_exec_process_arguments:/.* [Ss][Ll][Aa][Cc][Kk] .*/ OR data_process_exec_process_arguments:/.* [Cc][Oo][Nn][Ff][Ll][Uu][Ee][Nn][Cc][Ee] .*/ OR data_process_exec_process_arguments:/.* [Ss][Hh][Aa][Rr][Ee][Pp][Oo][Ii][Nn][Tt] .*/ OR data_process_exec_process_arguments:/.* [Ss]3 .*/ OR data_process_exec_process_arguments:/.* [Gg][Cc][Ss] .*/) AND data_process_exec_process_arguments:/.* --[Rr][Ee][Ss][Uu][Ll][Tt][Ss]=[Vv][Ee][Rr][Ii][Ff][Ii][Ee][Dd].*/))

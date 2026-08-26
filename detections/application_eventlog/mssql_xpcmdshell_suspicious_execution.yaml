@@ -1,0 +1,136 @@
+name: MSSQL XPCmdshell Suspicious Execution
+id: 7f103213-a04e-4d59-8261-213dddf22314
+version: 1
+schema_version: "1.0"
+date: "2024-06-26"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7f103213-a04e-4d59-8261-213dddf22314
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when the MSSQL "xp_cmdshell" stored procedure is used to execute
+  commands.
+
+data_source:
+  - Windows Application Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_win_system_providerName:
+              value: "*MSSQL*"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "33205"
+        - wildcard:
+            data_win_eventdata_data:
+              value: "*object_name:xp_cmdshell*"
+              case_insensitive: true
+        - wildcard:
+            data_win_eventdata_data:
+              value: "*statement:EXEC*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_data
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName matches '*MSSQL*';
+  data_win_system_eventID equals '33205'; data_win_eventdata_data matches
+  '*object_name:xp_cmdshell*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.netspi.com/blog/technical/network-penetration-testing/sql-server-persistence-part-1-startup-stored-procedures/
+  - https://thedfirreport.com/2022/07/11/select-xmrig-from-sqlserver/
+
+response:
+  message: >
+    MSSQL XPCmdshell Suspicious Execution detected on host $agent_name$. Matched
+    data_win_system_providerName: $data_win_system_providerName$. Matched
+    data_win_eventdata_data: $data_win_eventdata_data$.
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_data
+      type: other
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - mssql
+    - xpcmdshell
+    - windows_application
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/.*[Mm][Ss][Ss][Qq][Ll].*/ AND data_win_system_eventID:"33205" AND data_win_eventdata_data:/.*[Oo][Bb][Jj][Ee][Cc][Tt]_[Nn][Aa][Mm][Ee]:[Xx][Pp]_[Cc][Mm][Dd][Ss][Hh][Ee][Ll][Ll].*/ AND data_win_eventdata_data:/.*[Ss][Tt][Aa][Tt][Ee][Mm][Ee][Nn][Tt]:[Ee][Xx][Ee][Cc].*/

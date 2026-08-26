@@ -1,0 +1,237 @@
+name: Potential Python DLL SideLoading
+id: d36f7c12-14a3-4d48-b6b8-774b9c66f44d
+version: 1
+schema_version: "1.0"
+date: "2025-08-18"
+author: Swachchhanda Shrawan Poudel
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d36f7c12-14a3-4d48-b6b8-774b9c66f44d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential DLL sideloading of Python DLL files. MITRE ATT&CK:
+  T1574.001.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\python39.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\python310.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\python311.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\python312.dll"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - exists:
+            field: "data_win_eventdata_product"
+        - exists:
+            field: "data_win_eventdata_signed"
+        - exists:
+            field: "data_win_eventdata_description"
+        - exists:
+            field: "data_win_eventdata_company"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files\\\\Python3*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files (x86)\\\\Python3*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "*\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python3*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_product:
+                                value: "Python"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_signed:
+                                value: "true"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_description:
+                                value: "Python"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_company:
+                                value: "Python Software Foundation"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\Program Files\\\\Microsoft Visual Studio\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "C:\\\\ProgramData\\\\Anaconda3\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "*\\\\cpython\\\\externals\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "*\\\\cpython\\\\PCbuild\\\\*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_imageLoaded:
+                                value: "C:\\\\Users*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_imageLoaded:
+                                value: "*\\\\AppData\\\\Local\\\\Temp\\\\_MEI*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_product
+    - data_win_eventdata_signed
+    - data_win_eventdata_description
+    - data_win_eventdata_company
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\python39.dll'; data_win_eventdata_imageLoaded matches '*\python310.dll';
+  data_win_eventdata_imageLoaded matches '*\python311.dll', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate software using Python DLLs. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.securonix.com/blog/seolurker-attack-campaign-uses-seo-poisoning-fake-google-ads-to-install-malware/
+  - https://thedfirreport.com/2024/09/30/nitrogen-campaign-drops-sliver-and-ends-with-blackcat-ransomware/
+  - https://github.com/wietze/HijackLibs/tree/dc9c9f2f94e6872051dab58fbafb043fdd8b4176/yml/3rd_party/python
+  - https://attack.mitre.org/techniques/T1574/001/
+
+response:
+  message: >
+    Potential Python DLL SideLoading detected on host $agent_name$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. Matched
+    data_win_eventdata_product: $data_win_eventdata_product$. MITRE ATT&CK:
+    T1574.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_product
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1574.001
+  custom_tags:
+    - python
+    - sideloading
+    - image_load
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - execution
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND (data_win_eventdata_imageLoaded:/.*\\[Pp][Yy][Tt][Hh][Oo][Nn]39\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Yy][Tt][Hh][Oo][Nn]310\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Yy][Tt][Hh][Oo][Nn]311\.[Dd][Ll][Ll]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Yy][Tt][Hh][Oo][Nn]312\.[Dd][Ll][Ll]/) AND _exists_:data_win_eventdata_imageLoaded AND _exists_:data_win_eventdata_product AND _exists_:data_win_eventdata_signed AND _exists_:data_win_eventdata_description AND _exists_:data_win_eventdata_company AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Pp][Yy][Tt][Hh][Oo][Nn]3.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Pp][Yy][Tt][Hh][Oo][Nn]3.*/ OR data_win_eventdata_imageLoaded:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Pp][Yy][Tt][Hh][Oo][Nn]\\[Pp][Yy][Tt][Hh][Oo][Nn]3.*/ OR (data_win_eventdata_product:/[Pp][Yy][Tt][Hh][Oo][Nn]/ AND data_win_eventdata_signed:/[Tt][Rr][Uu][Ee]/ AND data_win_eventdata_description:/[Pp][Yy][Tt][Hh][Oo][Nn]/ AND data_win_eventdata_company:/[Pp][Yy][Tt][Hh][Oo][Nn] [Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee] [Ff][Oo][Uu][Nn][Dd][Aa][Tt][Ii][Oo][Nn]/)) AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ii][Ss][Uu][Aa][Ll] [Ss][Tt][Uu][Dd][Ii][Oo]\\.*/ OR data_win_eventdata_imageLoaded:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Aa][Nn][Aa][Cc][Oo][Nn][Dd][Aa]3\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Cc][Pp][Yy][Tt][Hh][Oo][Nn]\\[Ee][Xx][Tt][Ee][Rr][Nn][Aa][Ll][Ss]\\.*/ OR data_win_eventdata_imageLoaded:/.*\\[Cc][Pp][Yy][Tt][Hh][Oo][Nn]\\[Pp][Cc][Bb][Uu][Ii][Ll][Dd]\\.*/ OR (data_win_eventdata_imageLoaded:/[Cc]:\\[Uu][Ss][Ee][Rr][Ss].*/ AND data_win_eventdata_imageLoaded:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Tt][Ee][Mm][Pp]\\_[Mm][Ee][Ii].*/))

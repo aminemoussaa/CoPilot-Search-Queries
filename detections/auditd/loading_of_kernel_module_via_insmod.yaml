@@ -1,0 +1,145 @@
+name: Loading of Kernel Module via Insmod
+id: 106d7cbd-80ff-4985-b682-a7043e5acb72
+version: 1
+schema_version: "1.0"
+date: "2022-12-25"
+author: Pawel Mazur
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 106d7cbd-80ff-4985-b682-a7043e5acb72
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects loading of kernel modules with insmod command. Loadable Kernel Modules
+  (LKMs) are pieces of code that can be loaded and unloaded into the kernel upon
+  demand. Adversaries may use LKMs to obtain persistence within the system or
+  elevate the privileges. MITRE ATT&CK: T1547.006.
+
+data_source:
+  - Linux Auditd via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_audit_type:
+              value: "SYSCALL"
+              case_insensitive: true
+        - term:
+            data_audit_command:
+              value: "insmod"
+              case_insensitive: true
+        - term:
+            data_audit_exe:
+              value: "/usr/bin/kmod"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_audit_type
+    - data_audit_command
+    - data_audit_exe
+    - data_audit_execve_a0
+    - data_audit_key
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires auditd running on the endpoint with audit rules covering the relevant
+  syscalls/paths, and the Wazuh agent reading /var/log/audit/audit.log (default
+  localfile entry). The detection looks for events where data_audit_type equals
+  'SYSCALL'; data_audit_command equals 'insmod'; data_audit_exe equals
+  '/usr/bin/kmod'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1547.006/T1547.006.md
+  - https://linux.die.net/man/8/insmod
+  - https://man7.org/linux/man-pages/man8/kmod.8.html
+  - https://attack.mitre.org/techniques/T1547/006/
+
+response:
+  message: >
+    Loading of Kernel Module via Insmod detected on host $agent_name$. Matched
+    data_audit_type: $data_audit_type$. Matched data_audit_command:
+    $data_audit_command$. MITRE ATT&CK: T1547.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_audit_type
+      type: other
+    - field: data_audit_command
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.006
+  custom_tags:
+    - loading
+    - kernel
+    - module
+    - linux
+    - auditd
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_audit_type:/[Ss][Yy][Ss][Cc][Aa][Ll][Ll]/ AND data_audit_command:/[Ii][Nn][Ss][Mm][Oo][Dd]/ AND data_audit_exe:/\/[Uu][Ss][Rr]\/[Bb][Ii][Nn]\/[Kk][Mm][Oo][Dd]/

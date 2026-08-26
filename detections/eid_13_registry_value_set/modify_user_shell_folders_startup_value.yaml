@@ -1,0 +1,197 @@
+name: Modify User Shell Folders Startup Value
+id: 9c226817-8dc9-46c2-a58d-66655aafd7dc
+version: 1
+schema_version: "1.0"
+date: "2026-01-05"
+author: frack113, Swachchhanda Shrawan Poudel (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 9c226817-8dc9-46c2-a58d-66655aafd7dc
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detect modification of the User Shell Folders registry values for Startup or
+  Common Startup which could indicate persistence attempts. Attackers may modify
+  User Shell Folders registry keys to point to malicious executables or scripts
+  that will be executed during startup. This technique is often used to maintain
+  persistence on a compromised system by ensuring that the malicious payload is
+  executed automatically. MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\User Shell Folders*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*SOFTWARE\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Explorer\\\\Shell Folders*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Common Startup"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Startup"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_details"
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*C:\\\\ProgramData\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Startup*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*%ProgramData%\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Startup*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*%USERPROFILE%\\\\AppData\\\\Roaming\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Startup*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*%%USERPROFILE%%\\\\AppData\\\\Roaming\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Startup*"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*C:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*\\\\AppData\\\\Roaming\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\Startup*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders*';
+  data_win_eventdata_targetObject matches
+  '*SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders*';
+  data_win_eventdata_targetObject matches '*\Common Startup', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/9e5b12c4912c07562aec7500447b11fa3e17e254/atomics/T1547.001/T1547.001.md
+  - https://www.welivesecurity.com/en/eset-research/muddywater-snakes-riverbank/
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Modify User Shell Folders Startup Value detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_details: $data_win_eventdata_details$. MITRE
+    ATT&CK: T1547.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - modify
+    - shell
+    - folders
+    - registry
+    - sysmon
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\\[Uu][Ss][Ee][Rr] [Ss][Hh][Ee][Ll][Ll] [Ff][Oo][Ll][Dd][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\\[Ss][Hh][Ee][Ll][Ll] [Ff][Oo][Ll][Dd][Ee][Rr][Ss].*/) AND (data_win_eventdata_targetObject:/.*\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ss][Tt][Aa][Rr][Tt][Uu][Pp]/ OR data_win_eventdata_targetObject:/.*\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp]/) AND NOT (NOT _exists_:data_win_eventdata_details OR data_win_eventdata_details:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_details:/.*%[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]%\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_details:/.*%[Uu][Ss][Ee][Rr][Pp][Rr][Oo][Ff][Ii][Ll][Ee]%\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR data_win_eventdata_details:/.*%%[Uu][Ss][Ee][Rr][Pp][Rr][Oo][Ff][Ii][Ll][Ee]%%\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ OR (data_win_eventdata_details:/.*[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_details:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Rr][Oo][Aa][Mm][Ii][Nn][Gg]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/))

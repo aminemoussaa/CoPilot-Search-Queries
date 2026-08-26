@@ -1,0 +1,143 @@
+name: LiveKD Driver Creation
+id: 16fe46bb-4f64-46aa-817d-ff7bec4a2352
+version: 1
+schema_version: "1.0"
+date: "2023-05-16"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 16fe46bb-4f64-46aa-817d-ff7bec4a2352
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation of the LiveKD driver, which is used for live kernel
+  debugging.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - term:
+            data_win_eventdata_targetFilename:
+              value: "C:\\Windows\\System32\\drivers\\LiveKdD.SYS"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\livekd.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\livek64.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename equals
+  'C:\Windows\System32\drivers\LiveKdD.SYS'; data_win_eventdata_image matches
+  '*\livekd.exe'; data_win_eventdata_image matches '*\livek64.exe'.
+
+known_false_positives: >
+  Legitimate usage of LiveKD for debugging purposes will also trigger this.
+  Baseline expected activity in your environment and tune this detection before
+  relying on it for automated response.
+
+references:
+  - Internal Research
+
+response:
+  message: >
+    LiveKD Driver Creation detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - livekd
+    - driver
+    - file_event
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_targetFilename:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Dd][Rr][Ii][Vv][Ee][Rr][Ss]\\[Ll][Ii][Vv][Ee][Kk][Dd][Dd]\.[Ss][Yy][Ss]/ AND (data_win_eventdata_image:/.*\\[Ll][Ii][Vv][Ee][Kk][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ll][Ii][Vv][Ee][Kk]64\.[Ee][Xx][Ee]/)

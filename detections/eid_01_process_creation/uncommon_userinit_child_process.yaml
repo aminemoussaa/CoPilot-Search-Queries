@@ -1,0 +1,204 @@
+name: Uncommon Userinit Child Process
+id: 0a98a10c-685d-4ab0-bddc-b6bdd1d48458
+version: 1
+schema_version: "1.0"
+date: "2023-11-14"
+author: Tom Ueltschi (@c_APT_ure), Tim Shelton
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 0a98a10c-685d-4ab0-bddc-b6bdd1d48458
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects uncommon "userinit.exe" child processes, which could be a sign of
+  uncommon shells or login scripts used for persistence. MITRE ATT&CK:
+  T1037.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_parentImage:
+              value: "*\\\\userinit.exe"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*:\\\\WINDOWS\\\\explorer.exe"
+                    case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*netlogon.bat*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*UsrLogon.cmd*"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_commandLine:
+                          value: "PowerShell.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\System32\\\\proquota.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Windows\\\\SysWOW64\\\\proquota.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files (x86)\\\\Citrix\\\\HDX\\\\bin\\\\cmstart.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files (x86)\\\\Citrix\\\\HDX\\\\bin\\\\icast.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files (x86)\\\\Citrix\\\\System32\\\\icast.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\Citrix\\\\HDX\\\\bin\\\\cmstart.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\Citrix\\\\HDX\\\\bin\\\\icast.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*:\\\\Program Files\\\\Citrix\\\\System32\\\\icast.exe"
+                          case_insensitive: true
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_image"
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_parentImage matches
+  '*\userinit.exe'; data_win_eventdata_image matches '*:\WINDOWS\explorer.exe';
+  data_win_eventdata_commandLine matches '*netlogon.bat*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate logon scripts or custom shells may trigger false positives. Apply
+  additional filters accordingly. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://cocomelonc.github.io/persistence/2022/12/09/malware-pers-20.html
+  - https://learn.microsoft.com/en-us/windows-server/administration/server-core/server-core-sconfig#powershell-is-the-default-shell-on-server-core
+  - https://attack.mitre.org/techniques/T1037/001/
+
+response:
+  message: >
+    Uncommon Userinit Child Process detected on host $agent_name$. Matched
+    data_win_eventdata_parentImage: $data_win_eventdata_parentImage$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1037.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_parentImage
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1037.001
+  custom_tags:
+    - uncommon
+    - userinit
+    - child
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_parentImage:/.*\\[Uu][Ss][Ee][Rr][Ii][Nn][Ii][Tt]\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Nn][Ee][Tt][Ll][Oo][Gg][Oo][Nn]\.[Bb][Aa][Tt].*/ OR data_win_eventdata_commandLine:/.*[Uu][Ss][Rr][Ll][Oo][Gg][Oo][Nn]\.[Cc][Mm][Dd].*/ OR data_win_eventdata_commandLine:/[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Pp][Rr][Oo][Qq][Uu][Oo][Tt][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\[Pp][Rr][Oo][Qq][Uu][Oo][Tt][Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Cc][Ii][Tt][Rr][Ii][Xx]\\[Hh][Dd][Xx]\\[Bb][Ii][Nn]\\[Cc][Mm][Ss][Tt][Aa][Rr][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Cc][Ii][Tt][Rr][Ii][Xx]\\[Hh][Dd][Xx]\\[Bb][Ii][Nn]\\[Ii][Cc][Aa][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Cc][Ii][Tt][Rr][Ii][Xx]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ii][Cc][Aa][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Ii][Tt][Rr][Ii][Xx]\\[Hh][Dd][Xx]\\[Bb][Ii][Nn]\\[Cc][Mm][Ss][Tt][Aa][Rr][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Ii][Tt][Rr][Ii][Xx]\\[Hh][Dd][Xx]\\[Bb][Ii][Nn]\\[Ii][Cc][Aa][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Ii][Tt][Rr][Ii][Xx]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ii][Cc][Aa][Ss][Tt]\.[Ee][Xx][Ee]/ OR NOT _exists_:data_win_eventdata_image)

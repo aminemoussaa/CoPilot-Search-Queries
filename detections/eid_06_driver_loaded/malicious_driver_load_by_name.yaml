@@ -1,0 +1,411 @@
+name: Malicious Driver Load By Name
+id: 39b64854-5497-4b57-a448-40977b8c9679
+version: 1
+schema_version: "1.0"
+date: "2023-12-02"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 39b64854-5497-4b57-a448-40977b8c9679
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects loading of known malicious drivers via the file name of the drivers.
+  MITRE ATT&CK: T1543.003, T1068.
+
+data_source:
+  - Sysmon EventID 6 - Driver Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "6"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wfshbr64.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ktmutil7odm.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ktes.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\a26363e7b02b13f2b8d697abb90cd5c3.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\kt2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\4748696211bd56c2d93c21cab91e82a5.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\malicious.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\a236e7d654cd932b7d11cb604629a2d0.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\spwizimgvt.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\c94f405c5929cfcccc8ad00b42c95083.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\fur.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wantd.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\windbg.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\4118b86e490aed091b1a219dba45f332.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\gmer64.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\1fc7aeeff3ab19004d2e53eae8160ab1.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\poortry2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wintapix.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\daxin_blank6.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\6771b13a53b9c7449d4891e427735ea2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\blacklotus_driver.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\air_system10.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\dkrtk.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\7.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\sense5ext.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ktgn.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ndislan.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\nlslexicons0024uvn.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\be6318413160e589080df02bb3ca6e6a.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\4.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wantd_2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\e29f6311ae87542b3d693c1f38e4e3ad.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\daxin_blank3.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\gftkyj64.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\daxin_blank2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wantd_4.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\reddriver.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\834761775.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\mlgbbiicaihflrnh.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\mjj0ge.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\daxin_blank.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\daxin_blank5.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\poortry1.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\msqpq.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\mimidrv.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\e939448b28a4edc81f1f974cebf6e7d2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\prokiller64.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\nodedriver.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wantd_3.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\lctka.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\kapchelper_x64.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\daxin_blank4.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\a9df5964635ef8bd567ae487c3d214c4.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wantd_6.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ntbios.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\wantd_5.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\pciecubed.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\mimikatz.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\nqrmq.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\poortry.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ntbios_2.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\fgme.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\telephonuafy.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\typelibde.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\daxin_blank1.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\ef0e1725aaf0c6c972593f860531a2ea.sys"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_imageLoaded:
+                    value: "*\\\\5a4fe297c7d42539303137b6d75b150d.sys"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signature
+    - data_win_eventdata_hashes
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 6 (driver loaded) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*\wfshbr64.sys'; data_win_eventdata_imageLoaded matches '*\ktmutil7odm.sys';
+  data_win_eventdata_imageLoaded matches '*\ktes.sys', among other conditions.
+
+known_false_positives: >
+  False positives may occur if one of the vulnerable driver names mentioned
+  above didn't change its name between versions. So always make sure that the
+  driver being loaded is the legitimate one and the non vulnerable version.. If
+  you experience a lot of FP you could comment the driver name or its exact
+  known legitimate location (when possible). Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://loldrivers.io/
+  - https://attack.mitre.org/techniques/T1543/003/
+  - https://attack.mitre.org/techniques/T1068/
+
+response:
+  message: >
+    Malicious Driver Load By Name detected on host $agent_name$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. Matched
+    data_win_eventdata_signature: $data_win_eventdata_signature$. MITRE ATT&CK:
+    T1543.003, T1068
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_signature
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1543.003
+    - T1068
+  custom_tags:
+    - driver
+    - driver_load
+    - sysmon
+    - persistence
+    - privilege_escalation
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"6" AND (data_win_eventdata_imageLoaded:/.*\\[Ww][Ff][Ss][Hh][Bb][Rr]64\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Kk][Tt][Mm][Uu][Tt][Ii][Ll]7[Oo][Dd][Mm]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Kk][Tt][Ee][Ss]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Aa]26363[Ee]7[Bb]02[Bb]13[Ff]2[Bb]8[Dd]697[Aa][Bb][Bb]90[Cc][Dd]5[Cc]3\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Kk][Tt]2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\4748696211[Bb][Dd]56[Cc]2[Dd]93[Cc]21[Cc][Aa][Bb]91[Ee]82[Aa]5\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Aa][Ll][Ii][Cc][Ii][Oo][Uu][Ss]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Aa]236[Ee]7[Dd]654[Cc][Dd]932[Bb]7[Dd]11[Cc][Bb]604629[Aa]2[Dd]0\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ss][Pp][Ww][Ii][Zz][Ii][Mm][Gg][Vv][Tt]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Cc]94[Ff]405[Cc]5929[Cc][Ff][Cc][Cc][Cc][Cc]8[Aa][Dd]00[Bb]42[Cc]95083\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ff][Uu][Rr]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Aa][Nn][Tt][Dd]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Dd][Bb][Gg]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\4118[Bb]86[Ee]490[Aa][Ee][Dd]091[Bb]1[Aa]219[Dd][Bb][Aa]45[Ff]332\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Gg][Mm][Ee][Rr]64\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\1[Ff][Cc]7[Aa][Ee][Ee][Ff][Ff]3[Aa][Bb]19004[Dd]2[Ee]53[Ee][Aa][Ee]8160[Aa][Bb]1\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Oo][Oo][Rr][Tt][Rr][Yy]2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Ii][Nn][Tt][Aa][Pp][Ii][Xx]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Aa][Xx][Ii][Nn]_[Bb][Ll][Aa][Nn][Kk]6\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\6771[Bb]13[Aa]53[Bb]9[Cc]7449[Dd]4891[Ee]427735[Ee][Aa]2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Bb][Ll][Aa][Cc][Kk][Ll][Oo][Tt][Uu][Ss]_[Dd][Rr][Ii][Vv][Ee][Rr]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Aa][Ii][Rr]_[Ss][Yy][Ss][Tt][Ee][Mm]10\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Kk][Rr][Tt][Kk]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\7\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ss][Ee][Nn][Ss][Ee]5[Ee][Xx][Tt]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Kk][Tt][Gg][Nn]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Nn][Dd][Ii][Ss][Ll][Aa][Nn]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Nn][Ll][Ss][Ll][Ee][Xx][Ii][Cc][Oo][Nn][Ss]0024[Uu][Vv][Nn]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Bb][Ee]6318413160[Ee]589080[Dd][Ff]02[Bb][Bb]3[Cc][Aa]6[Ee]6[Aa]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\4\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Aa][Nn][Tt][Dd]_2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ee]29[Ff]6311[Aa][Ee]87542[Bb]3[Dd]693[Cc]1[Ff]38[Ee]4[Ee]3[Aa][Dd]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Aa][Xx][Ii][Nn]_[Bb][Ll][Aa][Nn][Kk]3\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Gg][Ff][Tt][Kk][Yy][Jj]64\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Aa][Xx][Ii][Nn]_[Bb][Ll][Aa][Nn][Kk]2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Aa][Nn][Tt][Dd]_4\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Rr][Ee][Dd][Dd][Rr][Ii][Vv][Ee][Rr]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\834761775\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Ll][Gg][Bb][Bb][Ii][Ii][Cc][Aa][Ii][Hh][Ff][Ll][Rr][Nn][Hh]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Jj][Jj]0[Gg][Ee]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Aa][Xx][Ii][Nn]_[Bb][Ll][Aa][Nn][Kk]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Aa][Xx][Ii][Nn]_[Bb][Ll][Aa][Nn][Kk]5\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Oo][Oo][Rr][Tt][Rr][Yy]1\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Ss][Qq][Pp][Qq]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Ii][Mm][Ii][Dd][Rr][Vv]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ee]939448[Bb]28[Aa]4[Ee][Dd][Cc]81[Ff]1[Ff]974[Cc][Ee][Bb][Ff]6[Ee]7[Dd]2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Rr][Oo][Kk][Ii][Ll][Ll][Ee][Rr]64\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Nn][Oo][Dd][Ee][Dd][Rr][Ii][Vv][Ee][Rr]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Aa][Nn][Tt][Dd]_3\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ll][Cc][Tt][Kk][Aa]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Kk][Aa][Pp][Cc][Hh][Ee][Ll][Pp][Ee][Rr]_[Xx]64\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Aa][Xx][Ii][Nn]_[Bb][Ll][Aa][Nn][Kk]4\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Aa]9[Dd][Ff]5964635[Ee][Ff]8[Bb][Dd]567[Aa][Ee]487[Cc]3[Dd]214[Cc]4\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Aa][Nn][Tt][Dd]_6\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Nn][Tt][Bb][Ii][Oo][Ss]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ww][Aa][Nn][Tt][Dd]_5\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Cc][Ii][Ee][Cc][Uu][Bb][Ee][Dd]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Mm][Ii][Mm][Ii][Kk][Aa][Tt][Zz]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Nn][Qq][Rr][Mm][Qq]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Pp][Oo][Oo][Rr][Tt][Rr][Yy]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Nn][Tt][Bb][Ii][Oo][Ss]_2\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ff][Gg][Mm][Ee]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Tt][Ee][Ll][Ee][Pp][Hh][Oo][Nn][Uu][Aa][Ff][Yy]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Tt][Yy][Pp][Ee][Ll][Ii][Bb][Dd][Ee]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Dd][Aa][Xx][Ii][Nn]_[Bb][Ll][Aa][Nn][Kk]1\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\[Ee][Ff]0[Ee]1725[Aa][Aa][Ff]0[Cc]6[Cc]972593[Ff]860531[Aa]2[Ee][Aa]\.[Ss][Yy][Ss]/ OR data_win_eventdata_imageLoaded:/.*\\5[Aa]4[Ff][Ee]297[Cc]7[Dd]42539303137[Bb]6[Dd]75[Bb]150[Dd]\.[Ss][Yy][Ss]/)

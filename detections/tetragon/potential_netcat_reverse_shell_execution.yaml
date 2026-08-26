@@ -1,0 +1,266 @@
+name: Potential Netcat Reverse Shell Execution
+id: 7f734ed0-4f47-46c0-837f-6ee62505abd9
+version: 1
+schema_version: "1.0"
+date: "2023-04-07"
+author: "@d4ns4n_, Nasreddine Bencherchali (Nextron Systems)"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 7f734ed0-4f47-46c0-837f-6ee62505abd9
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of netcat with the "-e" flag followed by common shells. This
+  could be a sign of a potential reverse shell setup. MITRE ATT&CK: T1059.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/nc"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_binary:
+                    value: "*/ncat"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* -c *"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* -e *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* ash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* bash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* bsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* csh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* ksh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* pdksh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* sh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "* tcsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/ash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/bash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/bsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/csh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/ksh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/pdksh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/sh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/tcsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/bin/zsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFSash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFSbash*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFSbsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFScsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFSksh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFSpdksh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFSsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFStcsh*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*$IFSzsh*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/nc';
+  data_process_exec_process_binary matches '*/ncat';
+  data_process_exec_process_arguments matches '* -c *', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet
+  - https://www.revshells.com/
+  - https://www.hackingtutorials.org/networking/hacking-netcat-part-2-bind-reverse-shells/
+  - https://www.infosecademy.com/netcat-reverse-shells/
+  - https://man7.org/linux/man-pages/man1/ncat.1.html
+  - https://attack.mitre.org/techniques/T1059/
+
+response:
+  message: >
+    Potential Netcat Reverse Shell Execution detected on host $agent_name$.
+    Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1059
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059
+  custom_tags:
+    - netcat
+    - reverse
+    - shell
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_process_exec_process_binary:/.*\/[Nn][Cc]/ OR data_process_exec_process_binary:/.*\/[Nn][Cc][Aa][Tt]/) AND (data_process_exec_process_arguments:/.* -[Cc] .*/ OR data_process_exec_process_arguments:/.* -[Ee] .*/) AND (data_process_exec_process_arguments:/.* [Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.* [Bb][Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.* [Bb][Ss][Hh].*/ OR data_process_exec_process_arguments:/.* [Cc][Ss][Hh].*/ OR data_process_exec_process_arguments:/.* [Kk][Ss][Hh].*/ OR data_process_exec_process_arguments:/.* [Pp][Dd][Kk][Ss][Hh].*/ OR data_process_exec_process_arguments:/.* [Ss][Hh].*/ OR data_process_exec_process_arguments:/.* [Tt][Cc][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Bb][Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Bb][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Cc][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Kk][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Pp][Dd][Kk][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Tt][Cc][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\/[Bb][Ii][Nn]\/[Zz][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Bb][Aa][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Bb][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Cc][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Kk][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Pp][Dd][Kk][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Tt][Cc][Ss][Hh].*/ OR data_process_exec_process_arguments:/.*\$[Ii][Ff][Ss][Zz][Ss][Hh].*/)

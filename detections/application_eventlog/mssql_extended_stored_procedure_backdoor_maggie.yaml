@@ -1,0 +1,139 @@
+name: MSSQL Extended Stored Procedure Backdoor Maggie
+id: 711ab2fe-c9ba-4746-8840-5228a58c3cb8
+version: 1
+schema_version: "1.0"
+date: "2022-10-09"
+author: Denis Szadkowski, DIRT / DCSO CyTec
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 711ab2fe-c9ba-4746-8840-5228a58c3cb8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  This rule detects the execution of the extended storage procedure backdoor
+  named Maggie in the context of Microsoft SQL server. MITRE ATT&CK: T1546.
+
+data_source:
+  - Windows Application Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_providerName:
+              value: "MSSQLSERVER"
+              case_insensitive: true
+        - term:
+            data_win_system_eventID: "8128"
+        - wildcard:
+            data_win_eventdata_message:
+              value: "*maggie*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_system_providerName
+    - data_win_eventdata_message
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_providerName equals 'MSSQLSERVER';
+  data_win_system_eventID equals '8128'; data_win_eventdata_message matches
+  '*maggie*'.
+
+known_false_positives: >
+  Legitimate extended stored procedures named maggie. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://medium.com/@DCSO_CyTec/mssql-meet-maggie-898773df3b01
+  - https://attack.mitre.org/techniques/T1546/
+
+response:
+  message: >
+    MSSQL Extended Stored Procedure Backdoor Maggie detected on host
+    $agent_name$. Matched data_win_system_providerName:
+    $data_win_system_providerName$. Matched data_win_eventdata_message:
+    $data_win_eventdata_message$. MITRE ATT&CK: T1546
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_system_providerName
+      type: other
+    - field: data_win_eventdata_message
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1546
+  custom_tags:
+    - mssql
+    - extended
+    - stored
+    - windows_application
+    - privilege_escalation
+    - persistence
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_providerName:/[Mm][Ss][Ss][Qq][Ll][Ss][Ee][Rr][Vv][Ee][Rr]/ AND data_win_system_eventID:"8128" AND data_win_eventdata_message:/.*[Mm][Aa][Gg][Gg][Ii][Ee].*/

@@ -1,0 +1,222 @@
+name: Windows Event Log Access Tampering Via Registry
+id: ba226dcf-d390-4642-b9af-b534872f1156
+version: 1
+schema_version: "1.0"
+date: "2025-08-16"
+author: X__Junior
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: ba226dcf-d390-4642-b9af-b534872f1156
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to the Windows EventLog channel permission values. It focuses
+  on changes to the Security Descriptor Definition Language (SDDL) string, as
+  modifications to these values can restrict access to specific users or groups,
+  potentially aiding in defense evasion by controlling who can view or modify a
+  event log channel. Upon execution, the user shouldn't be able to access the
+  event log channel via the event viewer or via utilities such as "Get-EventLog"
+  or "wevtutil". MITRE ATT&CK: T1547.001, T1112.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\SYSTEM\\\\CurrentControlSet\\\\Services\\\\EventLog\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\CustomSD"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Policies\\\\Microsoft\\\\Windows\\\\EventLog\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\WINEVT\\\\Channels*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\ChannelAccess"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_details:
+                    value: "*D:(D;*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*D:(*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_details:
+                          value: "*)(D;*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\servicing\\TrustedInstaller.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Windows\\\\WinSxS\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\TiWorker.exe"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image: ""
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_image"
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SYSTEM\CurrentControlSet\Services\EventLog\*';
+  data_win_eventdata_targetObject matches '*\CustomSD';
+  data_win_eventdata_targetObject matches
+  '*\Policies\Microsoft\Windows\EventLog\*', among other conditions.
+
+known_false_positives: >
+  Administrative activity, still unlikely. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.atomicredteam.io/atomic-red-team/atomics/T1562.002#atomic-test-8---modify-event-log-channel-access-permissions-via-registry---powershell
+  - https://www.youtube.com/watch?v=uSYvHUVU8xY
+  - https://learn.microsoft.com/en-us/windows/win32/secauthz/security-descriptor-definition-language
+  - https://attack.mitre.org/techniques/T1547/001/
+  - https://attack.mitre.org/techniques/T1112/
+
+response:
+  message: >
+    Windows Event Log Access Tampering Via Registry detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1547.001, T1112
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+    - T1112
+  custom_tags:
+    - tampering
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND ((data_win_eventdata_targetObject:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Cc][Oo][Nn][Tt][Rr][Oo][Ll][Ss][Ee][Tt]\\[Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ss]\\[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg]\\.*/ AND data_win_eventdata_targetObject:/.*\\[Cc][Uu][Ss][Tt][Oo][Mm][Ss][Dd]/) OR ((data_win_eventdata_targetObject:/.*\\[Pp][Oo][Ll][Ii][Cc][Ii][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ee][Vv][Ee][Nn][Tt][Ll][Oo][Gg]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ww][Ii][Nn][Ee][Vv][Tt]\\[Cc][Hh][Aa][Nn][Nn][Ee][Ll][Ss].*/) AND data_win_eventdata_targetObject:/.*\\[Cc][Hh][Aa][Nn][Nn][Ee][Ll][Aa][Cc][Cc][Ee][Ss][Ss]/)) AND (data_win_eventdata_details:/.*[Dd]:\([Dd];.*/ OR (data_win_eventdata_details:/.*[Dd]:\(.*/ AND data_win_eventdata_details:/.*\)\([Dd];.*/)) AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Ee][Rr][Vv][Ii][Cc][Ii][Nn][Gg]\\[Tt][Rr][Uu][Ss][Tt][Ee][Dd][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Ee][Rr]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Xx][Ss]\\.*/ AND data_win_eventdata_image:/.*\\[Tt][Ii][Ww][Oo][Rr][Kk][Ee][Rr]\.[Ee][Xx][Ee]/)) AND NOT (data_win_eventdata_image:"" OR NOT _exists_:data_win_eventdata_image)

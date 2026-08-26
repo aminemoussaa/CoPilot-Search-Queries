@@ -1,0 +1,275 @@
+name: Usage of Renamed Sysinternals Tools - RegistrySet
+id: 8023f872-3f1d-4301-a384-801889917ab4
+version: 1
+schema_version: "1.0"
+date: "2026-06-29"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8023f872-3f1d-4301-a384-801889917ab4
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects non-sysinternals tools setting the "accepteula" key which normally is
+  set on sysinternals tool execution. MITRE ATT&CK: T1588.002.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\PsExec*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\ProcDump*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Handle*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\LiveKd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Process Explorer*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\PsLoglist*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\PsPasswd*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Active Directory Explorer*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\EulaAccepted"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\PsExec.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\PsExec64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\PsExec64a.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\procdump.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\procdump64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\procdump64a.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\handle.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\handle64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\handle64a.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\livekd.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\livekd64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\procexp.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\procexp64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\procexp64a.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\psloglist.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\psloglist64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\psloglist64a.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\pspasswd.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\pspasswd64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\pspasswd64a.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\ADExplorer.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\ADExplorer64.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\ADExplorer64a.exe"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - bool:
+            must_not:
+              - bool:
+                  must_not:
+                    - exists:
+                        field: "data_win_eventdata_image"
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\PsExec*'; data_win_eventdata_targetObject matches '*\ProcDump*';
+  data_win_eventdata_targetObject matches '*\Handle*', among other conditions.
+
+known_false_positives: >
+  Unlikely. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - Internal Research
+  - https://attack.mitre.org/techniques/T1588/002/
+
+response:
+  message: >
+    Usage of Renamed Sysinternals Tools - RegistrySet detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_image:
+    $data_win_eventdata_image$. MITRE ATT&CK: T1588.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1588.002
+  custom_tags:
+    - renamed
+    - sysinternals
+    - tools
+    - registry
+    - sysmon
+    - resource_development
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Pp][Ss][Ee][Xx][Ee][Cc].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Rr][Oo][Cc][Dd][Uu][Mm][Pp].*/ OR data_win_eventdata_targetObject:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee].*/ OR data_win_eventdata_targetObject:/.*\\[Ll][Ii][Vv][Ee][Kk][Dd].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Rr][Oo][Cc][Ee][Ss][Ss] [Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Ss][Ll][Oo][Gg][Ll][Ii][Ss][Tt].*/ OR data_win_eventdata_targetObject:/.*\\[Pp][Ss][Pp][Aa][Ss][Ss][Ww][Dd].*/ OR data_win_eventdata_targetObject:/.*\\[Aa][Cc][Tt][Ii][Vv][Ee] [Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy] [Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr].*/) AND data_win_eventdata_targetObject:/.*\\[Ee][Uu][Ll][Aa][Aa][Cc][Cc][Ee][Pp][Tt][Ee][Dd]/ AND _exists_:data_win_eventdata_image AND NOT (data_win_eventdata_image:/.*\\[Pp][Ss][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Ee][Xx][Ee][Cc]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Ee][Xx][Ee][Cc]64[Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Dd][Uu][Mm][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Dd][Uu][Mm][Pp]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Dd][Uu][Mm][Pp]64[Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Hh][Aa][Nn][Dd][Ll][Ee]64[Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ll][Ii][Vv][Ee][Kk][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Ll][Ii][Vv][Ee][Kk][Dd]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Ee][Xx][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Ee][Xx][Pp]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Rr][Oo][Cc][Ee][Xx][Pp]64[Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Ll][Oo][Gg][Ll][Ii][Ss][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Ll][Oo][Gg][Ll][Ii][Ss][Tt]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Ll][Oo][Gg][Ll][Ii][Ss][Tt]64[Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Pp][Aa][Ss][Ss][Ww][Dd]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Pp][Aa][Ss][Ss][Ww][Dd]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Pp][Ss][Pp][Aa][Ss][Ss][Ww][Dd]64[Aa]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Dd][Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Dd][Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]64\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Aa][Dd][Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]64[Aa]\.[Ee][Xx][Ee]/) AND NOT (NOT _exists_:data_win_eventdata_image)

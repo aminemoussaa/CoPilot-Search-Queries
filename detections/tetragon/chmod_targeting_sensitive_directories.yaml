@@ -1,0 +1,210 @@
+name: Chmod Targeting Sensitive Directories
+id: 6419afd1-3742-47a5-a7e6-b50386cd15f8
+version: 1
+schema_version: "1.0"
+date: "2026-03-18"
+author: Christopher Peacock @SecurePeacock, SCYTHE @scythe_io
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 6419afd1-3742-47a5-a7e6-b50386cd15f8
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects chmod targeting files in sensitive directory paths on Linux systems.
+  Attackers may use chmod to change permissions of files in these directories to
+  maintain persistence, escalate privileges, or disrupt system operations. MITRE
+  ATT&CK: T1222.002.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/chmod"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/tmp/*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/.Library/*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/etc/*"
+                    case_insensitive: true
+              - wildcard:
+                  data_process_exec_process_arguments:
+                    value: "*/opt/*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_process_exec_process_arguments"
+        - exists:
+            field: "data_process_exec_parent_arguments"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*chmod --reference=/etc/shells*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_parent_arguments:
+                                value: "*/update-shells"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_process_exec_process_arguments:
+                                value: "*/etc/*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_parent_arguments:
+                                value: "*/var/lib/dpkg/info/*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_process_exec_parent_arguments:
+                                value: "*.postinst configure*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "chmod 700 /tmp/apt-key-gpghome.*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_process_exec_process_arguments:
+                          value: "chmod 755 /var/tmp/mkinitramfs*"
+                          case_insensitive: true
+                    - term:
+                        data_process_exec_process_arguments:
+                          value: "chmod 0775 /etc/landscape/"
+                          case_insensitive: true
+                    - term:
+                        data_process_exec_process_arguments:
+                          value: "chmod 644 /etc/apparmor.d/tunables/home.d/ubuntu"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/chmod';
+  data_process_exec_process_arguments matches '*/tmp/*';
+  data_process_exec_process_arguments matches '*/.Library/*', among other
+  conditions.
+
+known_false_positives: >
+  Some false positives are to be expected. Apply additional filters as needed
+  before pushing to production. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://www.intezer.com/blog/malware-analysis/new-backdoor-sysjoker/
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1222.002/T1222.002.md
+  - https://attack.mitre.org/techniques/T1222/002/
+
+response:
+  message: >
+    Chmod Targeting Sensitive Directories detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1222.002
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1222.002
+  custom_tags:
+    - chmod
+    - targeting
+    - sensitive
+    - linux
+    - tetragon
+    - process_creation
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Cc][Hh][Mm][Oo][Dd]/ AND (data_process_exec_process_arguments:/.*\/[Tt][Mm][Pp]\/.*/ OR data_process_exec_process_arguments:/.*\/\.[Ll][Ii][Bb][Rr][Aa][Rr][Yy]\/.*/ OR data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/.*/ OR data_process_exec_process_arguments:/.*\/[Oo][Pp][Tt]\/.*/) AND _exists_:data_process_exec_process_arguments AND _exists_:data_process_exec_parent_arguments AND NOT ((data_process_exec_process_arguments:/.*[Cc][Hh][Mm][Oo][Dd] --[Rr][Ee][Ff][Ee][Rr][Ee][Nn][Cc][Ee]=\/[Ee][Tt][Cc]\/[Ss][Hh][Ee][Ll][Ll][Ss].*/ AND data_process_exec_parent_arguments:/.*\/[Uu][Pp][Dd][Aa][Tt][Ee]-[Ss][Hh][Ee][Ll][Ll][Ss]/) OR (data_process_exec_process_arguments:/.*\/[Ee][Tt][Cc]\/.*/ AND data_process_exec_parent_arguments:/.*\/[Vv][Aa][Rr]\/[Ll][Ii][Bb]\/[Dd][Pp][Kk][Gg]\/[Ii][Nn][Ff][Oo]\/.*/ AND data_process_exec_parent_arguments:/.*\.[Pp][Oo][Ss][Tt][Ii][Nn][Ss][Tt] [Cc][Oo][Nn][Ff][Ii][Gg][Uu][Rr][Ee].*/) OR data_process_exec_process_arguments:/[Cc][Hh][Mm][Oo][Dd] 700 \/[Tt][Mm][Pp]\/[Aa][Pp][Tt]-[Kk][Ee][Yy]-[Gg][Pp][Gg][Hh][Oo][Mm][Ee]\..*/ OR data_process_exec_process_arguments:/[Cc][Hh][Mm][Oo][Dd] 755 \/[Vv][Aa][Rr]\/[Tt][Mm][Pp]\/[Mm][Kk][Ii][Nn][Ii][Tt][Rr][Aa][Mm][Ff][Ss].*/ OR data_process_exec_process_arguments:/[Cc][Hh][Mm][Oo][Dd] 0775 \/[Ee][Tt][Cc]\/[Ll][Aa][Nn][Dd][Ss][Cc][Aa][Pp][Ee]\// OR data_process_exec_process_arguments:/[Cc][Hh][Mm][Oo][Dd] 644 \/[Ee][Tt][Cc]\/[Aa][Pp][Pp][Aa][Rr][Mm][Oo][Rr]\.[Dd]\/[Tt][Uu][Nn][Aa][Bb][Ll][Ee][Ss]\/[Hh][Oo][Mm][Ee]\.[Dd]\/[Uu][Bb][Uu][Nn][Tt][Uu]/)

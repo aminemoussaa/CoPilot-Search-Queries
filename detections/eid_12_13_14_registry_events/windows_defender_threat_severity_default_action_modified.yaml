@@ -1,0 +1,176 @@
+name: Windows Defender Threat Severity Default Action Modified
+id: 5a9e1b2c-8f7d-4a1e-9b3c-0f6d7e5a4b1f
+version: 1
+schema_version: "1.0"
+date: "2025-07-11"
+author: Matt Anderson (Huntress)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5a9e1b2c-8f7d-4a1e-9b3c-0f6d7e5a4b1f
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects modifications or creations of Windows Defender's default threat action
+  settings based on severity to 'allow' or take 'no action'. This is a highly
+  suspicious configuration change that effectively disables Defender's ability
+  to automatically mitigate threats of a certain severity level, allowing
+  malicious software to run unimpeded. An attacker might use this technique to
+  bypass defenses before executing payloads. MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 12/13/14 - Registry Events
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "12"
+              - term:
+                  data_win_system_eventID: "13"
+              - term:
+                  data_win_system_eventID: "14"
+            minimum_should_match: 1
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\Microsoft\\\\Windows Defender\\\\Threats\\\\ThreatSeverityDefaultAction\\\\*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject: "*\\\\1"
+              - wildcard:
+                  data_win_eventdata_targetObject: "*\\\\2"
+              - wildcard:
+                  data_win_eventdata_targetObject: "*\\\\4"
+              - wildcard:
+                  data_win_eventdata_targetObject: "*\\\\5"
+            minimum_should_match: 1
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_details:
+                    value: "DWORD (0x00000006)"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_details:
+                    value: "DWORD (0x00000009)"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Microsoft\Windows Defender\Threats\ThreatSeverityDefaultAction\*';
+  data_win_eventdata_targetObject matches '*\1'; data_win_eventdata_targetObject
+  matches '*\2', among other conditions.
+
+known_false_positives: >
+  Legitimate administration via scripts or tools (e.g., SCCM, Intune, GPO
+  enforcement). Correlate with administrative activity.. Software installations
+  that legitimately modify Defender settings (less common for these specific
+  keys). Baseline expected activity in your environment and tune this detection
+  before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/powershell/module/defender/set-mppreference
+  - https://learn.microsoft.com/en-us/windows-hardware/customize/desktop/unattend/security-malware-windows-defender-threatseveritydefaultaction
+  - https://research.splunk.com/endpoint/7215831c-8252-4ae3-8d43-db588e82f952
+  - https://gist.github.com/Dump-GUY/8daef859f382b895ac6fd0cf094555d2
+  - https://thedfirreport.com/2021/10/18/icedid-to-xinglocker-ransomware-in-24-hours/
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Windows Defender Threat Severity Default Action Modified detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - defender
+    - threat
+    - severity
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"12" OR data_win_system_eventID:"13" OR data_win_system_eventID:"14") AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Tt][Hh][Rr][Ee][Aa][Tt][Ss]\\[Tt][Hh][Rr][Ee][Aa][Tt][Ss][Ee][Vv][Ee][Rr][Ii][Tt][Yy][Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Tt][Ii][Oo][Nn]\\.*/ AND (data_win_eventdata_targetObject:/.*\\1/ OR data_win_eventdata_targetObject:/.*\\2/ OR data_win_eventdata_targetObject:/.*\\4/ OR data_win_eventdata_targetObject:/.*\\5/) AND (data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000006\)/ OR data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000009\)/)

@@ -1,0 +1,165 @@
+name: Suspicious Driver Install by pnputil.exe
+id: a2ea3ae7-d3d0-40a0-a55c-25a45c87cac1
+version: 1
+schema_version: "1.0"
+date: "2022-10-09"
+author: Hai Vaknin @LuxNoBulIshit, Avihay eldad  @aloneliassaf, Austin Songer @austinsonger
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: a2ea3ae7-d3d0-40a0-a55c-25a45c87cac1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects when a possible suspicious driver is being installed via pnputil.exe
+  lolbin. MITRE ATT&CK: T1547.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-i*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/install*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*-a*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/add-driver*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.inf*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\pnputil.exe"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*-i*'; data_win_eventdata_commandLine matches '*/install*';
+  data_win_eventdata_commandLine matches '*-a*', among other conditions.
+
+known_false_positives: >
+  Pnputil.exe being used may be performed by a system administrator.. Verify
+  whether the user identity, user agent, and/or hostname should be making
+  changes in your environment.. Pnputil.exe being executed from unfamiliar users
+  should be investigated. If known behavior is causing false positives, it can
+  be exempted from the rule. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows-hardware/drivers/devtest/pnputil-command-syntax
+  - https://strontic.github.io/xcyclopedia/library/pnputil.exe-60EDC5E6BDBAEE441F2E3AEACD0340D2.html
+  - https://attack.mitre.org/techniques/T1547/
+
+response:
+  message: >
+    Suspicious Driver Install by pnputil.exe detected on host $agent_name$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1547
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547
+  custom_tags:
+    - driver
+    - install
+    - pnputil
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_commandLine:/.*-[Ii].*/ OR data_win_eventdata_commandLine:/.*\/[Ii][Nn][Ss][Tt][Aa][Ll][Ll].*/ OR data_win_eventdata_commandLine:/.*-[Aa].*/ OR data_win_eventdata_commandLine:/.*\/[Aa][Dd][Dd]-[Dd][Rr][Ii][Vv][Ee][Rr].*/ OR data_win_eventdata_commandLine:/.*\.[Ii][Nn][Ff].*/) AND data_win_eventdata_image:/.*\\[Pp][Nn][Pp][Uu][Tt][Ii][Ll]\.[Ee][Xx][Ee]/

@@ -1,0 +1,202 @@
+name: Powershell Create Scheduled Task
+id: 363eccc0-279a-4ccf-a3ab-24c2e63b11fb
+version: 1
+schema_version: "1.0"
+date: "2025-10-07"
+author: frack113
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 363eccc0-279a-4ccf-a3ab-24c2e63b11fb
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Adversaries may abuse the Windows Task Scheduler to perform task scheduling
+  for initial or recurring execution of malicious code. MITRE ATT&CK: T1053.005.
+
+data_source:
+  - PowerShell Script Block Logging EventID 4104
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "4104"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ScheduledTaskAction*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ScheduledTaskTrigger*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ScheduledTaskPrincipal*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ScheduledTaskSettingsSet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*New-ScheduledTask*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_scriptBlockText:
+                    value: "*Register-ScheduledTask*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Invoke-CimMethod*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-ClassName*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*PS_ScheduledTask*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*-NameSpace*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Root\\\\Microsoft\\\\Windows\\\\TaskScheduler*"
+                          case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_scriptBlockText"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Microsoft.PowerShell.Core\\\\Export-ModuleMember*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*Microsoft.Management.Infrastructure.CimInstance*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_scriptBlockText:
+                          value: "*__cmdletization_methodParameter*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_scriptBlockText
+    - data_win_eventdata_scriptBlockId
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires PowerShell Script Block Logging (EventID 4104) enabled via GPO (Turn
+  on PowerShell Script Block Logging) and the
+  Microsoft-Windows-PowerShell/Operational channel collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf), ingested into the wazuh-*
+  indices. The detection looks for events where
+  data_win_eventdata_scriptBlockText matches '*New-ScheduledTaskAction*';
+  data_win_eventdata_scriptBlockText matches '*New-ScheduledTaskTrigger*';
+  data_win_eventdata_scriptBlockText matches '*New-ScheduledTaskPrincipal*',
+  among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1053.005/T1053.005.md#atomic-test-4---powershell-cmdlet-scheduled-task
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1053.005/T1053.005.md#atomic-test-6---wmi-invoke-cimmethod-scheduled-task
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Powershell Create Scheduled Task detected on host $agent_name$. Matched
+    data_win_eventdata_scriptBlockText: $data_win_eventdata_scriptBlockText$.
+    Matched data_win_eventdata_scriptBlockId:
+    $data_win_eventdata_scriptBlockId$. MITRE ATT&CK: T1053.005
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_scriptBlockText
+      type: powershell_script
+    - field: data_win_eventdata_scriptBlockId
+      type: powershell_script
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053.005
+  custom_tags:
+    - powershell
+    - create
+    - scheduled
+    - privilege_escalation
+    - execution
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4104" AND (data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk][Aa][Cc][Tt][Ii][Oo][Nn].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk][Tt][Rr][Ii][Gg][Gg][Ee][Rr].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk][Pp][Rr][Ii][Nn][Cc][Ii][Pp][Aa][Ll].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk][Ss][Ee][Tt][Tt][Ii][Nn][Gg][Ss][Ss][Ee][Tt].*/ OR data_win_eventdata_scriptBlockText:/.*[Nn][Ee][Ww]-[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk].*/ OR data_win_eventdata_scriptBlockText:/.*[Rr][Ee][Gg][Ii][Ss][Tt][Ee][Rr]-[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk].*/ OR (data_win_eventdata_scriptBlockText:/.*[Ii][Nn][Vv][Oo][Kk][Ee]-[Cc][Ii][Mm][Mm][Ee][Tt][Hh][Oo][Dd].*/ AND data_win_eventdata_scriptBlockText:/.*-[Cc][Ll][Aa][Ss][Ss][Nn][Aa][Mm][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*[Pp][Ss]_[Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Dd][Tt][Aa][Ss][Kk].*/ AND data_win_eventdata_scriptBlockText:/.*-[Nn][Aa][Mm][Ee][Ss][Pp][Aa][Cc][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*[Rr][Oo][Oo][Tt]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Tt][Aa][Ss][Kk][Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Rr].*/)) AND _exists_:data_win_eventdata_scriptBlockText AND NOT (data_win_eventdata_scriptBlockText:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll]\.[Cc][Oo][Rr][Ee]\\[Ee][Xx][Pp][Oo][Rr][Tt]-[Mm][Oo][Dd][Uu][Ll][Ee][Mm][Ee][Mm][Bb][Ee][Rr].*/ AND data_win_eventdata_scriptBlockText:/.*[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Mm][Aa][Nn][Aa][Gg][Ee][Mm][Ee][Nn][Tt]\.[Ii][Nn][Ff][Rr][Aa][Ss][Tt][Rr][Uu][Cc][Tt][Uu][Rr][Ee]\.[Cc][Ii][Mm][Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee].*/ AND data_win_eventdata_scriptBlockText:/.*__[Cc][Mm][Dd][Ll][Ee][Tt][Ii][Zz][Aa][Tt][Ii][Oo][Nn]_[Mm][Ee][Tt][Hh][Oo][Dd][Pp][Aa][Rr][Aa][Mm][Ee][Tt][Ee][Rr].*/)

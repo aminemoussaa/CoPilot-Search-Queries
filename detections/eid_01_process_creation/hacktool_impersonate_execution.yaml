@@ -1,0 +1,173 @@
+name: HackTool - Impersonate Execution
+id: cf0c254b-22f1-4b2b-8221-e137b3c0af94
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Sai Prashanth Pulisetti @pulisettis
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cf0c254b-22f1-4b2b-8221-e137b3c0af94
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of the Impersonate tool. Which can be used to manipulate
+  tokens on a Windows computers remotely (PsExec/WmiExec) or interactively.
+  MITRE ATT&CK: T1134.001, T1134.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*impersonate.exe*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* list *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* exec *"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "* adduser *"
+                                case_insensitive: true
+                        minimum_should_match: 1
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*MD5=9520714AB576B0ED01D1513691377D01*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=E81CC96E2118DC4FBFE5BAD1604E0AC7681960143E2101E1A024D52264BB0A8A*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=0A358FFC1697B7A07D0E817AC740DF62*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_hashes
+    - data_win_eventdata_image
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_commandLine matches
+  '*impersonate.exe*'; data_win_eventdata_commandLine matches '* list *';
+  data_win_eventdata_commandLine matches '* exec *', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://sensepost.com/blog/2022/abusing-windows-tokens-to-compromise-active-directory-without-touching-lsass/
+  - https://github.com/sensepost/impersonate
+  - https://attack.mitre.org/techniques/T1134/001/
+  - https://attack.mitre.org/techniques/T1134/003/
+
+response:
+  message: >
+    HackTool - Impersonate Execution detected on host $agent_name$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. Matched
+    data_win_eventdata_hashes: $data_win_eventdata_hashes$. MITRE ATT&CK:
+    T1134.001, T1134.003
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_commandLine
+      type: process
+    - field: data_win_eventdata_hashes
+      type: file_hash
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1134.001
+    - T1134.003
+  custom_tags:
+    - hacktool
+    - impersonate
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND ((data_win_eventdata_commandLine:/.*[Ii][Mm][Pp][Ee][Rr][Ss][Oo][Nn][Aa][Tt][Ee]\.[Ee][Xx][Ee].*/ AND (data_win_eventdata_commandLine:/.* [Ll][Ii][Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.* [Ee][Xx][Ee][Cc] .*/ OR data_win_eventdata_commandLine:/.* [Aa][Dd][Dd][Uu][Ss][Ee][Rr] .*/)) OR data_win_eventdata_hashes:/.*[Mm][Dd]5=9520714[Aa][Bb]576[Bb]0[Ee][Dd]01[Dd]1513691377[Dd]01.*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=[Ee]81[Cc][Cc]96[Ee]2118[Dd][Cc]4[Ff][Bb][Ff][Ee]5[Bb][Aa][Dd]1604[Ee]0[Aa][Cc]7681960143[Ee]2101[Ee]1[Aa]024[Dd]52264[Bb][Bb]0[Aa]8[Aa].*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=0[Aa]358[Ff][Ff][Cc]1697[Bb]7[Aa]07[Dd]0[Ee]817[Aa][Cc]740[Dd][Ff]62.*/)

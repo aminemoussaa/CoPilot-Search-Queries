@@ -1,0 +1,401 @@
+name: CurrentVersion NT Autorun Keys Modification
+id: cbf93e5d-ca6c-4722-8bea-e9119007c248
+version: 1
+schema_version: "1.0"
+date: "2025-10-22"
+author: Victor Sergeev, Daniil Yugoslavskiy, Gleb Sukhodolskiy, Timur Zinniatullin, oscd.community, Tim Shelton, frack113 (split)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: cbf93e5d-ca6c-4722-8bea-e9119007c248
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects modification of autostart extensibility point (ASEP) in registry.
+  MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - wildcard:
+            data_win_eventdata_targetObject:
+              value: "*\\\\SOFTWARE\\\\Microsoft\\\\Windows NT\\\\CurrentVersion*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Winlogon\\\\VmApplet*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Winlogon\\\\Userinit*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Winlogon\\\\Taskman*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Winlogon\\\\Shell*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Winlogon\\\\GpExtensions*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Winlogon\\\\AppSetup*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Winlogon\\\\AlternateShells\\\\AvailableShells*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Windows\\\\IconServiceLib*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Windows\\\\Appinit_Dlls*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Image File Execution Options*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Font Drivers*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Drivers32*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Windows\\\\Run*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Windows\\\\Load*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_details:
+                          value: "(Empty)"
+                          case_insensitive: true
+                    - bool:
+                        must_not:
+                          - exists:
+                              field: "data_win_eventdata_details"
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\poqexec.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Image File Execution Options\\\\*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\DisableExceptionChainValidation"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\MitigationOptions"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\system32\\svchost.exe"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Winlogon\\\\GPExtensions\\\\{827D319E-6EAC-11D2-A4EA-00C04F79F83A}\\\\PreviousPolicyAreas*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\Winlogon\\\\GPExtensions\\\\{827D319E-6EAC-11D2-A4EA-00C04F79F83A}\\\\MaxNoGPOListChangesInterval*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_details:
+                                      value: "DWORD (0x00000001)"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_details:
+                                      value: "DWORD (0x00000009)"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_details:
+                                      value: "DWORD (0x000003c0)"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - bool:
+                        must:
+                          - term:
+                              data_win_eventdata_image:
+                                value: "C:\\Windows\\System32\\RuntimeBroker.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\runtimebroker.exe\\\\Microsoft.Windows.ShellExperienceHost*"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetObject"
+        - exists:
+            field: "data_win_eventdata_details"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Program Files (x86)\\\\Microsoft\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\MicrosoftEdgeUpdate.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files (x86)\\\\Avira\\\\Antivirus\\\\avguard.exe*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Avira\\\\Antivirus\\\\avguard.exe*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*SOFTWARE\\\\WOW6432Node\\\\Avira\\\\Antivirus\\\\Overwrite_Keys\\\\HKEY_LOCAL_MACHINE\\\\Software\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\Winlogon\\\\*"
+                                case_insensitive: true
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\userinit\\\\UseAsDefault"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetObject:
+                                      value: "*\\\\shell\\\\UseAsDefault"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - term:
+                                    data_win_eventdata_details:
+                                      value: "explorer.exe"
+                                      case_insensitive: true
+                                - term:
+                                    data_win_eventdata_details:
+                                      value: "C:\\Windows\\system32\\userinit.exe,"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\ClickToRunStore\\\\HKLM\\\\SOFTWARE\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetObject:
+                          value: "*\\\\ClickToRun\\\\REGISTRY\\\\MACHINE\\\\Software\\\\Microsoft\\\\Windows NT\\\\CurrentVersion\\\\*"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files\\Microsoft Office\\root\\integration\\integrator.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Program Files (x86)\\Microsoft Office\\root\\integration\\integrator.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Common Files\\\\Microsoft Shared\\\\ClickToRun\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_image:
+                                      value: "C:\\\\Program Files\\\\Common Files\\\\Microsoft Shared\\\\ClickToRun\\\\Updates\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\OfficeClickToRun.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "C:\\\\Windows\\\\Microsoft.NET\\\\Framework*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\ngen.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\StandaloneUpdater\\\\OneDriveSetup.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetObject:
+                                value: "*\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\RunOnce\\\\Delete Cached Update Binary"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "C:\\\\Windows\\\\system32\\\\cmd.exe /q /c del /q \"C:\\\\Users\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_details:
+                                value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\Update\\\\OneDriveSetup.exe\""
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_image
+    - data_win_eventdata_details
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\SOFTWARE\Microsoft\Windows NT\CurrentVersion*';
+  data_win_eventdata_targetObject matches '*\Winlogon\VmApplet*';
+  data_win_eventdata_targetObject matches '*\Winlogon\Userinit*', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate software automatically (mostly, during installation) sets up
+  autorun keys for legitimate reason. Legitimate administrator sets up autorun
+  keys for legitimate reason. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://github.com/redcanaryco/atomic-red-team/blob/f339e7da7d05f6057fdfcdd3742bfcf365fee2a9/atomics/T1547.001/T1547.001.md
+  - https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns
+  - https://gist.github.com/GlebSukhodolskiy/0fc5fa5f482903064b448890db1eaf9d
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    CurrentVersion NT Autorun Keys Modification detected on host $agent_name$.
+    Matched data_win_eventdata_targetObject: $data_win_eventdata_targetObject$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1547.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - currentversion
+    - autorun
+    - registry
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND data_win_eventdata_targetObject:/.*\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn].*/ AND (data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Vv][Mm][Aa][Pp][Pp][Ll][Ee][Tt].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Uu][Ss][Ee][Rr][Ii][Nn][Ii][Tt].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Tt][Aa][Ss][Kk][Mm][Aa][Nn].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Ss][Hh][Ee][Ll][Ll].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Gg][Pp][Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Aa][Pp][Pp][Ss][Ee][Tt][Uu][Pp].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Aa][Ll][Tt][Ee][Rr][Nn][Aa][Tt][Ee][Ss][Hh][Ee][Ll][Ll][Ss]\\[Aa][Vv][Aa][Ii][Ll][Aa][Bb][Ll][Ee][Ss][Hh][Ee][Ll][Ll][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ii][Cc][Oo][Nn][Ss][Ee][Rr][Vv][Ii][Cc][Ee][Ll][Ii][Bb].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Aa][Pp][Pp][Ii][Nn][Ii][Tt]_[Dd][Ll][Ll][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ii][Mm][Aa][Gg][Ee] [Ff][Ii][Ll][Ee] [Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn] [Oo][Pp][Tt][Ii][Oo][Nn][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ff][Oo][Nn][Tt] [Dd][Rr][Ii][Vv][Ee][Rr][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Dd][Rr][Ii][Vv][Ee][Rr][Ss]32.*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Rr][Uu][Nn].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ll][Oo][Aa][Dd].*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND NOT (data_win_eventdata_details:/\([Ee][Mm][Pp][Tt][Yy]\)/ OR NOT _exists_:data_win_eventdata_details OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Pp][Oo][Qq][Ee][Xx][Ee][Cc]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_targetObject:/.*\\[Ii][Mm][Aa][Gg][Ee] [Ff][Ii][Ll][Ee] [Ee][Xx][Ee][Cc][Uu][Tt][Ii][Oo][Nn] [Oo][Pp][Tt][Ii][Oo][Nn][Ss]\\.*/ AND (data_win_eventdata_targetObject:/.*\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ee][Xx][Cc][Ee][Pp][Tt][Ii][Oo][Nn][Cc][Hh][Aa][Ii][Nn][Vv][Aa][Ll][Ii][Dd][Aa][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_targetObject:/.*\\[Mm][Ii][Tt][Ii][Gg][Aa][Tt][Ii][Oo][Nn][Oo][Pp][Tt][Ii][Oo][Nn][Ss]/)) OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Vv][Cc][Hh][Oo][Ss][Tt]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Gg][Pp][Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\\{827[Dd]319[Ee]-6[Ee][Aa][Cc]-11[Dd]2-[Aa]4[Ee][Aa]-00[Cc]04[Ff]79[Ff]83[Aa]\}\\[Pp][Rr][Ee][Vv][Ii][Oo][Uu][Ss][Pp][Oo][Ll][Ii][Cc][Yy][Aa][Rr][Ee][Aa][Ss].*/ OR data_win_eventdata_targetObject:/.*\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\[Gg][Pp][Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\\{827[Dd]319[Ee]-6[Ee][Aa][Cc]-11[Dd]2-[Aa]4[Ee][Aa]-00[Cc]04[Ff]79[Ff]83[Aa]\}\\[Mm][Aa][Xx][Nn][Oo][Gg][Pp][Oo][Ll][Ii][Ss][Tt][Cc][Hh][Aa][Nn][Gg][Ee][Ss][Ii][Nn][Tt][Ee][Rr][Vv][Aa][Ll].*/) AND (data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000001\)/ OR data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000009\)/ OR data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]000003[Cc]0\)/)) OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Rr][Uu][Nn][Tt][Ii][Mm][Ee][Bb][Rr][Oo][Kk][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Rr][Uu][Nn][Tt][Ii][Mm][Ee][Bb][Rr][Oo][Kk][Ee][Rr]\.[Ee][Xx][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.[Ss][Hh][Ee][Ll][Ll][Ee][Xx][Pp][Ee][Rr][Ii][Ee][Nn][Cc][Ee][Hh][Oo][Ss][Tt].*/)) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetObject AND _exists_:data_win_eventdata_details AND NOT ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Tt][Ee][Mm][Pp]\\.*/ AND data_win_eventdata_image:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt][Ee][Dd][Gg][Ee][Uu][Pp][Dd][Aa][Tt][Ee]\.[Ee][Xx][Ee]/) OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Ii][Rr][Aa]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\\[Aa][Vv][Gg][Uu][Aa][Rr][Dd]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Vv][Ii][Rr][Aa]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\\[Aa][Vv][Gg][Uu][Aa][Rr][Dd]\.[Ee][Xx][Ee].*/) AND data_win_eventdata_targetObject:/.*[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Ww][Oo][Ww]6432[Nn][Oo][Dd][Ee]\\[Aa][Vv][Ii][Rr][Aa]\\[Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]\\[Oo][Vv][Ee][Rr][Ww][Rr][Ii][Tt][Ee]_[Kk][Ee][Yy][Ss]\\[Hh][Kk][Ee][Yy]_[Ll][Oo][Cc][Aa][Ll]_[Mm][Aa][Cc][Hh][Ii][Nn][Ee]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Ww][Ii][Nn][Ll][Oo][Gg][Oo][Nn]\\.*/ AND (data_win_eventdata_targetObject:/.*\\[Uu][Ss][Ee][Rr][Ii][Nn][Ii][Tt]\\[Uu][Ss][Ee][Aa][Ss][Dd][Ee][Ff][Aa][Uu][Ll][Tt]/ OR data_win_eventdata_targetObject:/.*\\[Ss][Hh][Ee][Ll][Ll]\\[Uu][Ss][Ee][Aa][Ss][Dd][Ee][Ff][Aa][Uu][Ll][Tt]/) AND (data_win_eventdata_details:/[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_details:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Uu][Ss][Ee][Rr][Ii][Nn][Ii][Tt]\.[Ee][Xx][Ee],/)) OR data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn][Ss][Tt][Oo][Rr][Ee]\\[Hh][Kk][Ll][Mm]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\.*/ OR data_win_eventdata_targetObject:/.*\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\[Rr][Ee][Gg][Ii][Ss][Tt][Rr][Yy]\\[Mm][Aa][Cc][Hh][Ii][Nn][Ee]\\[Ss][Oo][Ff][Tt][Ww][Aa][Rr][Ee]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Nn][Tt]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Ii][Oo][Nn]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Oo][Ff][Ff][Ii][Cc][Ee]\\[Rr][Oo][Oo][Tt]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Ii][Oo][Nn]\\[Ii][Nn][Tt][Ee][Gg][Rr][Aa][Tt][Oo][Rr]\.[Ee][Xx][Ee]/ OR ((data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\.*/ OR data_win_eventdata_image:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Oo][Mm][Mm][Oo][Nn] [Ff][Ii][Ll][Ee][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\\[Uu][Pp][Dd][Aa][Tt][Ee][Ss]\\.*/) AND data_win_eventdata_image:/.*\\[Oo][Ff][Ff][Ii][Cc][Ee][Cc][Ll][Ii][Cc][Kk][Tt][Oo][Rr][Uu][Nn]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\.[Nn][Ee][Tt]\\[Ff][Rr][Aa][Mm][Ee][Ww][Oo][Rr][Kk].*/ AND data_win_eventdata_image:/.*\\[Nn][Gg][Ee][Nn]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee]\\[Ss][Tt][Aa][Nn][Dd][Aa][Ll][Oo][Nn][Ee][Uu][Pp][Dd][Aa][Tt][Ee][Rr]\\[Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee][Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt][Vv][Ee][Rr][Ss][Ii][Oo][Nn]\\[Rr][Uu][Nn][Oo][Nn][Cc][Ee]\\[Dd][Ee][Ll][Ee][Tt][Ee] [Cc][Aa][Cc][Hh][Ee][Dd] [Uu][Pp][Dd][Aa][Tt][Ee] [Bb][Ii][Nn][Aa][Rr][Yy]/ AND data_win_eventdata_details:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Cc][Mm][Dd]\.[Ee][Xx][Ee] \/[Qq] \/[Cc] [Dd][Ee][Ll] \/[Qq] \"[Cc]:\\[Uu][Ss][Ee][Rr][Ss]\\.*/ AND data_win_eventdata_details:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee]\\[Uu][Pp][Dd][Aa][Tt][Ee]\\[Oo][Nn][Ee][Dd][Rr][Ii][Vv][Ee][Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee]\"/))

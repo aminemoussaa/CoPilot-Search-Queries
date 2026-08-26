@@ -1,0 +1,195 @@
+name: HackTool - SharpMove Tool Execution
+id: 055fb54c-a8f4-4aee-bd44-f74cf30a0d9d
+version: 1
+schema_version: "1.0"
+date: "2024-01-29"
+author: Luca Di Bartolomeo (CrimpSec)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 055fb54c-a8f4-4aee-bd44-f74cf30a0d9d
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of SharpMove, a .NET utility performing multiple tasks
+  such as "Task Creation", "SCM" query, VBScript execution using WMI via its PE
+  metadata and command line options. MITRE ATT&CK: T1021.002.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SharpMove.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "SharpMove.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*computername=*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=create*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=dcom*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=executevbs*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=hijackdcom*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=modschtask*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=modsvc*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=query*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=scm*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=startservice*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*action=taskscheduler*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\SharpMove.exe'; data_win_eventdata_originalFileName equals 'SharpMove.exe';
+  data_win_eventdata_commandLine matches '*computername=*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://github.com/0xthirteen/SharpMove/
+  - https://pentestlab.blog/tag/sharpmove/
+  - https://attack.mitre.org/techniques/T1021/002/
+
+response:
+  message: >
+    HackTool - SharpMove Tool Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1021.002
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1021.002
+  custom_tags:
+    - hacktool
+    - sharpmove
+    - process_creation
+    - sysmon
+    - lateral_movement
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Hh][Aa][Rr][Pp][Mm][Oo][Vv][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Hh][Aa][Rr][Pp][Mm][Oo][Vv][Ee]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_commandLine:/.*[Cc][Oo][Mm][Pp][Uu][Tt][Ee][Rr][Nn][Aa][Mm][Ee]=.*/ AND (data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Cc][Rr][Ee][Aa][Tt][Ee].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Dd][Cc][Oo][Mm].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Ee][Xx][Ee][Cc][Uu][Tt][Ee][Vv][Bb][Ss].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Hh][Ii][Jj][Aa][Cc][Kk][Dd][Cc][Oo][Mm].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Mm][Oo][Dd][Ss][Cc][Hh][Tt][Aa][Ss][Kk].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Mm][Oo][Dd][Ss][Vv][Cc].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Qq][Uu][Ee][Rr][Yy].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Ss][Cc][Mm].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Ss][Tt][Aa][Rr][Tt][Ss][Ee][Rr][Vv][Ii][Cc][Ee].*/ OR data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Oo][Nn]=[Tt][Aa][Ss][Kk][Ss][Cc][Hh][Ee][Dd][Uu][Ll][Ee][Rr].*/)))

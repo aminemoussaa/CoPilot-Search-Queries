@@ -1,0 +1,149 @@
+name: ESXi VM Kill Via ESXCLI
+id: 2992ac4d-31e9-4325-99f2-b18a73221bb2
+version: 1
+schema_version: "1.0"
+date: "2023-09-04"
+author: Nasreddine Bencherchali (Nextron Systems), Cedric Maurugeon
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2992ac4d-31e9-4325-99f2-b18a73221bb2
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of the "esxcli" command with the "vm" and "kill" flag in
+  order to kill/shutdown a specific VM. MITRE ATT&CK: T1059.012, T1529.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/esxcli"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*vm process*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*kill*"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/esxcli';
+  data_process_exec_process_arguments matches '*vm process*';
+  data_process_exec_process_arguments matches '*kill*'.
+
+known_false_positives: >
+  Legitimate administration activities. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.crowdstrike.com/blog/hypervisor-jackpotting-ecrime-actors-increase-targeting-of-esxi-servers/
+  - https://developer.broadcom.com/xapis/esxcli-command-reference/7.0.0/namespace/esxcli_vm.html
+  - https://www.secuinfra.com/en/techtalk/hide-your-hypervisor-analysis-of-esxiargs-ransomware/
+  - https://www.trendmicro.com/en_us/research/22/e/new-linux-based-ransomware-cheerscrypt-targets-exsi-devices.html
+  - https://attack.mitre.org/techniques/T1059/012/
+  - https://attack.mitre.org/techniques/T1529/
+
+response:
+  message: >
+    ESXi VM Kill Via ESXCLI detected on host $agent_name$. Matched
+    data_process_exec_process_binary: $data_process_exec_process_binary$.
+    Matched data_process_exec_process_arguments:
+    $data_process_exec_process_arguments$. MITRE ATT&CK: T1059.012, T1529
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1059.012
+    - T1529
+  custom_tags:
+    - esxcli
+    - linux
+    - tetragon
+    - process_creation
+    - execution
+    - impact
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Ee][Ss][Xx][Cc][Ll][Ii]/ AND data_process_exec_process_arguments:/.*[Vv][Mm] [Pp][Rr][Oo][Cc][Ee][Ss][Ss].*/ AND data_process_exec_process_arguments:/.*[Kk][Ii][Ll][Ll].*/

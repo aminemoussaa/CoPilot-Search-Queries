@@ -1,0 +1,259 @@
+name: Suspicious Process Patterns NTDS.DIT Exfil
+id: 8bc64091-6875-4881-aaf9-7bd25b5dda08
+version: 1
+schema_version: "1.0"
+date: "2022-11-10"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8bc64091-6875-4881-aaf9-7bd25b5dda08
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious process patterns used in NTDS.DIT exfiltration. MITRE
+  ATT&CK: T1003.003.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\NTDSDump.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\NTDSDumpEx.exe"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ntds.dit*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*system.hiv*"
+                          case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*NTDSgrab.ps1*"
+                    case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ac i ntds*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*create full*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/c copy *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\windows\\\\ntds\\\\ntds.dit*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*activate instance ntds*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*create full*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*powershell*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ntds.dit*"
+                          case_insensitive: true
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*ntds.dit*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\apache*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\tomcat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\AppData\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\Public\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_parentImage:
+                                value: "*\\\\PerfLogs\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\apache*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\tomcat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\AppData\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Temp\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\Public\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\PerfLogs\\\\*"
+                                case_insensitive: true
+                        minimum_should_match: 1
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\NTDSDump.exe'; data_win_eventdata_image matches '*\NTDSDumpEx.exe';
+  data_win_eventdata_commandLine matches '*ntds.dit*', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.ired.team/offensive-security/credential-access-and-credential-dumping/ntds.dit-enumeration
+  - https://www.n00py.io/2022/03/manipulating-user-passwords-without-mimikatz/
+  - https://pentestlab.blog/tag/ntds-dit/
+  - https://github.com/samratashok/nishang/blob/414ee1104526d7057f9adaeee196d91ae447283e/Gather/Copy-VSS.ps1
+  - https://github.com/zcgonvh/NTDSDumpEx
+  - https://github.com/rapid7/metasploit-framework/blob/d297adcebb5c1df6fe30b12ca79b161deb71571c/data/post/powershell/NTDSgrab.ps1
+  - https://blog.talosintelligence.com/2022/08/recent-cyber-attack.html?m=1
+  - https://attack.mitre.org/techniques/T1003/003/
+
+response:
+  message: >
+    Suspicious Process Patterns NTDS.DIT Exfil detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$. MITRE
+    ATT&CK: T1003.003
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.003
+  custom_tags:
+    - patterns
+    - exfil
+    - process_creation
+    - sysmon
+    - credential_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Nn][Tt][Dd][Ss][Dd][Uu][Mm][Pp]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Tt][Dd][Ss][Dd][Uu][Mm][Pp][Ee][Xx]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_commandLine:/.*[Nn][Tt][Dd][Ss]\.[Dd][Ii][Tt].*/ AND data_win_eventdata_commandLine:/.*[Ss][Yy][Ss][Tt][Ee][Mm]\.[Hh][Ii][Vv].*/) OR data_win_eventdata_commandLine:/.*[Nn][Tt][Dd][Ss][Gg][Rr][Aa][Bb]\.[Pp][Ss]1.*/ OR (data_win_eventdata_commandLine:/.*[Aa][Cc] [Ii] [Nn][Tt][Dd][Ss].*/ AND data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee] [Ff][Uu][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*\/[Cc] [Cc][Oo][Pp][Yy] .*/ AND data_win_eventdata_commandLine:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Nn][Tt][Dd][Ss]\\[Nn][Tt][Dd][Ss]\.[Dd][Ii][Tt].*/) OR (data_win_eventdata_commandLine:/.*[Aa][Cc][Tt][Ii][Vv][Aa][Tt][Ee] [Ii][Nn][Ss][Tt][Aa][Nn][Cc][Ee] [Nn][Tt][Dd][Ss].*/ AND data_win_eventdata_commandLine:/.*[Cc][Rr][Ee][Aa][Tt][Ee] [Ff][Uu][Ll][Ll].*/) OR (data_win_eventdata_commandLine:/.*[Pp][Oo][Ww][Ee][Rr][Ss][Hh][Ee][Ll][Ll].*/ AND data_win_eventdata_commandLine:/.*[Nn][Tt][Dd][Ss]\.[Dd][Ii][Tt].*/) OR (data_win_eventdata_commandLine:/.*[Nn][Tt][Dd][Ss]\.[Dd][Ii][Tt].*/ AND (data_win_eventdata_parentImage:/.*\\[Aa][Pp][Aa][Cc][Hh][Ee].*/ OR data_win_eventdata_parentImage:/.*\\[Tt][Oo][Mm][Cc][Aa][Tt].*/ OR data_win_eventdata_parentImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\.*/ OR data_win_eventdata_parentImage:/.*\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_parentImage:/.*\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_parentImage:/.*\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/ OR data_win_eventdata_image:/.*\\[Aa][Pp][Aa][Cc][Hh][Ee].*/ OR data_win_eventdata_image:/.*\\[Tt][Oo][Mm][Cc][Aa][Tt].*/ OR data_win_eventdata_image:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\.*/ OR data_win_eventdata_image:/.*\\[Tt][Ee][Mm][Pp]\\.*/ OR data_win_eventdata_image:/.*\\[Pp][Uu][Bb][Ll][Ii][Cc]\\.*/ OR data_win_eventdata_image:/.*\\[Pp][Ee][Rr][Ff][Ll][Oo][Gg][Ss]\\.*/)))

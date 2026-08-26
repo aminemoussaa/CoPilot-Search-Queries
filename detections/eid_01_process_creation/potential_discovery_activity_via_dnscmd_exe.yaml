@@ -1,0 +1,152 @@
+name: Potential Discovery Activity Via Dnscmd.EXE
+id: b6457d63-d2a2-4e29-859d-4e7affc153d1
+version: 1
+schema_version: "1.0"
+date: "2023-02-04"
+author: "@gott_cyber"
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: b6457d63-d2a2-4e29-859d-4e7affc153d1
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects an attempt to leverage dnscmd.exe to enumerate the DNS zones of a
+  domain. DNS zones used to host the DNS records for a particular domain.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\dnscmd.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/enumrecords*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/enumzones*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/ZonePrint*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*/info*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\dnscmd.exe'; data_win_eventdata_commandLine matches '*/enumrecords*';
+  data_win_eventdata_commandLine matches '*/enumzones*', among other conditions.
+
+known_false_positives: >
+  Legitimate administration use. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/dnscmd
+  - https://learn.microsoft.com/en-us/azure/dns/dns-zones-records
+  - https://lolbas-project.github.io/lolbas/Binaries/Dnscmd/
+
+response:
+  message: >
+    Potential Discovery Activity Via Dnscmd.EXE detected on host $agent_name$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  custom_tags:
+    - dnscmd
+    - process_creation
+    - sysmon
+    - discovery
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_image:/.*\\[Dd][Nn][Ss][Cc][Mm][Dd]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.*\/[Ee][Nn][Uu][Mm][Rr][Ee][Cc][Oo][Rr][Dd][Ss].*/ OR data_win_eventdata_commandLine:/.*\/[Ee][Nn][Uu][Mm][Zz][Oo][Nn][Ee][Ss].*/ OR data_win_eventdata_commandLine:/.*\/[Zz][Oo][Nn][Ee][Pp][Rr][Ii][Nn][Tt].*/ OR data_win_eventdata_commandLine:/.*\/[Ii][Nn][Ff][Oo].*/)

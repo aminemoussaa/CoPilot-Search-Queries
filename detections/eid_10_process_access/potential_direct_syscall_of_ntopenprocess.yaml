@@ -1,0 +1,326 @@
+name: Potential Direct Syscall of NtOpenProcess
+id: 3f3f3506-1895-401b-9cc3-e86b16e630d0
+version: 1
+schema_version: "1.0"
+date: "2023-12-13"
+author: Christian Burkard (Nextron Systems), Tim Shelton (FP)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 3f3f3506-1895-401b-9cc3-e86b16e630d0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects potential calls to NtOpenProcess directly from NTDLL. MITRE ATT&CK:
+  T1106.
+
+data_source:
+  - Sysmon EventID 10 - Process Access
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "10"
+        
+        - wildcard:
+            data_win_eventdata_callTrace:
+              value: "UNKNOWN*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_targetImage"
+        - exists:
+            field: "data_win_eventdata_sourceImage"
+        - exists:
+            field: "data_win_system_providerName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*vcredist_x64.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*vcredist_x64.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*:\\\\Program Files (x86)\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*:\\\\Program Files\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*:\\\\Windows\\\\System32\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*:\\\\Windows\\\\SysWOW64\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_sourceImage:
+                                      value: "*:\\\\Windows\\\\WinSxS\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                          - bool:
+                              should:
+                                - wildcard:
+                                    data_win_eventdata_targetImage:
+                                      value: "*:\\\\Program Files (x86)\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetImage:
+                                      value: "*:\\\\Program Files\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetImage:
+                                      value: "*:\\\\Windows\\\\System32\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetImage:
+                                      value: "*:\\\\Windows\\\\SysWOW64\\\\*"
+                                      case_insensitive: true
+                                - wildcard:
+                                    data_win_eventdata_targetImage:
+                                      value: "*:\\\\Windows\\\\WinSxS\\\\*"
+                                      case_insensitive: true
+                              minimum_should_match: 1
+                    - term:
+                        data_win_system_providerName:
+                          value: "Microsoft-Windows-Kernel-Audit-API-Calls"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_targetImage"
+        - exists:
+            field: "data_win_eventdata_sourceImage"
+        - exists:
+            field: "data_win_eventdata_grantedAccess"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*:\\\\Windows\\\\system32\\\\systeminfo.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*setup64.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*:\\\\Windows\\\\Explorer.EXE"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*:\\\\Program Files\\\\Cylance\\\\Desktop\\\\CylanceUI.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*AmazonSSMAgentSetup.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*AmazonSSMAgentSetup.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\AppData\\\\Local\\\\Programs\\\\Microsoft VS Code\\\\Code.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*\\\\AppData\\\\Local\\\\Programs\\\\Microsoft VS Code\\\\Code.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\current\\\\Teams.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\current\\\\Teams.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*\\\\AppData\\\\Local\\\\Discord\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*\\\\Discord.exe"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\AppData\\\\Local\\\\yammerdesktop\\\\app-*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\Yammer.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*\\\\AppData\\\\Local\\\\yammerdesktop\\\\app-*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*\\\\Yammer.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_grantedAccess:
+                                value: "0x1000"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetImage:
+                          value: "*\\\\Evernote\\\\Evernote.exe"
+                          case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*:\\\\Program Files\\\\Adobe\\\\Acrobat DC\\\\Acrobat\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_sourceImage:
+                                value: "*\\\\AcroCEF.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*:\\\\Program Files\\\\Adobe\\\\Acrobat DC\\\\Acrobat\\\\*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_targetImage:
+                                value: "*\\\\AcroCEF.exe"
+                                case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_callTrace
+    - data_win_eventdata_targetImage
+    - data_win_eventdata_sourceImage
+    - data_win_system_providerName
+    - data_win_eventdata_grantedAccess
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 10 (process access) enabled in the Sysmon
+  configuration for the monitored target processes and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_callTrace matches
+  'UNKNOWN*'; data_win_eventdata_targetImage matches '*vcredist_x64.exe';
+  data_win_eventdata_sourceImage matches '*vcredist_x64.exe', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://medium.com/falconforce/falconfriday-direct-system-calls-and-cobalt-strike-bofs-0xff14-741fa8e1bdd6
+  - https://attack.mitre.org/techniques/T1106/
+
+response:
+  message: >
+    Potential Direct Syscall of NtOpenProcess detected on host $agent_name$.
+    Matched data_win_eventdata_callTrace: $data_win_eventdata_callTrace$.
+    Matched data_win_eventdata_targetImage: $data_win_eventdata_targetImage$.
+    MITRE ATT&CK: T1106
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_callTrace
+      type: other
+    - field: data_win_eventdata_targetImage
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1106
+  custom_tags:
+    - direct
+    - syscall
+    - ntopenprocess
+    - process_access
+    - sysmon
+    - execution
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"10" AND data_win_eventdata_callTrace:/[Uu][Nn][Kk][Nn][Oo][Ww][Nn].*/ AND _exists_:data_win_eventdata_targetImage AND _exists_:data_win_eventdata_sourceImage AND _exists_:data_win_system_providerName AND NOT ((data_win_eventdata_targetImage:/.*[Vv][Cc][Rr][Ee][Dd][Ii][Ss][Tt]_[Xx]64\.[Ee][Xx][Ee]/ AND data_win_eventdata_sourceImage:/.*[Vv][Cc][Rr][Ee][Dd][Ii][Ss][Tt]_[Xx]64\.[Ee][Xx][Ee]/) OR ((data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_sourceImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_sourceImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR data_win_eventdata_sourceImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Xx][Ss]\\.*/) AND (data_win_eventdata_targetImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\.*/ OR data_win_eventdata_targetImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\.*/ OR data_win_eventdata_targetImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\.*/ OR data_win_eventdata_targetImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Ww][Oo][Ww]64\\.*/ OR data_win_eventdata_targetImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ww][Ii][Nn][Ss][Xx][Ss]\\.*/)) OR data_win_system_providerName:/[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]-[Ww][Ii][Nn][Dd][Oo][Ww][Ss]-[Kk][Ee][Rr][Nn][Ee][Ll]-[Aa][Uu][Dd][Ii][Tt]-[Aa][Pp][Ii]-[Cc][Aa][Ll][Ll][Ss]/) AND _exists_:data_win_eventdata_targetImage AND _exists_:data_win_eventdata_sourceImage AND _exists_:data_win_eventdata_grantedAccess AND NOT ((data_win_eventdata_targetImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ss][Yy][Ss][Tt][Ee][Mm][Ii][Nn][Ff][Oo]\.[Ee][Xx][Ee]/ AND data_win_eventdata_sourceImage:/.*[Ss][Ee][Tt][Uu][Pp]64\.[Ee][Xx][Ee]/) OR (data_win_eventdata_sourceImage:/.*:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ee][Xx][Pp][Ll][Oo][Rr][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Cc][Yy][Ll][Aa][Nn][Cc][Ee]\\[Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\[Cc][Yy][Ll][Aa][Nn][Cc][Ee][Uu][Ii]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_sourceImage:/.*[Aa][Mm][Aa][Zz][Oo][Nn][Ss][Ss][Mm][Aa][Gg][Ee][Nn][Tt][Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetImage:/.*[Aa][Mm][Aa][Zz][Oo][Nn][Ss][Ss][Mm][Aa][Gg][Ee][Nn][Tt][Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_sourceImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ss] [Cc][Oo][Dd][Ee]\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Vv][Ss] [Cc][Oo][Dd][Ee]\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_targetImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Tt][Ee][Aa][Mm][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt]\\[Tt][Ee][Aa][Mm][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_sourceImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Tt][Ee][Aa][Mm][Ss]\\[Cc][Uu][Rr][Rr][Ee][Nn][Tt]\\[Tt][Ee][Aa][Mm][Ss]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_targetImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Dd][Ii][Ss][Cc][Oo][Rr][Dd]\\.*/ AND data_win_eventdata_targetImage:/.*\\[Dd][Ii][Ss][Cc][Oo][Rr][Dd]\.[Ee][Xx][Ee]/) OR (data_win_eventdata_sourceImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Yy][Aa][Mm][Mm][Ee][Rr][Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\[Aa][Pp][Pp]-.*/ AND data_win_eventdata_sourceImage:/.*\\[Yy][Aa][Mm][Mm][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetImage:/.*\\[Aa][Pp][Pp][Dd][Aa][Tt][Aa]\\[Ll][Oo][Cc][Aa][Ll]\\[Yy][Aa][Mm][Mm][Ee][Rr][Dd][Ee][Ss][Kk][Tt][Oo][Pp]\\[Aa][Pp][Pp]-.*/ AND data_win_eventdata_targetImage:/.*\\[Yy][Aa][Mm][Mm][Ee][Rr]\.[Ee][Xx][Ee]/ AND data_win_eventdata_grantedAccess:/0[Xx]1000/) OR data_win_eventdata_targetImage:/.*\\[Ee][Vv][Ee][Rr][Nn][Oo][Tt][Ee]\\[Ee][Vv][Ee][Rr][Nn][Oo][Tt][Ee]\.[Ee][Xx][Ee]/ OR (data_win_eventdata_sourceImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Dd][Oo][Bb][Ee]\\[Aa][Cc][Rr][Oo][Bb][Aa][Tt] [Dd][Cc]\\[Aa][Cc][Rr][Oo][Bb][Aa][Tt]\\.*/ AND data_win_eventdata_sourceImage:/.*\\[Aa][Cc][Rr][Oo][Cc][Ee][Ff]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetImage:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Aa][Dd][Oo][Bb][Ee]\\[Aa][Cc][Rr][Oo][Bb][Aa][Tt] [Dd][Cc]\\[Aa][Cc][Rr][Oo][Bb][Aa][Tt]\\.*/ AND data_win_eventdata_targetImage:/.*\\[Aa][Cc][Rr][Oo][Cc][Ee][Ff]\.[Ee][Xx][Ee]/))

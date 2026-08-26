@@ -1,0 +1,185 @@
+name: Mimikatz DC Sync
+id: 611eab06-a145-4dfa-a295-3ccc5c20f59a
+version: 1
+schema_version: "1.0"
+date: "2022-04-26"
+author: Benjamin Delpy, Florian Roth (Nextron Systems), Scott Dermott, Sorina Ionescu
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 611eab06-a145-4dfa-a295-3ccc5c20f59a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects Mimikatz DC sync security events. MITRE ATT&CK: T1003.006.
+
+data_source:
+  - Windows Security Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "4662"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*Replicating Directory Changes All*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*1131f6aa-9c07-11d1-f79f-00c04fc2dcd2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*9923a32a-3607-11d2-b9be-0000f87a36b2*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_properties:
+                    value: "*89e95b76-444d-4c62-991a-0facbeda640c*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - term:
+            data_win_eventdata_accessMask:
+              value: "0x100"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_subjectDomainName"
+        - exists:
+            field: "data_win_eventdata_subjectUserName"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_subjectDomainName:
+                          value: "Window Manager"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_subjectUserName:
+                          value: "NT AUT*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_subjectUserName:
+                          value: "MSOL_*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_subjectUserName: "*$"
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_properties
+    - data_win_eventdata_accessMask
+    - data_win_eventdata_subjectDomainName
+    - data_win_eventdata_subjectUserName
+    - data_win_eventdata_subjectLogonId
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the Windows Security event log collected by the Wazuh agent
+  (eventchannel localfile entry in ossec.conf) with the relevant audit policy
+  subcategories enabled via GPO. The detection looks for events where
+  data_win_system_eventID equals '4662'; data_win_eventdata_properties matches
+  '*Replicating Directory Changes All*'; data_win_eventdata_properties matches
+  '*1131f6ad-9c07-11d1-f79f-00c04fc2dcd2*', among other conditions.
+
+known_false_positives: >
+  Valid DC Sync that is not covered by the filters; please report. Local Domain
+  Admin account used for Azure AD Connect. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://twitter.com/gentilkiwi/status/1003236624925413376
+  - https://gist.github.com/gentilkiwi/dcc132457408cf11ad2061340dcb53c2
+  - https://blog.blacklanternsecurity.com/p/detecting-dcsync?s=r
+  - https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-10/security/threat-protection/auditing/event-4662
+  - https://attack.mitre.org/techniques/T1003/006/
+
+response:
+  message: >
+    Mimikatz DC Sync detected on host $agent_name$. Matched
+    data_win_eventdata_properties: $data_win_eventdata_properties$. Matched
+    data_win_eventdata_accessMask: $data_win_eventdata_accessMask$. MITRE
+    ATT&CK: T1003.006
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_properties
+      type: other
+    - field: data_win_eventdata_accessMask
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1003.006
+  custom_tags:
+    - mimikatz
+    - windows_security
+    - credential_access
+    - s0002
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"4662" AND (data_win_eventdata_properties:/.*[Rr][Ee][Pp][Ll][Ii][Cc][Aa][Tt][Ii][Nn][Gg] [Dd][Ii][Rr][Ee][Cc][Tt][Oo][Rr][Yy] [Cc][Hh][Aa][Nn][Gg][Ee][Ss] [Aa][Ll][Ll].*/ OR data_win_eventdata_properties:/.*1131[Ff]6[Aa][Dd]-9[Cc]07-11[Dd]1-[Ff]79[Ff]-00[Cc]04[Ff][Cc]2[Dd][Cc][Dd]2.*/ OR data_win_eventdata_properties:/.*1131[Ff]6[Aa][Aa]-9[Cc]07-11[Dd]1-[Ff]79[Ff]-00[Cc]04[Ff][Cc]2[Dd][Cc][Dd]2.*/ OR data_win_eventdata_properties:/.*9923[Aa]32[Aa]-3607-11[Dd]2-[Bb]9[Bb][Ee]-0000[Ff]87[Aa]36[Bb]2.*/ OR data_win_eventdata_properties:/.*89[Ee]95[Bb]76-444[Dd]-4[Cc]62-991[Aa]-0[Ff][Aa][Cc][Bb][Ee][Dd][Aa]640[Cc].*/) AND data_win_eventdata_accessMask:/0[Xx]100/ AND _exists_:data_win_eventdata_subjectDomainName AND _exists_:data_win_eventdata_subjectUserName AND NOT (data_win_eventdata_subjectDomainName:/[Ww][Ii][Nn][Dd][Oo][Ww] [Mm][Aa][Nn][Aa][Gg][Ee][Rr]/ OR data_win_eventdata_subjectUserName:/[Nn][Tt] [Aa][Uu][Tt].*/ OR data_win_eventdata_subjectUserName:/[Mm][Ss][Oo][Ll]_.*/ OR data_win_eventdata_subjectUserName:/.*\$/)

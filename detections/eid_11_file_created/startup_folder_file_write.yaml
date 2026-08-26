@@ -1,0 +1,181 @@
+name: Startup Folder File Write
+id: 2aa0a6b4-a865-495b-ab51-c28249537b75
+version: 1
+schema_version: "1.0"
+date: "2025-12-03"
+author: Roberto Rodriguez (Cyb3rWard0g), OTR (Open Threat Research)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 2aa0a6b4-a865-495b-ab51-c28249537b75
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  A General detection for files being created in the Windows startup directory.
+  This could be an indicator of persistence. MITRE ATT&CK: T1547.001.
+
+data_source:
+  - Sysmon EventID 11 - File Created
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "11"
+        
+        - wildcard:
+            data_win_eventdata_targetFilename:
+              value: "*\\\\Microsoft\\\\Windows\\\\Start Menu\\\\Programs\\\\StartUp*"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\System32\\wuauclt.exe"
+                          case_insensitive: true
+                    - term:
+                        data_win_eventdata_image:
+                          value: "C:\\Windows\\uus\\ARM64\\wuaucltcore.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "C:\\\\$WINDOWS.~BT\\\\NewOS\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "C:\\\\$WinREAgent\\\\Scratch\\\\Mount\\\\*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\ONENOTE.EXE"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_targetFilename:
+                          value: "*\\\\Send to OneNote.lnk"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_image
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetFilename matches
+  '*\Microsoft\Windows\Start Menu\Programs\StartUp*'; data_win_eventdata_image
+  equals 'C:\Windows\System32\wuauclt.exe'; data_win_eventdata_image equals
+  'C:\Windows\uus\ARM64\wuaucltcore.exe', among other conditions.
+
+known_false_positives: >
+  FP could be caused by legitimate application writing shortcuts for example.
+  This folder should always be inspected to make sure that all the files in
+  there are legitimate. Baseline expected activity in your environment and tune
+  this detection before relying on it for automated response.
+
+references:
+  - https://github.com/OTRF/detection-hackathon-apt29/issues/12
+  - https://github.com/OTRF/ThreatHunter-Playbook/blob/2d4257f630f4c9770f78d0c1df059f891ffc3fec/docs/evals/apt29/detections/5.B.1_611FCA99-97D0-4873-9E51-1C1BA2DBB40D.md
+  - https://attack.mitre.org/techniques/T1547/001/
+
+response:
+  message: >
+    Startup Folder File Write detected on host $agent_name$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    Matched data_win_eventdata_image: $data_win_eventdata_image$. MITRE ATT&CK:
+    T1547.001
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+    - field: data_win_eventdata_image
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1547.001
+  custom_tags:
+    - startup
+    - folder
+    - write
+    - file_event
+    - sysmon
+    - privilege_escalation
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"11" AND data_win_eventdata_targetFilename:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Tt][Aa][Rr][Tt] [Mm][Ee][Nn][Uu]\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Ss]\\[Ss][Tt][Aa][Rr][Tt][Uu][Pp].*/ AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Ss][Yy][Ss][Tt][Ee][Mm]32\\[Ww][Uu][Aa][Uu][Cc][Ll][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/[Cc]:\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Uu][Uu][Ss]\\[Aa][Rr][Mm]64\\[Ww][Uu][Aa][Uu][Cc][Ll][Tt][Cc][Oo][Rr][Ee]\.[Ee][Xx][Ee]/ OR data_win_eventdata_targetFilename:/[Cc]:\\\$[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\.\~[Bb][Tt]\\[Nn][Ee][Ww][Oo][Ss]\\.*/ OR data_win_eventdata_targetFilename:/[Cc]:\\\$[Ww][Ii][Nn][Rr][Ee][Aa][Gg][Ee][Nn][Tt]\\[Ss][Cc][Rr][Aa][Tt][Cc][Hh]\\[Mm][Oo][Uu][Nn][Tt]\\.*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_image:/.*\\[Oo][Nn][Ee][Nn][Oo][Tt][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_targetFilename:/.*\\[Ss][Ee][Nn][Dd] [Tt][Oo] [Oo][Nn][Ee][Nn][Oo][Tt][Ee]\.[Ll][Nn][Kk]/)

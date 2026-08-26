@@ -1,0 +1,204 @@
+name: Arbitrary DLL or Csproj Code Execution Via Dotnet.EXE
+id: d80d5c81-04ba-45b4-84e4-92eba40e0ad3
+version: 1
+schema_version: "1.0"
+date: "2025-10-08"
+author: Beyu Denis, oscd.community
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: d80d5c81-04ba-45b4-84e4-92eba40e0ad3
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects execution of arbitrary DLLs or unsigned code via a ".csproj" files via
+  Dotnet.EXE. MITRE ATT&CK: T1218.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\dotnet.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: ".NET Host"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.csproj"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.csproj\""
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.dll"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.dll\""
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.csproj'"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*.dll'"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_parentImage"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - bool:
+                        should:
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Program Files (x86)\\Notepad++\\notepad++.exe"
+                                case_insensitive: true
+                          - term:
+                              data_win_eventdata_parentImage:
+                                value: "C:\\Program Files\\Notepad++\\notepad++.exe"
+                                case_insensitive: true
+                        minimum_should_match: 1
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*C:\\\\ProgramData\\\\CSScriptNpp\\\\*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*-cscs_path:*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*\\\\cs-script\\\\cscs.dll*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\dotnet.exe'; data_win_eventdata_originalFileName equals '.NET Host';
+  data_win_eventdata_commandLine matches '*.csproj', among other conditions.
+
+known_false_positives: >
+  Legitimate administrator usage. Baseline expected activity in your environment
+  and tune this detection before relying on it for automated response.
+
+references:
+  - https://lolbas-project.github.io/lolbas/OtherMSBinaries/Dotnet/
+  - https://twitter.com/_felamos/status/1204705548668555264
+  - https://bohops.com/2019/08/19/dotnet-core-a-vector-for-awl-bypass-defense-evasion/
+  - https://attack.mitre.org/techniques/T1218/
+
+response:
+  message: >
+    Arbitrary DLL or Csproj Code Execution Via Dotnet.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1218
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1218
+  custom_tags:
+    - arbitrary
+    - csproj
+    - dotnet
+    - process_creation
+    - sysmon
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Dd][Oo][Tt][Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/\.[Nn][Ee][Tt] [Hh][Oo][Ss][Tt]/) AND (data_win_eventdata_commandLine:/.*\.[Cc][Ss][Pp][Rr][Oo][Jj]/ OR data_win_eventdata_commandLine:/.*\.[Cc][Ss][Pp][Rr][Oo][Jj]\"/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll]/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll]\"/ OR data_win_eventdata_commandLine:/.*\.[Cc][Ss][Pp][Rr][Oo][Jj]'/ OR data_win_eventdata_commandLine:/.*\.[Dd][Ll][Ll]'/) AND _exists_:data_win_eventdata_parentImage AND _exists_:data_win_eventdata_commandLine AND NOT ((data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\+\+\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\+\+\.[Ee][Xx][Ee]/ OR data_win_eventdata_parentImage:/[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss]\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\+\+\\[Nn][Oo][Tt][Ee][Pp][Aa][Dd]\+\+\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.*[Cc]:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm][Dd][Aa][Tt][Aa]\\[Cc][Ss][Ss][Cc][Rr][Ii][Pp][Tt][Nn][Pp][Pp]\\.*/ AND data_win_eventdata_commandLine:/.*-[Cc][Ss][Cc][Ss]_[Pp][Aa][Tt][Hh]:.*/ AND data_win_eventdata_commandLine:/.*\\[Cc][Ss]-[Ss][Cc][Rr][Ii][Pp][Tt]\\[Cc][Ss][Cc][Ss]\.[Dd][Ll][Ll].*/)

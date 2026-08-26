@@ -1,0 +1,163 @@
+name: UNC4841 - SSL Certificate Exfiltration Via Openssl
+id: 60911c07-f989-4362-84af-c609828ef829
+version: 1
+schema_version: "1.0"
+date: "2023-06-16"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 60911c07-f989-4362-84af-c609828ef829
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of "openssl" to connect to an IP address. This
+  techniques was used by UNC4841 to exfiltrate SSL certificates and as a C2
+  channel with named pipes. Investigate commands executed in the temporal
+  vicinity of this command. MITRE ATT&CK: T1140.
+
+data_source:
+  - Tetragon process_exec via Wazuh agent
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - wildcard:
+            data_process_exec_process_binary:
+              value: "*/openssl"
+              case_insensitive: true
+        - regexp:
+            data_process_exec_process_arguments: ".*([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}).*"
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*s_client*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*-quiet*"
+              case_insensitive: true
+        - wildcard:
+            data_process_exec_process_arguments:
+              value: "*-connect*"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_process_exec_process_arguments: "*:443*"
+              - wildcard:
+                  data_process_exec_process_arguments: "*:8080*"
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_process_exec_process_binary
+    - data_process_exec_process_arguments
+    - data_process_exec_parent_binary
+    - data_process_exec_process_uid
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Tetragon deployed on the Linux endpoint emitting process_exec events
+  (rule_groups "tetragon, process_exec"), shipped by the Wazuh agent and
+  ingested into the wazuh-* indices. Tetragon records the executable in
+  data_process_exec_process_binary and its arguments separately in
+  data_process_exec_process_arguments. The detection looks for events where
+  data_process_exec_process_binary matches '*/openssl';
+  data_process_exec_process_arguments matches the regex
+  /.*([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}).*/;
+  data_process_exec_process_arguments matches '*s_client*', among other
+  conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.mandiant.com/resources/blog/barracuda-esg-exploited-globally
+  - https://attack.mitre.org/techniques/T1140/
+
+response:
+  message: >
+    UNC4841 - SSL Certificate Exfiltration Via Openssl detected on host
+    $agent_name$. Matched data_process_exec_process_binary:
+    $data_process_exec_process_binary$. Matched
+    data_process_exec_process_arguments: $data_process_exec_process_arguments$.
+    MITRE ATT&CK: T1140
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_process_exec_process_binary
+      type: other
+    - field: data_process_exec_process_arguments
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1140
+  custom_tags:
+    - unc4841
+    - certificate
+    - exfiltration
+    - linux
+    - tetragon
+    - process_creation
+    - stealth
+    - emerging_threats
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_process_exec_process_binary:/.*\/[Oo][Pp][Ee][Nn][Ss][Ss][Ll]/ AND data_process_exec_process_arguments:/.*([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}).*/ AND data_process_exec_process_arguments:/.*[Ss]_[Cc][Ll][Ii][Ee][Nn][Tt].*/ AND data_process_exec_process_arguments:/.*-[Qq][Uu][Ii][Ee][Tt].*/ AND data_process_exec_process_arguments:/.*-[Cc][Oo][Nn][Nn][Ee][Cc][Tt].*/ AND (data_process_exec_process_arguments:/.*:443.*/ OR data_process_exec_process_arguments:/.*:8080.*/)

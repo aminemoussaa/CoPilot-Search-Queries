@@ -1,0 +1,148 @@
+name: Unusual File Deletion by Dns.exe
+id: 8f0b1fb1-9bd4-4e74-8cdf-a8de4d2adfd0
+version: 1
+schema_version: "1.0"
+date: "2023-02-15"
+author: Tim Rauch (Nextron Systems), Elastic (idea)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8f0b1fb1-9bd4-4e74-8cdf-a8de4d2adfd0
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects an unexpected file being deleted by dns.exe which my indicate activity
+  related to remote code execution or other forms of exploitation as seen in
+  CVE-2020-1350 (SigRed). MITRE ATT&CK: T1133.
+
+data_source:
+  - Sysmon EventID 23/26 - File Deleted
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - bool:
+            should:
+              - term:
+                  data_win_system_eventID: "23"
+              - term:
+                  data_win_system_eventID: "26"
+            minimum_should_match: 1
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\dns.exe"
+              case_insensitive: true
+        - exists:
+            field: "data_win_eventdata_targetFilename"
+        - bool:
+            must_not:
+              - wildcard:
+                  data_win_eventdata_targetFilename:
+                    value: "*\\\\dns.log"
+                    case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_targetFilename
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon file creation logging (EventID 11) enabled in the Sysmon
+  configuration for the monitored paths and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_image matches '*\dns.exe';
+  data_win_eventdata_targetFilename matches '*\dns.log'.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.elastic.co/guide/en/security/current/unusual-file-modification-by-dns-exe.html
+  - https://attack.mitre.org/techniques/T1133/
+
+response:
+  message: >
+    Unusual File Deletion by Dns.exe detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_targetFilename: $data_win_eventdata_targetFilename$.
+    MITRE ATT&CK: T1133
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_targetFilename
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1133
+  custom_tags:
+    - unusual
+    - deletion
+    - file_delete
+    - sysmon
+    - persistence
+    - initial_access
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: (data_win_system_eventID:"23" OR data_win_system_eventID:"26") AND data_win_eventdata_image:/.*\\[Dd][Nn][Ss]\.[Ee][Xx][Ee]/ AND _exists_:data_win_eventdata_targetFilename AND NOT (data_win_eventdata_targetFilename:/.*\\[Dd][Nn][Ss]\.[Ll][Oo][Gg]/)

@@ -1,0 +1,189 @@
+name: Unsigned .node File Loaded
+id: e5f5c693-52d7-4de5-88ae-afbfbce85595
+version: 1
+schema_version: "1.0"
+date: "2025-11-22"
+author: Jonathan Beierle (@hullabrian)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: e5f5c693-52d7-4de5-88ae-afbfbce85595
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the loading of unsigned .node files. Adversaries may abuse a lack of
+  .node integrity checking to execute arbitrary code inside of trusted
+  applications such as Slack. .node files are native add-ons for Electron-based
+  applications, which are commonly used for desktop applications like Slack,
+  Discord, and Visual Studio Code. This technique has been observed in the
+  DripLoader malware, which uses unsigned .node files to load malicious native
+  code into Electron applications. MITRE ATT&CK: T1129, T1574.001, T1036.005.
+
+data_source:
+  - Sysmon EventID 7 - Image Loaded
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "7"
+        
+        - wildcard:
+            data_win_eventdata_imageLoaded:
+              value: "*.node"
+              case_insensitive: true
+        - bool:
+            should:
+              - term:
+                  data_win_eventdata_signed:
+                    value: "false"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_signatureStatus:
+                    value: "Unavailable"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_imageLoaded"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_image:
+                          value: "*\\\\Code.exe"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_imageLoaded:
+                          value: "*.vscode\\\\extensions\\\\ms-toolsai.jupyter-*"
+                          case_insensitive: true
+                    - bool:
+                        should:
+                          - wildcard:
+                              data_win_eventdata_imageLoaded:
+                                value: "*\\\\electron.napi.node"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_imageLoaded:
+                                value: "*\\\\node.napi.glibc.node"
+                                case_insensitive: true
+                        minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_imageLoaded
+    - data_win_eventdata_signed
+    - data_win_eventdata_signatureStatus
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 7 (image loaded) enabled in the Sysmon configuration
+  (image load logging is high-volume and off in many baselines) and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_imageLoaded matches
+  '*.node'; data_win_eventdata_signed equals 'false';
+  data_win_eventdata_signatureStatus equals 'Unavailable', among other
+  conditions.
+
+known_false_positives: >
+  VsCode extensions or similar legitimate tools might use unsigned .node files.
+  These should be investigated on a case-by-case basis, and whitelisted if
+  determined to be benign. Baseline expected activity in your environment and
+  tune this detection before relying on it for automated response.
+
+references:
+  - https://www.coreycburton.com/blog/driploader-case-study
+  - https://github.com/CoreyCBurton/DripLoaderNG
+  - https://www.electronjs.org/docs/latest/tutorial/native-code-and-electron
+  - https://attack.mitre.org/techniques/T1129/
+  - https://attack.mitre.org/techniques/T1574/001/
+  - https://attack.mitre.org/techniques/T1036/005/
+
+response:
+  message: >
+    Unsigned .node File Loaded detected on host $agent_name$. Matched
+    data_win_eventdata_imageLoaded: $data_win_eventdata_imageLoaded$. Matched
+    data_win_eventdata_signed: $data_win_eventdata_signed$. MITRE ATT&CK: T1129,
+    T1574.001, T1036.005
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_imageLoaded
+      type: process
+    - field: data_win_eventdata_signed
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1129
+    - T1574.001
+    - T1036.005
+  custom_tags:
+    - unsigned
+    - image_load
+    - sysmon
+    - execution
+    - privilege_escalation
+    - persistence
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"7" AND data_win_eventdata_imageLoaded:/.*\.[Nn][Oo][Dd][Ee]/ AND (data_win_eventdata_signed:/[Ff][Aa][Ll][Ss][Ee]/ OR data_win_eventdata_signatureStatus:/[Uu][Nn][Aa][Vv][Aa][Ii][Ll][Aa][Bb][Ll][Ee]/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_imageLoaded AND NOT (data_win_eventdata_image:/.*\\[Cc][Oo][Dd][Ee]\.[Ee][Xx][Ee]/ AND data_win_eventdata_imageLoaded:/.*\.[Vv][Ss][Cc][Oo][Dd][Ee]\\[Ee][Xx][Tt][Ee][Nn][Ss][Ii][Oo][Nn][Ss]\\[Mm][Ss]-[Tt][Oo][Oo][Ll][Ss][Aa][Ii]\.[Jj][Uu][Pp][Yy][Tt][Ee][Rr]-.*/ AND (data_win_eventdata_imageLoaded:/.*\\[Ee][Ll][Ee][Cc][Tt][Rr][Oo][Nn]\.[Nn][Aa][Pp][Ii]\.[Nn][Oo][Dd][Ee]/ OR data_win_eventdata_imageLoaded:/.*\\[Nn][Oo][Dd][Ee]\.[Nn][Aa][Pp][Ii]\.[Gg][Ll][Ii][Bb][Cc]\.[Nn][Oo][Dd][Ee]/))

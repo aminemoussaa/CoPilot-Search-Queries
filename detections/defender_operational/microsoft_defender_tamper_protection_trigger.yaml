@@ -1,0 +1,160 @@
+name: Microsoft Defender Tamper Protection Trigger
+id: 49e5bc24-8b86-49f1-b743-535f332c2856
+version: 1
+schema_version: "1.0"
+date: "2022-12-06"
+author: Bhabesh Raj, Nasreddine Bencherchali
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 49e5bc24-8b86-49f1-b743-535f332c2856
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: production
+type: TTP
+
+description: >
+  Detects blocked attempts to change any of Defender's settings such as "Real
+  Time Monitoring" and "Behavior Monitoring". MITRE ATT&CK: T1685.
+
+data_source:
+  - Windows Defender Operational Event Log
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        
+        - term:
+            data_win_system_eventID: "5013"
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Windows Defender\\\\DisableAntiSpyware"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Windows Defender\\\\DisableAntiVirus"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Windows Defender\\\\Scan\\\\DisableArchiveScanning"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Windows Defender\\\\Scan\\\\DisableScanningNetworkFiles"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Real-Time Protection\\\\DisableRealtimeMonitoring"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Real-Time Protection\\\\DisableBehaviorMonitoring"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Real-Time Protection\\\\DisableIOAVProtection"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_value:
+                    value: "*\\\\Real-Time Protection\\\\DisableScriptScanning"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_value
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires the relevant built-in Windows event channel collected by the Wazuh
+  agent (eventchannel localfile entry in ossec.conf). The detection looks for
+  events where data_win_system_eventID equals '5013'; data_win_eventdata_value
+  matches '*\Windows Defender\DisableAntiSpyware'; data_win_eventdata_value
+  matches '*\Windows Defender\DisableAntiVirus', among other conditions.
+
+known_false_positives: >
+  Administrator might try to disable defender features during testing (must be
+  investigated). Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://bhabeshraj.com/post/tampering-with-microsoft-defenders-tamper-protection
+  - https://learn.microsoft.com/en-us/defender-endpoint/troubleshoot-microsoft-defender-antivirus?view=o365-worldwide
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Microsoft Defender Tamper Protection Trigger detected on host $agent_name$.
+    Matched data_win_eventdata_value: $data_win_eventdata_value$. MITRE ATT&CK:
+    T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_value
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - microsoft
+    - defender
+    - tamper
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"5013" AND (data_win_eventdata_value:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Aa][Nn][Tt][Ii][Ss][Pp][Yy][Ww][Aa][Rr][Ee]/ OR data_win_eventdata_value:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Aa][Nn][Tt][Ii][Vv][Ii][Rr][Uu][Ss]/ OR data_win_eventdata_value:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Ss][Cc][Aa][Nn]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Aa][Rr][Cc][Hh][Ii][Vv][Ee][Ss][Cc][Aa][Nn][Nn][Ii][Nn][Gg]/ OR data_win_eventdata_value:/.*\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss] [Dd][Ee][Ff][Ee][Nn][Dd][Ee][Rr]\\[Ss][Cc][Aa][Nn]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ss][Cc][Aa][Nn][Nn][Ii][Nn][Gg][Nn][Ee][Tt][Ww][Oo][Rr][Kk][Ff][Ii][Ll][Ee][Ss]/ OR data_win_eventdata_value:/.*\\[Rr][Ee][Aa][Ll]-[Tt][Ii][Mm][Ee] [Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Rr][Ee][Aa][Ll][Tt][Ii][Mm][Ee][Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg]/ OR data_win_eventdata_value:/.*\\[Rr][Ee][Aa][Ll]-[Tt][Ii][Mm][Ee] [Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Bb][Ee][Hh][Aa][Vv][Ii][Oo][Rr][Mm][Oo][Nn][Ii][Tt][Oo][Rr][Ii][Nn][Gg]/ OR data_win_eventdata_value:/.*\\[Rr][Ee][Aa][Ll]-[Tt][Ii][Mm][Ee] [Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ii][Oo][Aa][Vv][Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]/ OR data_win_eventdata_value:/.*\\[Rr][Ee][Aa][Ll]-[Tt][Ii][Mm][Ee] [Pp][Rr][Oo][Tt][Ee][Cc][Tt][Ii][Oo][Nn]\\[Dd][Ii][Ss][Aa][Bb][Ll][Ee][Ss][Cc][Rr][Ii][Pp][Tt][Ss][Cc][Aa][Nn][Nn][Ii][Nn][Gg]/)

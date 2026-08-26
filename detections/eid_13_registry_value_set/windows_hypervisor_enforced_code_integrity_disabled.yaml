@@ -1,0 +1,159 @@
+name: Windows Hypervisor Enforced Code Integrity Disabled
+id: 8b7273a4-ba5d-4d8a-b04f-11f2900d043a
+version: 1
+schema_version: "1.0"
+date: "2024-07-05"
+author: Nasreddine Bencherchali (Nextron Systems), Anish Bogati
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 8b7273a4-ba5d-4d8a-b04f-11f2900d043a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects changes to the HypervisorEnforcedCodeIntegrity registry key and the
+  "Enabled" value being set to 0 in order to disable the Hypervisor Enforced
+  Code Integrity feature. This allows an attacker to load unsigned and untrusted
+  code to be run in the kernel. MITRE ATT&CK: T1685.
+
+data_source:
+  - Sysmon EventID 13 - Registry Value Set
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "13"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\DeviceGuard\\\\HypervisorEnforcedCodeIntegrity"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Control\\\\DeviceGuard\\\\Scenarios\\\\HypervisorEnforcedCodeIntegrity\\\\Enabled"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_targetObject:
+                    value: "*\\\\Microsoft\\\\Windows\\\\DeviceGuard\\\\HypervisorEnforcedCodeIntegrity"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - term:
+            data_win_eventdata_details:
+              value: "DWORD (0x00000000)"
+              case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_targetObject
+    - data_win_eventdata_details
+    - data_win_eventdata_image
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon registry event logging (EventIDs 12/13/14) enabled in the
+  Sysmon configuration for the monitored keys and the
+  Microsoft-Windows-Sysmon/Operational channel collected by the Wazuh agent. The
+  detection looks for events where data_win_eventdata_targetObject matches
+  '*\Control\DeviceGuard\HypervisorEnforcedCodeIntegrity';
+  data_win_eventdata_targetObject matches
+  '*\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity\Enabled';
+  data_win_eventdata_targetObject matches
+  '*\Microsoft\Windows\DeviceGuard\HypervisorEnforcedCodeIntegrity', among other
+  conditions.
+
+known_false_positives: >
+  Legitimate system administration tasks that require disabling HVCI for
+  troubleshooting purposes when certain drivers or applications are incompatible
+  with it. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.welivesecurity.com/2023/03/01/blacklotus-uefi-bootkit-myth-confirmed/
+  - https://github.com/redcanaryco/atomic-red-team/blob/04e487c1828d76df3e834621f4f893ea756d5232/atomics/T1562.001/T1562.001.md#atomic-test-43---disable-hypervisor-enforced-code-integrity-hvci
+  - https://attack.mitre.org/techniques/T1685/
+
+response:
+  message: >
+    Windows Hypervisor Enforced Code Integrity Disabled detected on host
+    $agent_name$. Matched data_win_eventdata_targetObject:
+    $data_win_eventdata_targetObject$. Matched data_win_eventdata_details:
+    $data_win_eventdata_details$. MITRE ATT&CK: T1685
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_targetObject
+      type: registry_key
+    - field: data_win_eventdata_details
+      type: other
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1685
+  custom_tags:
+    - hypervisor
+    - enforced
+    - integrity
+    - registry
+    - sysmon
+    - defense_impairment
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"13" AND (data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Dd][Ee][Vv][Ii][Cc][Ee][Gg][Uu][Aa][Rr][Dd]\\[Hh][Yy][Pp][Ee][Rr][Vv][Ii][Ss][Oo][Rr][Ee][Nn][Ff][Oo][Rr][Cc][Ee][Dd][Cc][Oo][Dd][Ee][Ii][Nn][Tt][Ee][Gg][Rr][Ii][Tt][Yy]/ OR data_win_eventdata_targetObject:/.*\\[Cc][Oo][Nn][Tt][Rr][Oo][Ll]\\[Dd][Ee][Vv][Ii][Cc][Ee][Gg][Uu][Aa][Rr][Dd]\\[Ss][Cc][Ee][Nn][Aa][Rr][Ii][Oo][Ss]\\[Hh][Yy][Pp][Ee][Rr][Vv][Ii][Ss][Oo][Rr][Ee][Nn][Ff][Oo][Rr][Cc][Ee][Dd][Cc][Oo][Dd][Ee][Ii][Nn][Tt][Ee][Gg][Rr][Ii][Tt][Yy]\\[Ee][Nn][Aa][Bb][Ll][Ee][Dd]/ OR data_win_eventdata_targetObject:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt]\\[Ww][Ii][Nn][Dd][Oo][Ww][Ss]\\[Dd][Ee][Vv][Ii][Cc][Ee][Gg][Uu][Aa][Rr][Dd]\\[Hh][Yy][Pp][Ee][Rr][Vv][Ii][Ss][Oo][Rr][Ee][Nn][Ff][Oo][Rr][Cc][Ee][Dd][Cc][Oo][Dd][Ee][Ii][Nn][Tt][Ee][Gg][Rr][Ii][Tt][Yy]/) AND data_win_eventdata_details:/[Dd][Ww][Oo][Rr][Dd] \(0[Xx]00000000\)/

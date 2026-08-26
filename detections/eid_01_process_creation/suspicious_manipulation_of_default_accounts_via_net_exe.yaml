@@ -1,0 +1,287 @@
+name: Suspicious Manipulation Of Default Accounts Via Net.EXE
+id: 5b768e71-86f2-4879-b448-81061cbae951
+version: 1
+schema_version: "1.0"
+date: "2023-02-21"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5b768e71-86f2-4879-b448-81061cbae951
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects suspicious manipulations of default accounts such as 'administrator'
+  and 'guest'. For example 'enable' or 'disable' accounts or change the
+  password...etc. MITRE ATT&CK: T1560.001.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\net.exe"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\net1.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "net.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "net1.exe"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "* user *"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Järjestelmänvalvoja *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Rendszergazda *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Администратор *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Administrateur *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Administrador *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Administratör *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* Administrator *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* guest *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* DefaultAccount *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"Järjestelmänvalvoja\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"Rendszergazda\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"Администратор\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"Administrateur\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"Administrador\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"Administratör\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"Administrator\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"guest\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* \"DefaultAccount\" *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'Järjestelmänvalvoja' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'Rendszergazda' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'Администратор' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'Administrateur' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'Administrador' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'Administratör' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'Administrator' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'guest' *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* 'DefaultAccount' *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  must:
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*guest*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/active no*"
+                          case_insensitive: true
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches '*\net.exe';
+  data_win_eventdata_image matches '*\net1.exe';
+  data_win_eventdata_originalFileName equals 'net.exe', among other conditions.
+
+known_false_positives: >
+  Some false positives could occur with the admin or guest account. It depends
+  on the scripts being used by the admins in your env. If you experience a lot
+  of FP you could reduce the level to medium. Baseline expected activity in your
+  environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://www.trellix.com/en-sg/about/newsroom/stories/threat-labs/lockergoga-ransomware-family-used-in-targeted-attacks.html
+  - https://redacted.com/blog/bianlian-ransomware-gang-gives-it-a-go/
+  - https://www.microsoft.com/security/blog/2022/09/07/profiling-dev-0270-phosphorus-ransomware-operations/
+  - https://attack.mitre.org/techniques/T1560/001/
+
+response:
+  message: >
+    Suspicious Manipulation Of Default Accounts Via Net.EXE detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_originalFileName:
+    $data_win_eventdata_originalFileName$. MITRE ATT&CK: T1560.001
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1560.001
+  custom_tags:
+    - manipulation
+    - default
+    - accounts
+    - process_creation
+    - sysmon
+    - collection
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_image:/.*\\[Nn][Ee][Tt]1\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ee][Tt]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Nn][Ee][Tt]1\.[Ee][Xx][Ee]/) AND data_win_eventdata_commandLine:/.* [Uu][Ss][Ee][Rr] .*/ AND (data_win_eventdata_commandLine:/.* [Jj][Ää][Rr][Jj][Ee][Ss][Tt][Ee][Ll][Mm][Ää][Nn][Vv][Aa][Ll][Vv][Oo][Jj][Aa] .*/ OR data_win_eventdata_commandLine:/.* [Rr][Ee][Nn][Dd][Ss][Zz][Ee][Rr][Gg][Aa][Zz][Dd][Aa] .*/ OR data_win_eventdata_commandLine:/.* [Аа][Дд][Мм][Ии][Нн][Ии][Сс][Тт][Рр][Аа][Тт][Оо][Рр] .*/ OR data_win_eventdata_commandLine:/.* [Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Ee][Uu][Rr] .*/ OR data_win_eventdata_commandLine:/.* [Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Dd][Oo][Rr] .*/ OR data_win_eventdata_commandLine:/.* [Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Öö][Rr] .*/ OR data_win_eventdata_commandLine:/.* [Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Oo][Rr] .*/ OR data_win_eventdata_commandLine:/.* [Gg][Uu][Ee][Ss][Tt] .*/ OR data_win_eventdata_commandLine:/.* [Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Cc][Oo][Uu][Nn][Tt] .*/ OR data_win_eventdata_commandLine:/.* \"[Jj][Ää][Rr][Jj][Ee][Ss][Tt][Ee][Ll][Mm][Ää][Nn][Vv][Aa][Ll][Vv][Oo][Jj][Aa]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Rr][Ee][Nn][Dd][Ss][Zz][Ee][Rr][Gg][Aa][Zz][Dd][Aa]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Аа][Дд][Мм][Ии][Нн][Ии][Сс][Тт][Рр][Аа][Тт][Оо][Рр]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Ee][Uu][Rr]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Dd][Oo][Rr]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Öö][Rr]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Oo][Rr]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Gg][Uu][Ee][Ss][Tt]\" .*/ OR data_win_eventdata_commandLine:/.* \"[Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Cc][Oo][Uu][Nn][Tt]\" .*/ OR data_win_eventdata_commandLine:/.* '[Jj][Ää][Rr][Jj][Ee][Ss][Tt][Ee][Ll][Mm][Ää][Nn][Vv][Aa][Ll][Vv][Oo][Jj][Aa]' .*/ OR data_win_eventdata_commandLine:/.* '[Rr][Ee][Nn][Dd][Ss][Zz][Ee][Rr][Gg][Aa][Zz][Dd][Aa]' .*/ OR data_win_eventdata_commandLine:/.* '[Аа][Дд][Мм][Ии][Нн][Ии][Сс][Тт][Рр][Аа][Тт][Оо][Рр]' .*/ OR data_win_eventdata_commandLine:/.* '[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Ee][Uu][Rr]' .*/ OR data_win_eventdata_commandLine:/.* '[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Dd][Oo][Rr]' .*/ OR data_win_eventdata_commandLine:/.* '[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Öö][Rr]' .*/ OR data_win_eventdata_commandLine:/.* '[Aa][Dd][Mm][Ii][Nn][Ii][Ss][Tt][Rr][Aa][Tt][Oo][Rr]' .*/ OR data_win_eventdata_commandLine:/.* '[Gg][Uu][Ee][Ss][Tt]' .*/ OR data_win_eventdata_commandLine:/.* '[Dd][Ee][Ff][Aa][Uu][Ll][Tt][Aa][Cc][Cc][Oo][Uu][Nn][Tt]' .*/) AND _exists_:data_win_eventdata_commandLine AND NOT (data_win_eventdata_commandLine:/.*[Gg][Uu][Ee][Ss][Tt].*/ AND data_win_eventdata_commandLine:/.*\/[Aa][Cc][Tt][Ii][Vv][Ee] [Nn][Oo].*/)

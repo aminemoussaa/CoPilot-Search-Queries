@@ -1,0 +1,214 @@
+name: Schtasks Creation Or Modification With SYSTEM Privileges
+id: 89ca78fd-b37c-4310-b3d3-81a023f83936
+version: 1
+schema_version: "1.0"
+date: "2025-02-15"
+author: Nasreddine Bencherchali (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 89ca78fd-b37c-4310-b3d3-81a023f83936
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the creation or update of a scheduled task to run with "NT
+  AUTHORITY\SYSTEM" privileges. MITRE ATT&CK: T1053.005.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - wildcard:
+            data_win_eventdata_image:
+              value: "*\\\\schtasks.exe"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /change *"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* /create *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - wildcard:
+            data_win_eventdata_commandLine:
+              value: "*/ru *"
+              case_insensitive: true
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "*NT AUT*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_commandLine:
+                    value: "* SYSTEM *"
+                    case_insensitive: true
+            minimum_should_match: 1
+        - exists:
+            field: "data_win_eventdata_image"
+        - exists:
+            field: "data_win_eventdata_commandLine"
+        - bool:
+            must_not:
+              - bool:
+                  should:
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_image:
+                                value: "*\\\\schtasks.exe"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*/TN TVInstallRestore*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\TeamViewer_.exe*"
+                                case_insensitive: true
+                    - bool:
+                        must:
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*Subscription Heartbeat*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\HeartbeatConfig.xml*"
+                                case_insensitive: true
+                          - wildcard:
+                              data_win_eventdata_commandLine:
+                                value: "*\\\\Microsoft Shared\\\\OFFICE*"
+                                case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/Create /F /RU System /SC WEEKLY /TN AviraSystemSpeedupVerify /TR *"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*:\\\\Program Files (x86)\\\\Avira\\\\System Speedup\\\\setup\\\\avira_speedup_setup.exe*"
+                          case_insensitive: true
+                    - wildcard:
+                        data_win_eventdata_commandLine:
+                          value: "*/VERIFY /VERYSILENT /NOSTART /NODOTNET /NORESTART\" /RL HIGHEST*"
+                          case_insensitive: true
+                  minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\schtasks.exe'; data_win_eventdata_commandLine matches '* /change *';
+  data_win_eventdata_commandLine matches '* /create *', among other conditions.
+
+known_false_positives: >
+  Unknown. Baseline expected activity in your environment and tune this
+  detection before relying on it for automated response.
+
+references:
+  - https://www.elastic.co/security-labs/exploring-the-qbot-attack-pattern
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/schtasks
+  - https://attack.mitre.org/techniques/T1053/005/
+
+response:
+  message: >
+    Schtasks Creation Or Modification With SYSTEM Privileges detected on host
+    $agent_name$. Matched data_win_eventdata_image: $data_win_eventdata_image$.
+    Matched data_win_eventdata_commandLine: $data_win_eventdata_commandLine$.
+    MITRE ATT&CK: T1053.005
+  risk_score: 75
+  severity: high
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 75
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_commandLine
+      type: process
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1053.005
+  custom_tags:
+    - schtasks
+    - system
+    - privileges
+    - process_creation
+    - sysmon
+    - privilege_escalation
+    - execution
+    - persistence
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ AND (data_win_eventdata_commandLine:/.* \/[Cc][Hh][Aa][Nn][Gg][Ee] .*/ OR data_win_eventdata_commandLine:/.* \/[Cc][Rr][Ee][Aa][Tt][Ee] .*/) AND data_win_eventdata_commandLine:/.*\/[Rr][Uu] .*/ AND (data_win_eventdata_commandLine:/.*[Nn][Tt] [Aa][Uu][Tt].*/ OR data_win_eventdata_commandLine:/.* [Ss][Yy][Ss][Tt][Ee][Mm] .*/) AND _exists_:data_win_eventdata_image AND _exists_:data_win_eventdata_commandLine AND NOT ((data_win_eventdata_image:/.*\\[Ss][Cc][Hh][Tt][Aa][Ss][Kk][Ss]\.[Ee][Xx][Ee]/ AND data_win_eventdata_commandLine:/.*\/[Tt][Nn] [Tt][Vv][Ii][Nn][Ss][Tt][Aa][Ll][Ll][Rr][Ee][Ss][Tt][Oo][Rr][Ee].*/ AND data_win_eventdata_commandLine:/.*\\[Tt][Ee][Aa][Mm][Vv][Ii][Ee][Ww][Ee][Rr]_\.[Ee][Xx][Ee].*/) OR (data_win_eventdata_commandLine:/.*[Ss][Uu][Bb][Ss][Cc][Rr][Ii][Pp][Tt][Ii][Oo][Nn] [Hh][Ee][Aa][Rr][Tt][Bb][Ee][Aa][Tt].*/ AND data_win_eventdata_commandLine:/.*\\[Hh][Ee][Aa][Rr][Tt][Bb][Ee][Aa][Tt][Cc][Oo][Nn][Ff][Ii][Gg]\.[Xx][Mm][Ll].*/ AND data_win_eventdata_commandLine:/.*\\[Mm][Ii][Cc][Rr][Oo][Ss][Oo][Ff][Tt] [Ss][Hh][Aa][Rr][Ee][Dd]\\[Oo][Ff][Ff][Ii][Cc][Ee].*/) OR data_win_eventdata_commandLine:/.*\/[Cc][Rr][Ee][Aa][Tt][Ee] \/[Ff] \/[Rr][Uu] [Ss][Yy][Ss][Tt][Ee][Mm] \/[Ss][Cc] [Ww][Ee][Ee][Kk][Ll][Yy] \/[Tt][Nn] [Aa][Vv][Ii][Rr][Aa][Ss][Yy][Ss][Tt][Ee][Mm][Ss][Pp][Ee][Ee][Dd][Uu][Pp][Vv][Ee][Rr][Ii][Ff][Yy] \/[Tt][Rr] .*/ OR data_win_eventdata_commandLine:/.*:\\[Pp][Rr][Oo][Gg][Rr][Aa][Mm] [Ff][Ii][Ll][Ee][Ss] \([Xx]86\)\\[Aa][Vv][Ii][Rr][Aa]\\[Ss][Yy][Ss][Tt][Ee][Mm] [Ss][Pp][Ee][Ee][Dd][Uu][Pp]\\[Ss][Ee][Tt][Uu][Pp]\\[Aa][Vv][Ii][Rr][Aa]_[Ss][Pp][Ee][Ee][Dd][Uu][Pp]_[Ss][Ee][Tt][Uu][Pp]\.[Ee][Xx][Ee].*/ OR data_win_eventdata_commandLine:/.*\/[Vv][Ee][Rr][Ii][Ff][Yy] \/[Vv][Ee][Rr][Yy][Ss][Ii][Ll][Ee][Nn][Tt] \/[Nn][Oo][Ss][Tt][Aa][Rr][Tt] \/[Nn][Oo][Dd][Oo][Tt][Nn][Ee][Tt] \/[Nn][Oo][Rr][Ee][Ss][Tt][Aa][Rr][Tt]\" \/[Rr][Ll] [Hh][Ii][Gg][Hh][Ee][Ss][Tt].*/)

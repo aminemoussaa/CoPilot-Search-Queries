@@ -1,0 +1,181 @@
+name: PUA - System Informer Execution
+id: 5722dff1-4bdd-4949-86ab-fbaf707e767a
+version: 1
+schema_version: "1.0"
+date: "2024-11-23"
+author: Florian Roth (Nextron Systems)
+source:
+  format: sigma
+  repository: SigmaHQ/sigma
+  rule_id: 5722dff1-4bdd-4949-86ab-fbaf707e767a
+  commit: release-20260810
+  license: DRL-1.1
+converted_by: Moussa Amine — sigma2copilot v0.1.0
+status: experimental
+type: TTP
+
+description: >
+  Detects the execution of System Informer, a task manager tool to view and
+  manipulate processes, kernel options and other low level operations. MITRE
+  ATT&CK: T1082, T1564, T1543.
+
+data_source:
+  - Sysmon EventID 1 - Process Creation
+
+search:
+  index_pattern: "${INDEX_PATTERN}"
+  size: 100
+  sort:
+    - timestamp: desc
+  query:
+    bool:
+      must:
+        - term:
+            agent_name: "${AGENT_NAME}"
+        - term:
+            agent_labels_customer: "${CUSTOMER_CODE}"
+        - term:
+            data_win_system_eventID: "1"
+        
+        - bool:
+            should:
+              - wildcard:
+                  data_win_eventdata_image:
+                    value: "*\\\\SystemInformer.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_originalFileName:
+                    value: "SystemInformer.exe"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_description:
+                    value: "System Informer"
+                    case_insensitive: true
+              - term:
+                  data_win_eventdata_product:
+                    value: "System Informer"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*MD5=19426363A37C03C3ED6FEDF57B6696EC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA1=8B12C6DA8FAC0D5E8AB999C31E5EA04AF32D53DC*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*SHA256=8EE9D84DE50803545937A63C686822388A3338497CDDB660D5D69CF68B68F287*"
+                    case_insensitive: true
+              - wildcard:
+                  data_win_eventdata_hashes:
+                    value: "*IMPHASH=B68908ADAEB5D662F87F2528AF318F12*"
+                    case_insensitive: true
+            minimum_should_match: 1
+        # ---- end generated ----
+        - range:
+            timestamp:
+              gte: "${START_TIME}"
+              lte: "${END_TIME}"
+  _source:
+    - timestamp
+    - agent_name
+    - data_win_system_eventID
+    - data_win_eventdata_image
+    - data_win_eventdata_originalFileName
+    - data_win_eventdata_description
+    - data_win_eventdata_product
+    - data_win_eventdata_hashes
+    - data_win_eventdata_commandLine
+    - data_win_eventdata_parentImage
+    - data_win_eventdata_user
+
+parameters:
+  AGENT_NAME:
+    description: "Target agent/host name"
+    type: string
+    required: true
+    example: "DESKTOP-AM0HLGE"
+  CUSTOMER_CODE:
+    description: "Customer label for filtering"
+    type: string
+    required: true
+    example: "lab"
+  INDEX_PATTERN:
+    description: "Elasticsearch index pattern"
+    type: string
+    required: true
+    example: "wazuh-lab_*"
+  START_TIME:
+    description: "Query start time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now-24h"
+    example: "2026-04-08 00:00:00.000"
+  END_TIME:
+    description: "Query end time (ISO 8601 or relative)"
+    type: datetime
+    required: false
+    default: "now"
+    example: "2026-04-08 23:59:59.999"
+
+how_to_implement: >
+  Requires Sysmon EventID 1 (process creation) collected from the
+  Microsoft-Windows-Sysmon/Operational channel by the Wazuh agent (eventchannel
+  localfile entry in ossec.conf) and ingested into the wazuh-* indices. The
+  detection looks for events where data_win_eventdata_image matches
+  '*\SystemInformer.exe'; data_win_eventdata_originalFileName equals
+  'SystemInformer.exe'; data_win_eventdata_description equals 'System Informer',
+  among other conditions.
+
+known_false_positives: >
+  System Informer is regularly used legitimately by system administrators or
+  developers. Apply additional filters accordingly. Baseline expected activity
+  in your environment and tune this detection before relying on it for automated
+  response.
+
+references:
+  - https://github.com/winsiderss/systeminformer
+  - https://attack.mitre.org/techniques/T1082/
+  - https://attack.mitre.org/techniques/T1564/
+  - https://attack.mitre.org/techniques/T1543/
+
+response:
+  message: >
+    PUA - System Informer Execution detected on host $agent_name$. Matched
+    data_win_eventdata_image: $data_win_eventdata_image$. Matched
+    data_win_eventdata_originalFileName: $data_win_eventdata_originalFileName$.
+    MITRE ATT&CK: T1082, T1564, T1543
+  risk_score: 50
+  severity: medium
+  risk_objects:
+    - field: agent_name
+      type: system
+      score: 50
+  threat_objects:
+    - field: data_win_eventdata_image
+      type: process
+    - field: data_win_eventdata_originalFileName
+      type: file_name
+
+tags:
+  asset_type: Endpoint
+  mitre_attack_id:
+    - T1082
+    - T1564
+    - T1543
+  custom_tags:
+    - system
+    - informer
+    - process_creation
+    - sysmon
+    - persistence
+    - privilege_escalation
+    - discovery
+    - stealth
+  product:
+    - Wazuh
+  security_domain: endpoint
+
+graylog:
+  query: data_win_system_eventID:"1" AND (data_win_eventdata_image:/.*\\[Ss][Yy][Ss][Tt][Ee][Mm][Ii][Nn][Ff][Oo][Rr][Mm][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_originalFileName:/[Ss][Yy][Ss][Tt][Ee][Mm][Ii][Nn][Ff][Oo][Rr][Mm][Ee][Rr]\.[Ee][Xx][Ee]/ OR data_win_eventdata_description:/[Ss][Yy][Ss][Tt][Ee][Mm] [Ii][Nn][Ff][Oo][Rr][Mm][Ee][Rr]/ OR data_win_eventdata_product:/[Ss][Yy][Ss][Tt][Ee][Mm] [Ii][Nn][Ff][Oo][Rr][Mm][Ee][Rr]/ OR data_win_eventdata_hashes:/.*[Mm][Dd]5=19426363[Aa]37[Cc]03[Cc]3[Ee][Dd]6[Ff][Ee][Dd][Ff]57[Bb]6696[Ee][Cc].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]1=8[Bb]12[Cc]6[Dd][Aa]8[Ff][Aa][Cc]0[Dd]5[Ee]8[Aa][Bb]999[Cc]31[Ee]5[Ee][Aa]04[Aa][Ff]32[Dd]53[Dd][Cc].*/ OR data_win_eventdata_hashes:/.*[Ss][Hh][Aa]256=8[Ee][Ee]9[Dd]84[Dd][Ee]50803545937[Aa]63[Cc]686822388[Aa]3338497[Cc][Dd][Dd][Bb]660[Dd]5[Dd]69[Cc][Ff]68[Bb]68[Ff]287.*/ OR data_win_eventdata_hashes:/.*[Ii][Mm][Pp][Hh][Aa][Ss][Hh]=[Bb]68908[Aa][Dd][Aa][Ee][Bb]5[Dd]662[Ff]87[Ff]2528[Aa][Ff]318[Ff]12.*/)
